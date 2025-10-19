@@ -129,8 +129,6 @@ docker compose up
 - Updating configs inside .env (unless baked into Dockerfile)
 - Using Next.js hot reload or nodemon in development mode
 
----
-
 # 🛑 Shutting Down the Application
 
 When you are done testing or developing, you can stop the running containers in several ways.  
