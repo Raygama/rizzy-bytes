@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  front-end:
+    build:
+      context: ../front-end
+      dockerfile: front-end.dockerfile
+    volumes:
+      - ../front-end:/app
+      - /app/node_modules
+    command: npm run dev
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
