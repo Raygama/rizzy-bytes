@@ -69,7 +69,7 @@ cd project
 docker compose up --build
 ```
 
-## Note:
+## For dev and prod:
 For dev:
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.override.yml up
@@ -84,8 +84,6 @@ docker compose up --build
 → Runs the optimized build (npm run build && npm run start).
 
 
----
-
 ## Development Notes
 - Each service is self-contained with its own package.json.
 - Use .env inside each service for secrets & configs.
@@ -93,14 +91,12 @@ docker compose up --build
 - Write unit tests inside each service (__tests__/ or test/ directories) (if needed)
 
 
----
 # Rebuilding Docker Containers
 
 In most cases, you **do not need to rebuild the Docker images** every time you change your code.  
 Thanks to **volumes** and **hot reload**, code changes update live.  
 However, there are specific situations where a rebuild is required.
 
----
 
 ## When you add new dependencies
 
@@ -135,8 +131,6 @@ docker compose up
 
 ---
 
----
-
 # 🛑 Shutting Down the Application
 
 When you are done testing or developing, you can stop the running containers in several ways.  
@@ -144,7 +138,7 @@ This prevents services like MongoDB, Redis, RabbitMQ, and the microservices from
 
 ---
 
-## 1. Stop All Containers (Foreground Mode)
+## Stop All Containers
 
 If you started services with:
 ```bash
