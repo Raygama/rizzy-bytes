@@ -61,7 +61,7 @@ project:
 
 ### 1. Clone Repo
 ```bash
-git clone git@github.com:Raygama/rizzy-bytes.git
+git clone github.com/Raygama/rizzy-bytes
 ```
 ### 2. Start Services with Docker Compose
 ```bash
