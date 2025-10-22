@@ -70,6 +70,7 @@ docker compose up --build
 ```
 
 ## For dev and prod:
+Go into the project folder then:
 For dev:
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.override.yml up
