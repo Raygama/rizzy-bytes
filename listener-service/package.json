@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/worker.js",
+    "dev": "nodemon src/worker.js"
   },
   "keywords": [],
   "author": "",
@@ -11,6 +12,7 @@
   "description": "",
   "dependencies": {
     "amqplib": "^0.10.9",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "axios": "^1.7.7"
   }
 }

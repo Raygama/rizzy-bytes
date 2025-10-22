@@ -1,16 +1,18 @@
 {
-  "name": "logger-service",
+  "name": "listener-service",
   "version": "1.0.0",
-  "main": "index.js",
+  "type": "module",
+  "main": "src/worker.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/worker.js",
+    "dev": "nodemon src/worker.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "amqplib": "^0.10.3",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
   }
 }
