@@ -6,6 +6,9 @@ services:
       dockerfile: authentication-service.dockerfile
     ports:
       - "3001:3000"
+    environment:
+      - PORT=3000
+      - MONGO_URI=mongodb://mongo:27017
 
   broker-service:
     build:
