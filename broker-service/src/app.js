@@ -62,5 +62,5 @@ app.listen(PORT, async () => {
   } catch (e) {
     console.error("Failed to initialize AMQP:", e);
     process.exit(1);
-  }
+  } 
 });

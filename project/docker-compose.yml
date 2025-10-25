@@ -88,3 +88,126 @@ services:
     ports:
       - "1025:1025"   # SMTP
       - "8025:8025"   # Web UI
+
+  flowise:
+    image: flowiseai/flowise:latest
+    container_name: flowise
+    restart: always
+    ports:
+      - "3006:3000"  
+    environment:
+      - PORT=3000
+      - FLOWISE_USERNAME=admin
+      - FLOWISE_PASSWORD=secret
+      - DATABASE_PATH=/root/.flowise 
+      # vector DB config
+      - VECTOR_STORE=chroma
+      - CHROMA_URL=http://chroma:8000
+      # record manager config
+      - DATABASE=postgres
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=flowise
+      - DATABASE_PASSWORD=flowisepass
+      - DATABASE_NAME=flowise_db
+    volumes:
+      - ./flowise-data:/root/.flowise 
+    depends_on:
+      - mongo
+      - redis
+
+  chroma:
+    image: ghcr.io/chroma-core/chroma:0.6.1 
+    container_name: chroma
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+    - ./chroma-data:/data
+
+  chroma-init:
+    image: curlimages/curl:8.8.0
+    container_name: chroma-init
+    depends_on:
+      - chroma
+    environment:
+      TENANT: default_tenant
+      DB: default_database
+      NAME: helpdesk_kb
+      DIM: "768"
+    entrypoint: ["/bin/sh","-lc"]
+    command:
+      - |
+        set -ex
+        echo "[init] TENANT=$$TENANT DB=$$DB NAME=$$NAME DIM=$$DIM"
+
+        # Wait for Chroma (retry up to ~60s)
+        curl --retry-all-errors --retry 60 --retry-delay 1 --fail \
+          http://chroma:8000/api/v2/heartbeat >/dev/null
+
+        # Create tenant (idempotent)
+        printf '{"name":"%s"}' "$$TENANT" | \
+          curl -s -X POST http://chroma:8000/api/v2/tenants \
+              -H 'Content-Type: application/json' \
+              --data-binary @- || true
+
+        # Create database (idempotent)
+        printf '{"name":"%s"}' "$$DB" | \
+          curl -s -X POST http://chroma:8000/api/v2/tenants/$$TENANT/databases \
+              -H 'Content-Type: application/json' \
+              --data-binary @- || true
+
+        # Create collection with dimension (idempotent)
+        printf '{"name":"%s","dimension":%s,"metadata":{"created_by":"init"}}' "$$NAME" "$$DIM" | \
+          curl -s -X POST http://chroma:8000/api/v2/tenants/$$TENANT/databases/$$DB/collections \
+              -H 'Content-Type: application/json' \
+              --data-binary @- || true
+
+        echo "[init] Chroma bootstrap done."
+    restart: "no"
+
+
+
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: flowise
+      POSTGRES_PASSWORD: flowisepass
+      POSTGRES_DB: flowise_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama-data:/root/.ollama   
+    environment:
+      - OLLAMA_MODELS=mistral nomic-embed-text  
+    entrypoint: >
+      sh -c '
+        set -e
+        ollama serve &
+        # wait for API
+        for i in 1 2 3 4 5; do
+          if curl -sSf http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+          echo "waiting for ollama..." && sleep 2
+        done
+        for m in $${OLLAMA_MODELS}; do
+          # pull only if missing
+          ollama show "$$m" >/dev/null 2>&1 || ollama pull "$$m"
+        done
+        wait
+      '
+
+
+
+
