@@ -111,10 +111,24 @@ services:
       - DATABASE_PASSWORD=flowisepass
       - DATABASE_NAME=flowise_db
     volumes:
-      - ./flowise-data:/root/.flowise 
+      - ./flowise-data:/root/.flowise
+      - ./flowise-uploads:/uploads 
     depends_on:
       - mongo
       - redis
+  flowise-proxy:
+    build:
+      context: ../flowise-proxy
+      dockerfile: Dockerfile
+    container_name: flowise-proxy
+    env_file:
+      - ../flowise-proxy/.env
+    volumes:
+      - ../flowise-uploads:/uploads          
+    ports:
+      - "4000:4000"
+    depends_on:
+      - flowise
 
   chroma:
     image: ghcr.io/chroma-core/chroma:0.6.1 
