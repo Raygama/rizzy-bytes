@@ -12,8 +12,6 @@ dist/
 build/
 
 
-flowise-data/
-
 chroma-data/
 
 postgres-data/
