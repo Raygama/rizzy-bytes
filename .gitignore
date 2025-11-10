@@ -11,13 +11,6 @@ yarn-error.log*
 dist/
 build/
 
-
-chroma-data/
-
-postgres-data/
-
-ollama-data/
-
 mongo-data/
 dump/
 
