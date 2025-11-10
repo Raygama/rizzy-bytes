@@ -7,12 +7,15 @@ import path from "path";
 import axios from "axios";
 import FormData from "form-data";
 import dotenv from "dotenv";
+import { randomUUID } from "crypto";
+import { ChatHistoryStore } from "./history/chatHistoryStore.js";
 
 dotenv.config();
 
 // config
 const FLOWISE_URL = process.env.FLOWISE_URL || "http://flowise:3000";
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "/uploads";
+const CHAT_HISTORY_DIR = process.env.CHAT_HISTORY_DIR || path.join(UPLOAD_DIR, "chat-history");
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const READ_TIMEOUT_MS = parseInt(process.env.READ_TIMEOUT_MS || "60000", 10);
 const DOCUMENT_STORE_ID = process.env.DOCUMENT_STORE_ID || "d21759a2-d263-414e-b5a4-f2e5819d516e";
@@ -192,6 +195,8 @@ if (!FLOWISE_API_KEY && process.env.FLOWISE_API_KEY_FILE) {
   }
 }
 
+const chatHistoryStore = new ChatHistoryStore(CHAT_HISTORY_DIR);
+
 const app = express();
 app.use(express.json());
 
@@ -224,6 +229,38 @@ const pickFirstString = (value) => {
     return trimmed || null;
   }
   return null;
+};
+
+const getHeaderValue = (req, name) => {
+  if (!req || !name) return null;
+  if (typeof req.get === "function") {
+    return req.get(name);
+  }
+  const headerKey = name.toLowerCase();
+  return req.headers?.[headerKey] || req.headers?.[name] || null;
+};
+
+const getSessionIdFromReq = (req) => {
+  return (
+    pickFirstString(getHeaderValue(req, "x-session-id")) ||
+    pickFirstString(req.body?.sessionId) ||
+    pickFirstString(req.query?.sessionId) ||
+    null
+  );
+};
+
+const getUserIdFromReq = (req) => {
+  return pickFirstString(getHeaderValue(req, "x-user-id")) || pickFirstString(req.body?.userId) || null;
+};
+
+const resolveSessionId = (req) => {
+  return getSessionIdFromReq(req) || randomUUID();
+};
+
+const buildPredictionPayload = (body) => {
+  if (!body || typeof body !== "object") return {};
+  const { sessionId, userId, ...rest } = body;
+  return rest;
 };
 
 const getStoreIdFromReq = (req) => {
@@ -626,6 +663,91 @@ const refreshHandler = async (req, res) => {
     return res.status(err.status || 500).json(err.body || { error: "Unable to refresh document store" });
   }
 };
+
+const predictionProxyHandler = async (req, res) => {
+  try {
+    const { flowId } = req.params;
+    if (!flowId) {
+      return res.status(400).json({ error: "flowId is required" });
+    }
+    if (!req.body || typeof req.body !== "object") {
+      return res.status(400).json({ error: "Request body is required" });
+    }
+
+    const payload = buildPredictionPayload(req.body);
+    const question = pickFirstString(req.body?.question) || pickFirstString(payload.question);
+    if (!question) {
+      return res.status(400).json({ error: "question is required" });
+    }
+    payload.question = question;
+
+    const sessionId = resolveSessionId(req);
+    const userId = getUserIdFromReq(req);
+
+    const requestMeta = { ...payload };
+    if (typeof requestMeta.question !== "undefined") {
+      delete requestMeta.question;
+    }
+
+    const response = await callFlowise("post", `/api/v1/prediction/${flowId}`, payload);
+    const assistantMeta =
+      Array.isArray(response?.sourceDocuments) && response.sourceDocuments.length
+        ? { sourceDocumentsCount: response.sourceDocuments.length }
+        : undefined;
+
+    await chatHistoryStore.appendInteraction({
+      flowId,
+      sessionId,
+      question,
+      answer: response,
+      meta: {
+        user: Object.keys(requestMeta).length ? { payload: requestMeta } : undefined,
+        assistant: assistantMeta,
+        conversation: userId ? { userId } : undefined
+      }
+    });
+
+    return res.json({ ...response, sessionId });
+  } catch (err) {
+    console.error("prediction proxy error:", err);
+    return res.status(err.status || 500).json(err.body || { error: "Unable to complete prediction" });
+  }
+};
+
+const listChatSessionsHandler = async (req, res) => {
+  try {
+    const { flowId } = req.params;
+    if (!flowId) {
+      return res.status(400).json({ error: "flowId is required" });
+    }
+    const sessions = await chatHistoryStore.listSessions(flowId);
+    return res.json({ flowId, sessions });
+  } catch (err) {
+    console.error("list chat history error:", err);
+    return res.status(500).json({ error: "Unable to load chat history" });
+  }
+};
+
+const getChatSessionHandler = async (req, res) => {
+  try {
+    const { flowId, sessionId } = req.params;
+    if (!flowId || !sessionId) {
+      return res.status(400).json({ error: "flowId and sessionId are required" });
+    }
+    const history = await chatHistoryStore.getHistory(flowId, sessionId);
+    if (!history) {
+      return res.status(404).json({ error: "Chat session not found" });
+    }
+    return res.json(history);
+  } catch (err) {
+    console.error("get chat history error:", err);
+    return res.status(500).json({ error: "Unable to load chat session" });
+  }
+};
+
+app.post("/api/v1/prediction/:flowId", predictionProxyHandler);
+app.get("/api/chat/history/:flowId", listChatSessionsHandler);
+app.get("/api/chat/history/:flowId/:sessionId", getChatSessionHandler);
 
 app.get("/api/kb", getManifestHandler);
 app.get("/api/kb/store/:storeId", getManifestHandler);
