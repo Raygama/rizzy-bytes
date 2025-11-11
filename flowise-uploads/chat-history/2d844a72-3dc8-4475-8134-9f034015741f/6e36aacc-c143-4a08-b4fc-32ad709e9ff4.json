@@ -2,7 +2,7 @@
   "sessionId": "6e36aacc-c143-4a08-b4fc-32ad709e9ff4",
   "flowId": "2d844a72-3dc8-4475-8134-9f034015741f",
   "createdAt": "2025-11-10T09:31:50.272Z",
-  "updatedAt": "2025-11-10T09:31:50.272Z",
+  "updatedAt": "2025-11-11T06:39:42.758Z",
   "metadata": {},
   "messages": [
     {
@@ -187,6 +187,190 @@
           }
         ],
         "sessionId": "6b163edc-f8a9-443e-82fd-0a8c7aab528d"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Saya ingin tau tentang kerja praktik",
+      "timestamp": "2025-11-11T06:39:42.734Z"
+    },
+    {
+      "role": "assistant",
+      "content": " Bagi mahasiswa yang berpengalaman dan ingin mempelajari lebih dalam dunia teknik informatika, ada kesempatan bagi anda untuk melakukan Kerja Praktik di Lab. Advanced Software Engineering (ASE) Fakultas Informatika Telkom University.\n\nDurasi kerja praktiknya dilanjutkan dari 22 Juni 2025 hingga 22 Agustus 2025, dan tempat pelaksanaannya adalah di Lab. ASE Fakultas Informatika Telkom University, Bandung.\n\nPada saat kerja praktik ini, anda akan bekerja sama dengan tim peneliti dalam pengembangan tool bantu data mining (\"FaceMiner\") yang spesifik dan otomatis untuk platform Hugging Face. Tool ini secara drastis meningkatkan efisiensi, mempercepat siklus riset, dan membebaskan peneliti dari proses akuisisi data manual yang lambat dan memakan waktu. Hal ini memungkinkan peneliti untuk lebih fokus pada analisis data serta pengembangan model inovatif.\n\nTugas anda dalam kerja praktik adalah mengimplementasi, melakukan testing, dan memantau tool FaceMiner hingga dipresentasikan kepada klien atau pihak lain yang terlibat dalam proyek. Selain itu, anda juga akan bekerja sama dengan tim pengembang backend (Python, Flask) untuk mengelola logika ekstraksi data dan interaksi API, serta membantu pengembangan frontend (HTML, CSS, JavaScript).\n\nDengan melakukan kerja praktik ini, anda dapat menerapkan pengetahuan dan kemahiran yang telah diakui di universitas, serta mempelajari berbagai aspek dalam pengembangan aplikasi data mining. Selain itu, kerja praktik ini juga dapat meningkatkan keahlian anda sebagai mahasiswa teknik informatika dan mewujudkan kehormatan Fakultas Informatika Telkom University di mata kalangan industri.\n\nJika anda tertarik untuk melakukan kerja praktik di Lab. ASE Fakultas Informatika Telkom University, silahkan hubungi staf administrasi atau melanjutkan pendaftaran melalui link yang tersedia. Selamat mencoba!",
+      "timestamp": "2025-11-11T06:39:42.743Z",
+      "raw": {
+        "text": " Bagi mahasiswa yang berpengalaman dan ingin mempelajari lebih dalam dunia teknik informatika, ada kesempatan bagi anda untuk melakukan Kerja Praktik di Lab. Advanced Software Engineering (ASE) Fakultas Informatika Telkom University.\n\nDurasi kerja praktiknya dilanjutkan dari 22 Juni 2025 hingga 22 Agustus 2025, dan tempat pelaksanaannya adalah di Lab. ASE Fakultas Informatika Telkom University, Bandung.\n\nPada saat kerja praktik ini, anda akan bekerja sama dengan tim peneliti dalam pengembangan tool bantu data mining (\"FaceMiner\") yang spesifik dan otomatis untuk platform Hugging Face. Tool ini secara drastis meningkatkan efisiensi, mempercepat siklus riset, dan membebaskan peneliti dari proses akuisisi data manual yang lambat dan memakan waktu. Hal ini memungkinkan peneliti untuk lebih fokus pada analisis data serta pengembangan model inovatif.\n\nTugas anda dalam kerja praktik adalah mengimplementasi, melakukan testing, dan memantau tool FaceMiner hingga dipresentasikan kepada klien atau pihak lain yang terlibat dalam proyek. Selain itu, anda juga akan bekerja sama dengan tim pengembang backend (Python, Flask) untuk mengelola logika ekstraksi data dan interaksi API, serta membantu pengembangan frontend (HTML, CSS, JavaScript).\n\nDengan melakukan kerja praktik ini, anda dapat menerapkan pengetahuan dan kemahiran yang telah diakui di universitas, serta mempelajari berbagai aspek dalam pengembangan aplikasi data mining. Selain itu, kerja praktik ini juga dapat meningkatkan keahlian anda sebagai mahasiswa teknik informatika dan mewujudkan kehormatan Fakultas Informatika Telkom University di mata kalangan industri.\n\nJika anda tertarik untuk melakukan kerja praktik di Lab. ASE Fakultas Informatika Telkom University, silahkan hubungi staf administrasi atau melanjutkan pendaftaran melalui link yang tersedia. Selamat mencoba!",
+        "question": "Saya ingin tau tentang kerja praktik",
+        "chatId": "0a6cd932-7613-48dc-a2af-a0a33006d04f",
+        "chatMessageId": "ca91ce2d-a6fe-4de2-8785-f4dae2c1a468",
+        "executionId": "2f443fe8-a03a-429d-ac84-294635ae8e8d",
+        "agentFlowExecutedData": [
+          {
+            "nodeId": "startAgentflow_0",
+            "nodeLabel": "Start",
+            "data": {
+              "id": "startAgentflow_0",
+              "name": "startAgentflow",
+              "input": {
+                "question": "Saya ingin tau tentang kerja praktik"
+              },
+              "output": {
+                "question": "Saya ingin tau tentang kerja praktik"
+              },
+              "state": {}
+            },
+            "previousNodeIds": [],
+            "status": "FINISHED"
+          },
+          {
+            "nodeId": "retrieverAgentflow_0",
+            "nodeLabel": "Retriever 0",
+            "data": {
+              "id": "retrieverAgentflow_0",
+              "name": "retrieverAgentflow",
+              "input": {
+                "question": "Saya ingin tau tentang kerja praktik"
+              },
+              "output": {
+                "content": "Tujuan utamanya adalah menyediakan platform yang intuitif bagi peneliti Lab. ASE \nuntuk: \n1. Mengontrol:   Memulai,   melanjutkan,   atau   mengonfigurasi   parameter   proses \nekstraksi. \n2. Memantau: Melihat status dan kemajuan proses ekstraksi secara real-time.\npengembangan backend (Python,  Flask)  untuk  mengelola  logika  ekstraksi \ndata  dan  interaksi  API  ,  serta  pengembangan frontend (HTML,  CSS, \nJavaScript) untuk menciptakan antarmuka pengguna yang fungsional dalam \nlingkungan riset akademis yang nyata. \n \n1.5. Waktu dan Tempat Pelaksanaan Kerja Praktik \nKerja praktik ini dilakukan pada: \n● Waktu: 22 Juni 2025 – 22 Agustus 2025 \n● Tempat: Lab. Advanced Software Engineering, TULT, Bandung\nHALAMAN PENGESAHAN \nLAPORAN KERJA PRAKTIK \n \nPENGEMBANGAN TOOL FACEMINER UNTUK DATA MINING DARI HUGGING FACE DI \nLAB. ADVANCED SOFTWARE ENGINEERING \n \nSebagai salah satu syarat dalam melaksanakan perkuliahan Mata Kuliah Kerja Praktik \nOleh : \nM. Daffa Raygama 1301223295 \n \n \n \nMenyetujui, Bandung, 28 Oktober 2025 \nDosen Pembimbing Lapangan Mahasiswa  \n \n \nJati H. Husen M. Daffa Raygama \nNIP. 20920040 NIM. 1301223132 \n \n \n \n \nMengetahui, \nDosen Pembimbing Akademik \n \n \nAyu Qatrunnada Istiqfarri, S.Kom, M.Kom                        \nNIP. 25009004\n6 \n \ntransparansi dan keandalan. \n1.4. Manfaat \nProyek ini memberikan manfaat signifikan bagi perusahaan dan mahasiswa: \n1. Bagi Lab. Advanced Software Engineering: Memperoleh tool bantu data \nmining (\"FaceMiner\")  yang  spesifik  dan  otomatis  untuk  platform  Hugging \nFace. Tool ini secara drastis meningkatkan efisiensi , mempercepat siklus riset \n, dan membebaskan peneliti dari proses akuisisi data manual yang lambat dan \nmemakan  waktu.  Hal  ini  memungkinkan  peneliti  untuk  lebih  fokus  pada \nanalisis data serta pengembangan model inovatif. \n \n2. Bagi   Mahasiswa: Mendapatkan   pengalaman   praktis   dalam   merancang \narsitektur  dan  membangun  aplikasi data  mining dari  tahap  analisis  hingga \nimplementasi.   Mahasiswa   juga   dapat   menerapkan   pengetahuan   dalam \npengembangan backend (Python,  Flask)  untuk  mengelola  logika  ekstraksi \ndata  dan  interaksi  API  ,  serta  pengembangan frontend (HTML,  CSS,"
+              },
+              "state": {}
+            },
+            "previousNodeIds": [
+              "startAgentflow_0"
+            ],
+            "status": "FINISHED"
+          },
+          {
+            "nodeId": "agentAgentflow_0",
+            "nodeLabel": "Agent 0",
+            "data": {
+              "id": "agentAgentflow_0",
+              "name": "agentAgentflow",
+              "input": {
+                "messages": [
+                  {
+                    "role": "system",
+                    "content": "Ini adalah knowledge yang di fetch untuk anda sebagai pendukung jawaban:  \n  \nTujuan utamanya adalah menyediakan platform yang intuitif bagi peneliti Lab. ASE \nuntuk: \n1. Mengontrol:   Memulai,   melanjutkan,   atau   mengonfigurasi   parameter   proses \nekstraksi. \n2. Memantau: Melihat status dan kemajuan proses ekstraksi secara real-time.\npengembangan backend (Python,  Flask)  untuk  mengelola  logika  ekstraksi \ndata  dan  interaksi  API  ,  serta  pengembangan frontend (HTML,  CSS, \nJavaScript) untuk menciptakan antarmuka pengguna yang fungsional dalam \nlingkungan riset akademis yang nyata. \n \n1.5. Waktu dan Tempat Pelaksanaan Kerja Praktik \nKerja praktik ini dilakukan pada: \n● Waktu: 22 Juni 2025 – 22 Agustus 2025 \n● Tempat: Lab. Advanced Software Engineering, TULT, Bandung\nHALAMAN PENGESAHAN \nLAPORAN KERJA PRAKTIK \n \nPENGEMBANGAN TOOL FACEMINER UNTUK DATA MINING DARI HUGGING FACE DI \nLAB. ADVANCED SOFTWARE ENGINEERING \n \nSebagai salah satu syarat dalam melaksanakan perkuliahan Mata Kuliah Kerja Praktik \nOleh : \nM. Daffa Raygama 1301223295 \n \n \n \nMenyetujui, Bandung, 28 Oktober 2025 \nDosen Pembimbing Lapangan Mahasiswa  \n \n \nJati H. Husen M. Daffa Raygama \nNIP. 20920040 NIM. 1301223132 \n \n \n \n \nMengetahui, \nDosen Pembimbing Akademik \n \n \nAyu Qatrunnada Istiqfarri, S.Kom, M.Kom                        \nNIP. 25009004\n6 \n \ntransparansi dan keandalan. \n1.4. Manfaat \nProyek ini memberikan manfaat signifikan bagi perusahaan dan mahasiswa: \n1. Bagi Lab. Advanced Software Engineering: Memperoleh tool bantu data \nmining (\"FaceMiner\")  yang  spesifik  dan  otomatis  untuk  platform  Hugging \nFace. Tool ini secara drastis meningkatkan efisiensi , mempercepat siklus riset \n, dan membebaskan peneliti dari proses akuisisi data manual yang lambat dan \nmemakan  waktu.  Hal  ini  memungkinkan  peneliti  untuk  lebih  fokus  pada \nanalisis data serta pengembangan model inovatif. \n \n2. Bagi   Mahasiswa: Mendapatkan   pengalaman   praktis   dalam   merancang \narsitektur  dan  membangun  aplikasi data  mining dari  tahap  analisis  hingga \nimplementasi.   Mahasiswa   juga   dapat   menerapkan   pengetahuan   dalam \npengembangan backend (Python,  Flask)  untuk  mengelola  logika  ekstraksi \ndata  dan  interaksi  API  ,  serta  pengembangan frontend (HTML,  CSS,"
+                  },
+                  {
+                    "role": "system",
+                    "content": "Anda adalah \"Asisten AI Helpdesk\" resmi dari Fakultas Informatika Telkom University. Peran utama Anda adalah untuk membantu mahasiswa dengan menyediakan informasi yang cepat dan akurat.\n\nAudience utama Anda adalah **Mahasiswa**. Sapa mereka dengan ramah dan profesional.\n\nGunakan bahasa Indonesia yang formal, sopan, jelas, dan membantu. Hindari bahasa gaul. Jaga agar respons tetap profesional seolah-olah Anda adalah staf administrasi fakultas.\n\n**SUMBER PENGETAHUAN DAN RUANG LINGKUP**\n\n1.  **Sumber Pengetahuan (KB):** Pengetahuan Anda secara ketat terbatas pada _Knowledge Base_ (KB) internal yang telah disediakan untuk Anda.\n    \n2.  **Topik yang Dicakup:** Anda HANYA diizinkan untuk menjawab pertanyaan yang berkaitan dengan:\n    \n    *   Informasi Akademik (Contoh: jadwal perkuliahan, prosedur Tugas Akhir, SKS, peraturan akademik).\n        \n    *   Layanan Administrasi (Contoh: layanan LAAK, prosedur pembayaran, pembuatan surat keterangan).\n        \n3.  **Konteks (PF-1):** Anda harus mampu memahami dan memelihara konteks percakapan _multi-turn_. Jika mahasiswa memberikan pertanyaan lanjutan, kaitkan dengan informasi sebelumnya dalam percakapan.\n    \n\n**ATURAN INTERAKSI DAN BATASAN**\n\n1.  **JANGAN MENGARANG:** Jika informasi yang diminta mahasiswa tidak ditemukan secara eksplisit di dalam KB, Anda DILARANG KERAS mengarang, menebak, atau menyimpulkan jawaban.\n    \n2.  **PROSEDUR JIKA TIDAK TAHU (Fallback):** Jika jawaban tidak ada di KB atau Anda tidak yakin, respons Anda harus:\n    \n    *   Secara jujur menyatakan keterbatasan. Contoh: \"Maaf, saya tidak dapat menemukan informasi spesifik mengenai \\[topik\\] di dalam basis data saya.\"\n        \n    *   (Sesuai PF-2) Tawarkan eskalasi ke bantuan manusia. Contoh: \"Apakah Anda ingin saya bantu sambungkan dengan staf administrasi untuk pertanyaan ini?\"\n        \n3.  **MENANGANI TOPIK DI LUAR LINGKUP:** Jika mahasiswa bertanya tentang topik di luar akademik dan administrasi fakultas (misal: cuaca, berita umum, opini pribadi, dll.), tolak dengan sopan.\n    \n    *   Contoh: \"Mohon maaf, sebagai Asisten AI Helpdesk Fakultas, saya hanya dapat membantu dengan pertanyaan seputar layanan akademik dan administrasi.\"\n        \n4.  **KEPATUHAN (NF-6):** Selalu patuhi kebijakan data dan privasi universitas. Jangan pernah meminta, menyimpan, atau mengomentari informasi pribadi sensitif mahasiswa di luar konteks yang diperlukan untuk layanan."
+                  },
+                  {
+                    "role": "developer",
+                    "content": "Anda adalah \"Asisten AI Helpdesk\" resmi dari Fakultas Informatika Telkom University. Peran utama Anda adalah untuk membantu mahasiswa dengan menyediakan informasi yang cepat dan akurat.\n\nAudience utama Anda adalah **Mahasiswa**. Sapa mereka dengan ramah dan profesional.\n\nGunakan bahasa Indonesia yang formal, sopan, jelas, dan membantu. Hindari bahasa gaul. Jaga agar respons tetap profesional seolah-olah Anda adalah staf administrasi fakultas.\n\n**SUMBER PENGETAHUAN DAN RUANG LINGKUP**\n\n1.  **Sumber Pengetahuan (KB):** Pengetahuan Anda secara ketat terbatas pada _Knowledge Base_ (KB) internal yang telah disediakan untuk Anda.\n    \n2.  **Topik yang Dicakup:** Anda HANYA diizinkan untuk menjawab pertanyaan yang berkaitan dengan:\n    \n    *   Informasi Akademik (Contoh: jadwal perkuliahan, prosedur Tugas Akhir, SKS, peraturan akademik).\n        \n    *   Layanan Administrasi (Contoh: layanan LAAK, prosedur pembayaran, pembuatan surat keterangan).\n        \n3.  **Konteks (PF-1):** Anda harus mampu memahami dan memelihara konteks percakapan _multi-turn_. Jika mahasiswa memberikan pertanyaan lanjutan, kaitkan dengan informasi sebelumnya dalam percakapan.\n    \n\n**ATURAN INTERAKSI DAN BATASAN**\n\n1.  **JANGAN MENGARANG:** Jika informasi yang diminta mahasiswa tidak ditemukan secara eksplisit di dalam KB, Anda DILARANG KERAS mengarang, menebak, atau menyimpulkan jawaban.\n    \n2.  **PROSEDUR JIKA TIDAK TAHU (Fallback):** Jika jawaban tidak ada di KB atau Anda tidak yakin, respons Anda harus:\n    \n    *   Secara jujur menyatakan keterbatasan. Contoh: \"Maaf, saya tidak dapat menemukan informasi spesifik mengenai \\[topik\\] di dalam basis data saya.\"\n        \n    *   (Sesuai PF-2) Tawarkan eskalasi ke bantuan manusia. Contoh: \"Apakah Anda ingin saya bantu sambungkan dengan staf administrasi untuk pertanyaan ini?\"\n        \n3.  **MENANGANI TOPIK DI LUAR LINGKUP:** Jika mahasiswa bertanya tentang topik di luar akademik dan administrasi fakultas (misal: cuaca, berita umum, opini pribadi, dll.), tolak dengan sopan.\n    \n    *   Contoh: \"Mohon maaf, sebagai Asisten AI Helpdesk Fakultas, saya hanya dapat membantu dengan pertanyaan seputar layanan akademik dan administrasi.\"\n        \n4.  **KEPATUHAN (NF-6):** Selalu patuhi kebijakan data dan privasi universitas. Jangan pernah meminta, menyimpan, atau mengomentari informasi pribadi sensitif mahasiswa di luar konteks yang diperlukan untuk layanan."
+                  },
+                  {
+                    "role": "user",
+                    "content": "Saya ingin tau tentang kerja praktik"
+                  }
+                ],
+                "agentModel": "chatOllama",
+                "agentKnowledgeDocumentStores": [
+                  {
+                    "documentStore": "d21759a2-d263-414e-b5a4-f2e5819d516e:Test",
+                    "docStoreDescription": "Informasi mengenai  fakultas informatika",
+                    "returnSourceDocuments": ""
+                  }
+                ],
+                "agentEnableMemory": true,
+                "agentMemoryType": "allMessages",
+                "agentReturnResponseAs": "userMessage",
+                "agentModelConfig": {
+                  "cache": "",
+                  "baseUrl": "http://ollama:11434",
+                  "modelName": "mistral",
+                  "temperature": 0.9,
+                  "allowImageUploads": "",
+                  "streaming": true,
+                  "jsonMode": "",
+                  "keepAlive": "5m",
+                  "topP": "",
+                  "topK": "",
+                  "mirostat": "",
+                  "mirostatEta": "",
+                  "mirostatTau": "",
+                  "numCtx": "",
+                  "numGpu": "",
+                  "numThread": "",
+                  "repeatLastN": "",
+                  "repeatPenalty": "",
+                  "stop": "",
+                  "tfsZ": "",
+                  "agentModel": "chatOllama"
+                }
+              },
+              "output": {
+                "content": " Bagi mahasiswa yang berpengalaman dan ingin mempelajari lebih dalam dunia teknik informatika, ada kesempatan bagi anda untuk melakukan Kerja Praktik di Lab. Advanced Software Engineering (ASE) Fakultas Informatika Telkom University.\n\nDurasi kerja praktiknya dilanjutkan dari 22 Juni 2025 hingga 22 Agustus 2025, dan tempat pelaksanaannya adalah di Lab. ASE Fakultas Informatika Telkom University, Bandung.\n\nPada saat kerja praktik ini, anda akan bekerja sama dengan tim peneliti dalam pengembangan tool bantu data mining (\"FaceMiner\") yang spesifik dan otomatis untuk platform Hugging Face. Tool ini secara drastis meningkatkan efisiensi, mempercepat siklus riset, dan membebaskan peneliti dari proses akuisisi data manual yang lambat dan memakan waktu. Hal ini memungkinkan peneliti untuk lebih fokus pada analisis data serta pengembangan model inovatif.\n\nTugas anda dalam kerja praktik adalah mengimplementasi, melakukan testing, dan memantau tool FaceMiner hingga dipresentasikan kepada klien atau pihak lain yang terlibat dalam proyek. Selain itu, anda juga akan bekerja sama dengan tim pengembang backend (Python, Flask) untuk mengelola logika ekstraksi data dan interaksi API, serta membantu pengembangan frontend (HTML, CSS, JavaScript).\n\nDengan melakukan kerja praktik ini, anda dapat menerapkan pengetahuan dan kemahiran yang telah diakui di universitas, serta mempelajari berbagai aspek dalam pengembangan aplikasi data mining. Selain itu, kerja praktik ini juga dapat meningkatkan keahlian anda sebagai mahasiswa teknik informatika dan mewujudkan kehormatan Fakultas Informatika Telkom University di mata kalangan industri.\n\nJika anda tertarik untuk melakukan kerja praktik di Lab. ASE Fakultas Informatika Telkom University, silahkan hubungi staf administrasi atau melanjutkan pendaftaran melalui link yang tersedia. Selamat mencoba!",
+                "timeMetadata": {
+                  "start": 1762843050302,
+                  "end": 1762843182624,
+                  "delta": 132322
+                },
+                "calledTools": [],
+                "usageMetadata": {
+                  "input_tokens": 2991,
+                  "output_tokens": 664,
+                  "total_tokens": 3655,
+                  "tool_call_tokens": 0
+                },
+                "responseMetadata": {
+                  "model": "mistral",
+                  "created_at": "2025-11-11T06:39:42.617137835Z",
+                  "done": true,
+                  "done_reason": "stop",
+                  "total_duration": 132326661498,
+                  "load_duration": 66860253,
+                  "prompt_eval_count": 2991,
+                  "prompt_eval_duration": 150236423,
+                  "eval_count": 664,
+                  "eval_duration": 104688527910
+                },
+                "availableTools": [
+                  {
+                    "name": "test",
+                    "description": "Informasi mengenai  fakultas informatika",
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "input": {
+                          "type": "string",
+                          "description": "input to look up in retriever"
+                        }
+                      },
+                      "required": [
+                        "input"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "toolNode": {
+                      "label": "Retriever Tool",
+                      "name": "retrieverTool"
+                    }
+                  }
+                ]
+              },
+              "state": {},
+              "chatHistory": [
+                {
+                  "role": "user",
+                  "content": "Saya ingin tau tentang kerja praktik"
+                },
+                {
+                  "role": "user",
+                  "content": " Bagi mahasiswa yang berpengalaman dan ingin mempelajari lebih dalam dunia teknik informatika, ada kesempatan bagi anda untuk melakukan Kerja Praktik di Lab. Advanced Software Engineering (ASE) Fakultas Informatika Telkom University.\n\nDurasi kerja praktiknya dilanjutkan dari 22 Juni 2025 hingga 22 Agustus 2025, dan tempat pelaksanaannya adalah di Lab. ASE Fakultas Informatika Telkom University, Bandung.\n\nPada saat kerja praktik ini, anda akan bekerja sama dengan tim peneliti dalam pengembangan tool bantu data mining (\"FaceMiner\") yang spesifik dan otomatis untuk platform Hugging Face. Tool ini secara drastis meningkatkan efisiensi, mempercepat siklus riset, dan membebaskan peneliti dari proses akuisisi data manual yang lambat dan memakan waktu. Hal ini memungkinkan peneliti untuk lebih fokus pada analisis data serta pengembangan model inovatif.\n\nTugas anda dalam kerja praktik adalah mengimplementasi, melakukan testing, dan memantau tool FaceMiner hingga dipresentasikan kepada klien atau pihak lain yang terlibat dalam proyek. Selain itu, anda juga akan bekerja sama dengan tim pengembang backend (Python, Flask) untuk mengelola logika ekstraksi data dan interaksi API, serta membantu pengembangan frontend (HTML, CSS, JavaScript).\n\nDengan melakukan kerja praktik ini, anda dapat menerapkan pengetahuan dan kemahiran yang telah diakui di universitas, serta mempelajari berbagai aspek dalam pengembangan aplikasi data mining. Selain itu, kerja praktik ini juga dapat meningkatkan keahlian anda sebagai mahasiswa teknik informatika dan mewujudkan kehormatan Fakultas Informatika Telkom University di mata kalangan industri.\n\nJika anda tertarik untuk melakukan kerja praktik di Lab. ASE Fakultas Informatika Telkom University, silahkan hubungi staf administrasi atau melanjutkan pendaftaran melalui link yang tersedia. Selamat mencoba!",
+                  "name": "agent_0"
+                }
+              ]
+            },
+            "previousNodeIds": [
+              "retrieverAgentflow_0"
+            ],
+            "status": "FINISHED"
+          }
+        ],
+        "sessionId": "0a6cd932-7613-48dc-a2af-a0a33006d04f"
       }
     }
   ]
