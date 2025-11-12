@@ -91,6 +91,11 @@ docker compose up --build
 - Use docker-compose for local dev;
 - Write unit tests inside each service (__tests__/ or test/ directories) (if needed)
 
+## CORS Configuration
+- Every HTTP service (authentication-service, broker-service, mail-service, flowise-proxy) reads `CORS_ORIGINS`, a comma-separated list of allowed origins.
+- Defaults allow `http://localhost:3000` and `http://127.0.0.1:3000`, so the front end can call the APIs out of the box.
+- Override per environment (e.g., `CORS_ORIGINS=https://portal.example.com,https://admin.example.com`) and include `*` only when you intentionally want to accept every origin.
+
 
 # Rebuilding Docker Containers
 

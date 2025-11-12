@@ -1,5 +1,6 @@
 // server.js
 import express from "express";
+import cors from "cors";
 import multer from "multer";
 import fs from "fs";
 import fsp from "fs/promises";
@@ -53,6 +54,42 @@ const EMBEDDING_CONFIG = safeParseJSON(process.env.FLOWISE_EMBEDDING_CONFIG, {})
 
 const RECORD_MANAGER_NAME = process.env.FLOWISE_RECORD_MANAGER_NAME || null;
 const RECORD_MANAGER_CONFIG = safeParseJSON(process.env.FLOWISE_RECORD_MANAGER_CONFIG, {});
+
+const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
+
+const parseOrigins = (value) =>
+  value
+    ?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean) ?? [];
+
+const resolveAllowedOrigins = () => {
+  const parsed = parseOrigins(process.env.CORS_ORIGINS);
+  if (!parsed.length) {
+    return DEFAULT_ALLOWED_ORIGINS;
+  }
+  return parsed;
+};
+
+const createCorsOptions = () => {
+  const origins = resolveAllowedOrigins();
+  const allowAll = origins.includes("*");
+  return {
+    origin: allowAll
+      ? true
+      : (origin, callback) => {
+          if (!origin || origins.includes(origin)) {
+            return callback(null, true);
+          }
+          return callback(new Error(`Origin ${origin} not allowed by CORS`));
+        },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    exposedHeaders: ["Content-Disposition"],
+    optionsSuccessStatus: 204
+  };
+};
 
 const COMMON_METADATA_OMIT_KEYS = ["loc", "loc.pageNumber", "loc.lines", "loc.lines.from", "loc.lines.to"];
 const PDF_METADATA_OMIT_KEYS = [
@@ -198,6 +235,9 @@ if (!FLOWISE_API_KEY && process.env.FLOWISE_API_KEY_FILE) {
 const chatHistoryStore = new ChatHistoryStore(CHAT_HISTORY_DIR);
 
 const app = express();
+const corsOptions = createCorsOptions();
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 // multer storage
