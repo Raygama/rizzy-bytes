@@ -1,103 +1,188 @@
+"use client";
+
+// BARU: Impor useRouter untuk redirect setelah login
+import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation"; // << BARU
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [activeIndex, setActiveIndex] = useState(0);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+  // --- LOGIKA LOGIN (BARU) ---
+  const router = useRouter(); // BARU: Hook untuk redirect
+
+  // BARU: State untuk menyimpan input form
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  // BARU: State untuk menangani error dan loading
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // BARU: Fungsi yang dipanggil saat form disubmit
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Mencegah form me-refresh halaman
+    setIsLoading(true); // Mulai loading
+    setError(""); // Bersihkan error lama
+
+    // Tentukan data yang akan dikirim berdasarkan tab yang aktif
+    const credentials = {
+      identifier: activeIndex === 0 ? email : username,
+      password: password,
+    };
+
+    // Simulasi pemanggilan API
+    try {
+      // GANTI URL INI dengan URL API backend Anda yang sesungguhnya
+      const response = await fetch("http://localhost:3001/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        // Jika server merespon dengan error (misal: 401 Unauthorized)
+        const data = await response.json();
+        throw new Error(data.message || "Email atau password salah");
+      }
+
+      // Jika login berhasil (server merespon OK)
+      // const data = await response.json(); // Mungkin Anda dapat token di sini
+
+      // Arahkan (redirect) pengguna ke halaman chat
+      router.push("/chat");
+    } catch (err) {
+      // Tangkap error (baik dari fetch atau dari throw di atas)
+      setError(err.message);
+    } finally {
+      // Apapun yang terjadi (berhasil atau gagal), hentikan loading
+      setIsLoading(false);
+    }
+  };
+  // --- BATAS AKHIR LOGIKA LOGIN ---
+
+  return (
+    <>
+      <div className="flex items-center justify-around w-full h-screen">
+        {/* Logo and welcome word (Tidak berubah) */}
+        <div className="w-1/3 flex flex-col items-center">
+          <div className="w-5/6">
             <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+              src="/logo-fakultas.png"
+              alt="Logo Fakultas"
+              width={317}
+              height={83}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <h1 className="font-bold text-4xl ">
+              Selamat Datang di Chatbot Helpdesk Informatik
+            </h1>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        {/* dividing line (Tidak berubah) */}
+        <div className="border-l-2 h-2/3 border-black "></div>
+
+        {/* MODIFIKASI: 
+          Bungkus form dengan tag <form> dan tambahkan onSubmit={handleSubmit} 
+        */}
+        <form
+          onSubmit={handleSubmit}
+          className="w-1/3 grid grid-cols-2 gap-4 p-4 rounded-xl shadow-2xl"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <p className="col-span-2 text-center">
+            Silahkan Pilih Tipe Pengguna Anda
+          </p>
+          <button
+            type="button" // MODIFIKASI: ubah ke type="button" agar tidak mensubmit form
+            className={`p-1 text-lg rounded-md ${
+              activeIndex === 0
+                ? "bg-[#BF0101] text-white"
+                : "bg-white text-black border border-gray-300"
+            }`}
+            onClick={() => {
+              setActiveIndex(0);
+              setError(""); // BARU: bersihkan error saat ganti tab
+            }}
+          >
+            Civitas Telkom
+          </button>
+
+          <button
+            type="button" // MODIFIKASI: ubah ke type="button"
+            className={`p-1 text-lg rounded-md ${
+              activeIndex === 1
+                ? "bg-[#BF0101] text-white"
+                : "bg-white text-black border border-gray-300"
+            }`}
+            onClick={() => {
+              setActiveIndex(1);
+              setError(""); // BARU: bersihkan error saat ganti tab
+            }}
+          >
+            Tamu
+          </button>
+
+          <div className="col-span-2 ">
+            {activeIndex === 0 ? (
+              <div>
+                <label className="block text-lg">Email</label>
+                <input
+                  type="email"
+                  placeholder="Enter your SSO email"
+                  className="border-1 border-gray-300 w-full p-2 rounded-md"
+                  value={email} // MODIFIKASI: hubungkan ke state
+                  onChange={(e) => setEmail(e.target.value)} // MODIFIKASI: hubungkan ke state
+                  required // BARU: tambahkan validasi dasar
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-lg">Username</label>
+                <input
+                  type="text" // MODIFIKASI: ganti type jadi 'text'
+                  placeholder="Enter your Username"
+                  className="border-1 border-gray-300 w-full p-2 rounded-md"
+                  value={username} // MODIFIKASI: hubungkan ke state
+                  onChange={(e) => setUsername(e.target.value)} // MODIFIKASI: hubungkan ke state
+                  required // BARU: tambahkan validasi dasar
+                />
+              </div>
+            )}
+          </div>
+          <div className="col-span-2 ">
+            <label className="block text-lg">Password</label>
+            <input
+              type="password"
+              placeholder="Enter your password"
+              className="border-1 border-gray-300 w-full p-2 rounded-md"
+              value={password} // MODIFIKASI: hubungkan ke state
+              onChange={(e) => setPassword(e.target.value)} // MODIFIKASI: hubungkan ke state
+              required // BARU: tambahkan validasi dasar
+            />
+          </div>
+          <div className="flex items-center">{/* ... Checkbox Anda ... */}</div>
+
+          <p className="text-right align-top">Lupa Password?</p>
+
+          {/* BARU: Tampilkan pesan error jika ada */}
+          {error && (
+            <div className="col-span-2 text-center text-red-600">{error}</div>
+          )}
+
+          {/* MODIFIKASI: Ganti <Link> dengan button type="submit" */}
+          <button
+            type="submit" // MODIFIKASI: ganti jadi type="submit"
+            className="bg-[#BF0101] p-1 col-span-2 text-white text-lg rounded-md disabled:bg-gray-400" // BARU: style untuk disabled
+            disabled={isLoading} // BARU: nonaktifkan tombol saat loading
+          >
+            {/* BARU: ubah teks saat loading */}
+            {isLoading ? "Loading..." : "Login"}
+          </button>
+        </form>
+      </div>
+    </>
   );
 }
