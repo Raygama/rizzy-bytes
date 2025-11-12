@@ -15,7 +15,9 @@ mongo-data/
 dump/
 
 redis-data/
-
+postgres-data/
+chroma-data/
+ollama-data/
 
 mailhog-data/
 
