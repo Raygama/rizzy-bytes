@@ -36,23 +36,27 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // Accept either { email, password } or { identifier, password }
+    const { email, identifier, password } = req.body;
+    const id = identifier || email;
+
+    // Find by email or by usn (username) to support both login types
+    const user = await User.findOne({ $or: [{ email: id }, { usn: id }] });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     const match = await comparePassword(password, user.password);
-    if (!match) return res.status(400).json({ error: "Invalid credentials" });
+    if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
     // Optionally publish a login log event
     await axios.post(`${brokerURL}/publish/log`, {
       type: "LOG_EVENT",
       service: "authentication-service",
       level: "info",
-      message: `User ${email} logged in`
+      message: `User ${id} logged in`
     }).catch(() => {});
 
     res.json({ message: "Login success", user: { email: user.email, role: user.role } });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 };

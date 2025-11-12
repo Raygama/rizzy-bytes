@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"; // << BARU
 
 export default function Home() {
   const [activeIndex, setActiveIndex] = useState(0);
-
+  const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001";
   // --- LOGIKA LOGIN (BARU) ---
   const router = useRouter(); // BARU: Hook untuk redirect
 
@@ -34,8 +34,8 @@ export default function Home() {
 
     // Simulasi pemanggilan API
     try {
-      // GANTI URL INI dengan URL API backend Anda yang sesungguhnya
-      const response = await fetch("http://localhost:3001/auth/login", {
+      // POST to the authentication-service (use env var or fallback)
+      const response = await fetch(`http://localhost:3001/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
