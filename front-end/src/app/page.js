@@ -4,10 +4,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation"; // << BARU
+import Link from "next/link";
 
 export default function Home() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001";
+  const AUTH_API_URL =
+    process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001";
   // --- LOGIKA LOGIN (BARU) ---
   const router = useRouter(); // BARU: Hook untuk redirect
 
@@ -163,9 +165,14 @@ export default function Home() {
               required // BARU: tambahkan validasi dasar
             />
           </div>
-          <div className="flex items-center">{/* ... Checkbox Anda ... */}</div>
+          <div className="flex items-center">
+            <input type="checkbox" className="mr-2" />
+            <label>Remember Me</label>
+          </div>
 
-          <p className="text-right align-top">Lupa Password?</p>
+          <Link href="/register" className="text-right align-top">
+            Create Account
+          </Link>
 
           {/* BARU: Tampilkan pesan error jika ada */}
           {error && (

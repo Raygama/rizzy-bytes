@@ -3,6 +3,30 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.chat-bubble p {
+  margin-bottom: 0.5rem; /* Beri jarak antar paragraf, tapi tidak di akhir */
+}
+
+.chat-bubble p:last-child {
+  margin-bottom: 0; /* Paragraf terakhir tidak perlu margin bawah */
+}
+
+.chat-bubble strong {
+  font-weight: 600; /* Membuat **teks** menjadi tebal (sesuai font-weight tailwind) */
+}
+
+/* Ini untuk memformat daftar (1. ... atau * ...) */
+.chat-bubble ul,
+.chat-bubble ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem; /* Memberi indentasi pada daftar */
+}
+
+.chat-bubble li {
+  margin-bottom: 0.25rem; /* Jarak antar item daftar */
+}
 /* :root {
   --background: #ffffff;
   --foreground: #171717;

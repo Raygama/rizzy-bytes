@@ -3,6 +3,7 @@
 // (BARU) Impor hook tambahan: useRef dan useEffect
 import { useState, useRef, useEffect } from "react";
 import { Menu, Send } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 // (BARU) Definisikan tipe pesan untuk kejelasan
 // interface Message {
@@ -41,9 +42,24 @@ export default function ChatbotPage() {
   // (BARU) Fungsi placeholder untuk logika API backend Anda
   const getBotResponse = async (userMessage) => {
     // Simulasi penundaan API
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // Jawaban placeholder
-    return "Ini Jawabannya";
+    try {
+      const response = await fetch(
+        "http://localhost:3006/api/v1/prediction/2bdcfdde-326c-45bf-8996-434189d5c59e",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: "Bearer ikdPiO2FZzOMrrXJrCFHJColMQDeAnoZ0REgKq0KIbI",
+          },
+          body: JSON.stringify({ question: userMessage }),
+        }
+      );
+      const data = await response.json();
+      console.log(data);
+      return data.text;
+    } catch (error) {
+      console.error("Error fetching bot response:", error);
+    }
 
     // Nanti, ganti dengan logika fetch API Anda...
   };
@@ -64,9 +80,11 @@ export default function ChatbotPage() {
 
     // 1. Buat pesan pengguna
     const userMessage = {
-      id: Date.now(),
-      text: userMessageText,
-      sender: "user",
+      // Objek ini HARUS memiliki properti yang sama
+      // dengan yang diharapkan oleh .map() Anda
+      id: Date.now(), // <-- TAMBAHKAN ID UNIK
+      text: userMessageText, // <-- GUNAKAN 'text' (bukan 'question')
+      sender: "user", // <-- TAMBAHKAN SENDER
     };
 
     // 2. Tambahkan pesan pengguna ke state.
@@ -212,7 +230,16 @@ export default function ChatbotPage() {
                         : "bg-gray-200 text-gray-800" // Bubble bot
                     }`}
                   >
-                    {msg.text}
+                    {/* --- 2. INI PERUBAHAN UTAMANYA --- */}
+                    {msg.sender === "bot" ? (
+                      // Jika pesan dari BOT, gunakan ReactMarkdown
+                      <ReactMarkdown className="chat-bubble prose prose-slate">
+                        {msg.text}
+                      </ReactMarkdown>
+                    ) : (
+                      // Jika pesan dari USER, tampilkan teks biasa
+                      msg.text
+                    )}
                   </div>
                 </div>
               ))}
