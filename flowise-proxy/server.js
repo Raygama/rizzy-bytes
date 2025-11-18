@@ -237,7 +237,7 @@ const chatHistoryStore = new ChatHistoryStore(CHAT_HISTORY_DIR);
 const app = express();
 const corsOptions = createCorsOptions();
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 
 // multer storage
