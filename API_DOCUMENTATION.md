@@ -69,12 +69,7 @@ User registration endpoint.
 **Response (201):**
 ```json
 {
-  "message": "User created, OTP sent",
-  "user": {
-    "email": "newuser@example.com",
-    "usn": "username_or_student_id",
-    "role": "student"
-  }
+  "message": "User created successfully",
 }
 ```
 
