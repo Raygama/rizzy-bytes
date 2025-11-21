@@ -79,8 +79,8 @@ User registration endpoint.
 
 **Notes:**
 - OTP is sent via broker/mail service for verification
-- Role defaults to "student" if not specified
-- Common roles: `"student"`, `"staff"`, `"admin"`
+- Role defaults to "guest" if not specified
+- Common roles: `"student"`, `"staff"`, `"admin"`,`"guest"`
 
 ---
 
