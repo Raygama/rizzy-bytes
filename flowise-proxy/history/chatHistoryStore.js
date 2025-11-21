@@ -1,46 +1,41 @@
-import fsp from "fs/promises";
-import path from "path";
-
-const sanitizeSegment = (value, fallback = "default") => {
-  if (value === null || typeof value === "undefined") return fallback;
-  const sanitized = `${value}`.trim().replace(/[^a-zA-Z0-9-_]/g, "_");
-  return sanitized || fallback;
-};
+import mongoose from "mongoose";
 
 const nowIso = () => new Date().toISOString();
 
+const messageSchema = new mongoose.Schema(
+  {
+    role: { type: String, required: true },
+    content: { type: String, default: "" },
+    timestamp: { type: Date, default: () => new Date() },
+    metadata: { type: mongoose.Schema.Types.Mixed, default: null },
+    raw: { type: mongoose.Schema.Types.Mixed, default: null }
+  },
+  { _id: false }
+);
+
+const chatHistorySchema = new mongoose.Schema(
+  {
+    flowId: { type: String, required: true },
+    sessionId: { type: String, required: true },
+    metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
+    messages: { type: [messageSchema], default: [] }
+  },
+  {
+    timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" }
+  }
+);
+
+chatHistorySchema.index({ flowId: 1, sessionId: 1 }, { unique: true });
+
+const ChatHistoryModel = mongoose.models.ChatHistory || mongoose.model("ChatHistory", chatHistorySchema);
+
 export class ChatHistoryStore {
-  constructor(baseDir) {
-    this.baseDir = baseDir;
-  }
-
-  async ensureDir(dir) {
-    await fsp.mkdir(dir, { recursive: true });
-    return dir;
-  }
-
-  flowDir(flowId) {
-    return path.join(this.baseDir, sanitizeSegment(flowId, "default"));
-  }
-
-  sessionFile(flowId, sessionId) {
-    return path.join(this.flowDir(flowId), `${sanitizeSegment(sessionId, "session")}.json`);
-  }
-
   async read(flowId, sessionId) {
     try {
-      const raw = await fsp.readFile(this.sessionFile(flowId, sessionId), "utf8");
-      return JSON.parse(raw);
+      return await ChatHistoryModel.findOne({ flowId, sessionId }).lean();
     } catch (err) {
-      if (err.code === "ENOENT") return null;
       throw err;
     }
-  }
-
-  async write(flowId, sessionId, payload) {
-    await this.ensureDir(this.flowDir(flowId));
-    await fsp.writeFile(this.sessionFile(flowId, sessionId), JSON.stringify(payload, null, 2));
-    return payload;
   }
 
   extractAnswerText(answer) {
@@ -69,39 +64,42 @@ export class ChatHistoryStore {
       return this.read(flowId, sessionId);
     }
 
-    const existing =
-      (await this.read(flowId, sessionId)) || {
-        sessionId,
-        flowId,
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
-        metadata: {},
-        messages: []
-      };
+    const existing = await this.read(flowId, sessionId);
+    const normalizedMessages = [];
 
-    existing.messages = existing.messages || [];
     messages.forEach((message) => {
       if (!message) return;
-      const normalized = {
+      normalizedMessages.push({
         role: message.role || "system",
         content: message.content || "",
-        timestamp: message.timestamp || nowIso()
-      };
-      if (message.metadata) {
-        normalized.metadata = message.metadata;
-      }
-      if (message.raw) {
-        normalized.raw = message.raw;
-      }
-      existing.messages.push(normalized);
+        timestamp: message.timestamp ? new Date(message.timestamp) : new Date(),
+        metadata: message.metadata || null,
+        raw: message.raw || null
+      });
     });
 
+    let mergedMetadata = existing?.metadata || {};
     if (metadata && typeof metadata === "object" && Object.keys(metadata).length) {
-      existing.metadata = { ...(existing.metadata || {}), ...metadata };
+      mergedMetadata = { ...mergedMetadata, ...metadata };
     }
 
-    existing.updatedAt = nowIso();
-    return this.write(flowId, sessionId, existing);
+    const update = {
+      $setOnInsert: { flowId, sessionId, createdAt: existing?.createdAt || new Date() },
+      $set: { metadata: mergedMetadata, updatedAt: new Date() }
+    };
+
+    if (normalizedMessages.length) {
+      update.$push = { messages: { $each: normalizedMessages } };
+    }
+
+    const result = await ChatHistoryModel.findOneAndUpdate({ flowId, sessionId }, update, {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+      lean: true
+    });
+
+    return result;
   }
 
   async appendInteraction({ flowId, sessionId, question, answer, meta = {} }) {
@@ -143,43 +141,25 @@ export class ChatHistoryStore {
   }
 
   async listSessions(flowId) {
-    const dir = this.flowDir(flowId);
-    try {
-      const entries = await fsp.readdir(dir);
-      const summaries = [];
-
-      for (const entry of entries) {
-        if (!entry.endsWith(".json")) continue;
-        const sanitizedSessionId = entry.replace(/\.json$/, "");
-        const sessionData = await this.read(flowId, sanitizedSessionId);
-        if (!sessionData) continue;
-        const lastMessage = Array.isArray(sessionData.messages)
-          ? sessionData.messages[sessionData.messages.length - 1] || null
+    const sessions = await ChatHistoryModel.find({ flowId }).sort({ updatedAt: -1 }).lean();
+    return sessions.map((session) => {
+      const lastMessage =
+        Array.isArray(session.messages) && session.messages.length
+          ? session.messages[session.messages.length - 1]
           : null;
-        summaries.push({
-          sessionId: sessionData.sessionId,
-          flowId: sessionData.flowId,
-          createdAt: sessionData.createdAt,
-          updatedAt: sessionData.updatedAt,
-          lastMessage: lastMessage
-            ? {
-                role: lastMessage.role,
-                content: lastMessage.content,
-                timestamp: lastMessage.timestamp
-              }
-            : null
-        });
-      }
-
-      return summaries.sort((a, b) => {
-        if (!a.updatedAt && !b.updatedAt) return 0;
-        if (!a.updatedAt) return 1;
-        if (!b.updatedAt) return -1;
-        return new Date(b.updatedAt) - new Date(a.updatedAt);
-      });
-    } catch (err) {
-      if (err.code === "ENOENT") return [];
-      throw err;
-    }
+      return {
+        sessionId: session.sessionId,
+        flowId: session.flowId,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+        lastMessage: lastMessage
+          ? {
+              role: lastMessage.role,
+              content: lastMessage.content,
+              timestamp: lastMessage.timestamp
+            }
+          : null
+      };
+    });
   }
 }

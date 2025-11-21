@@ -10,16 +10,18 @@ import FormData from "form-data";
 import dotenv from "dotenv";
 import { randomUUID } from "crypto";
 import { ChatHistoryStore } from "./history/chatHistoryStore.js";
+import { connectToMongo } from "./history/mongoClient.js";
 
 dotenv.config();
 
 // config
 const FLOWISE_URL = process.env.FLOWISE_URL || "http://flowise:3000";
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "/uploads";
-const CHAT_HISTORY_DIR = process.env.CHAT_HISTORY_DIR || path.join(UPLOAD_DIR, "chat-history");
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const READ_TIMEOUT_MS = parseInt(process.env.READ_TIMEOUT_MS || "60000", 10);
 const DOCUMENT_STORE_ID = process.env.DOCUMENT_STORE_ID || "d21759a2-d263-414e-b5a4-f2e5819d516e";
+const MONGO_URI = process.env.MONGO_URI || "mongodb://mongo:27017/helpdesk";
+const MONGO_DB_NAME = process.env.MONGO_DB_NAME || null;
 const DEFAULT_TEXT_SPLITTER = {
   chunkSize: 1000,
   chunkOverlap: 200
@@ -232,7 +234,7 @@ if (!FLOWISE_API_KEY && process.env.FLOWISE_API_KEY_FILE) {
   }
 }
 
-const chatHistoryStore = new ChatHistoryStore(CHAT_HISTORY_DIR);
+const chatHistoryStore = new ChatHistoryStore();
 
 const app = express();
 const corsOptions = createCorsOptions();
@@ -526,6 +528,38 @@ const callFlowise = async (method, url, data, config = {}) => {
   }
 };
 
+const extractTokensFromSseChunk = (chunk) => {
+  if (!chunk) return "";
+  const text = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : `${chunk}`;
+  const tokens = [];
+
+  text.split(/\r?\n/).forEach((line) => {
+    if (!line.startsWith("data:")) return;
+    const payload = line.replace(/^data:\s*/, "").trim();
+    if (!payload || payload === "[DONE]") return;
+    try {
+      const parsed = JSON.parse(payload);
+      const token =
+        parsed?.token ||
+        parsed?.data?.token ||
+        parsed?.data ||
+        parsed?.text ||
+        parsed?.message ||
+        parsed?.content ||
+        null;
+      if (typeof token === "string") {
+        tokens.push(token);
+      }
+    } catch (_err) {
+      if (payload && payload !== "[DONE]") {
+        tokens.push(payload);
+      }
+    }
+  });
+
+  return tokens.join("");
+};
+
 const getManifestHandler = async (req, res) => {
   try {
     const storeId = getStoreIdFromReq(req);
@@ -704,6 +738,99 @@ const refreshHandler = async (req, res) => {
   }
 };
 
+const persistChatInteraction = async ({ flowId, sessionId, question, answer, requestMeta, userId }) => {
+  const assistantMeta =
+    Array.isArray(answer?.sourceDocuments) && answer.sourceDocuments.length
+      ? { sourceDocumentsCount: answer.sourceDocuments.length }
+      : undefined;
+
+  await chatHistoryStore.appendInteraction({
+    flowId,
+    sessionId,
+    question,
+    answer,
+    meta: {
+      user: requestMeta && Object.keys(requestMeta).length ? { payload: requestMeta } : undefined,
+      assistant: assistantMeta,
+      conversation: userId ? { userId } : undefined
+    }
+  });
+};
+
+const streamPredictionToClient = async ({ req, res, flowId, payload, sessionId, userId, question, requestMeta }) => {
+  payload.streaming = true;
+
+  const headers = {
+    Accept: "text/event-stream",
+    ...(FLOWISE_API_KEY ? { Authorization: `Bearer ${FLOWISE_API_KEY}`, "x-api-key": FLOWISE_API_KEY } : {})
+  };
+
+  const upstream = await axios({
+    method: "post",
+    url: `${FLOWISE_URL}/api/v1/prediction/${flowId}`,
+    data: payload,
+    responseType: "stream",
+    headers,
+    timeout: 0
+  });
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
+
+  res.write(`event: session\ndata: ${JSON.stringify({ sessionId, flowId })}\n\n`);
+
+  let aggregated = "";
+  const streamTokens = [];
+
+  const handleChunk = (chunk) => {
+    const token = extractTokensFromSseChunk(chunk);
+    if (token) {
+      aggregated += token;
+      streamTokens.push(token);
+    }
+    res.write(chunk);
+  };
+
+  const handleError = (err) => {
+    console.error("streaming proxy error:", err?.message || err);
+    if (!res.writableEnded) {
+      res.write(`event: error\ndata: ${JSON.stringify({ error: "Streaming failed" })}\n\n`);
+      res.end();
+    }
+    if (upstream?.data?.destroy) {
+      upstream.data.destroy();
+    }
+  };
+
+  upstream.data.on("data", handleChunk);
+  upstream.data.on("error", handleError);
+  upstream.data.on("end", async () => {
+    try {
+      const answerPayload = { text: aggregated, streamTokens };
+      await persistChatInteraction({ flowId, sessionId, question, answer: answerPayload, requestMeta, userId });
+    } catch (err) {
+      console.error("stream persistence error:", err);
+    } finally {
+      if (!res.writableEnded) {
+        res.write("event: done\ndata: \"done\"\n\n");
+        res.end();
+      }
+    }
+  });
+
+  req.on("close", () => {
+    if (upstream?.data?.destroy) {
+      upstream.data.destroy();
+    }
+  });
+};
+
 const predictionProxyHandler = async (req, res) => {
   try {
     const { flowId } = req.params;
@@ -729,23 +856,27 @@ const predictionProxyHandler = async (req, res) => {
       delete requestMeta.question;
     }
 
-    const response = await callFlowise("post", `/api/v1/prediction/${flowId}`, payload);
-    const assistantMeta =
-      Array.isArray(response?.sourceDocuments) && response.sourceDocuments.length
-        ? { sourceDocumentsCount: response.sourceDocuments.length }
-        : undefined;
+    const wantsStream =
+      req.body?.stream === true ||
+      `${req.query?.stream}` === "true" ||
+      /\bevent-stream\b/i.test(getHeaderValue(req, "accept") || "");
 
-    await chatHistoryStore.appendInteraction({
-      flowId,
-      sessionId,
-      question,
-      answer: response,
-      meta: {
-        user: Object.keys(requestMeta).length ? { payload: requestMeta } : undefined,
-        assistant: assistantMeta,
-        conversation: userId ? { userId } : undefined
-      }
-    });
+    if (wantsStream) {
+      await streamPredictionToClient({
+        req,
+        res,
+        flowId,
+        payload,
+        sessionId,
+        userId,
+        question,
+        requestMeta
+      });
+      return;
+    }
+
+    const response = await callFlowise("post", `/api/v1/prediction/${flowId}`, payload);
+    await persistChatInteraction({ flowId, sessionId, question, answer: response, requestMeta, userId });
 
     return res.json({ ...response, sessionId });
   } catch (err) {
@@ -786,6 +917,7 @@ const getChatSessionHandler = async (req, res) => {
 };
 
 app.post("/api/v1/prediction/:flowId", predictionProxyHandler);
+app.post("/api/v1/prediction/:flowId/stream", predictionProxyHandler);
 app.get("/api/chat/history/:flowId", listChatSessionsHandler);
 app.get("/api/chat/history/:flowId/:sessionId", getChatSessionHandler);
 
@@ -814,8 +946,51 @@ app.post("/api/kb/:storeId/refresh", refreshHandler);
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-app.listen(PORT, () => {
-  console.log(
-    `Flowise-proxy running on ${PORT}. FLOWISE_URL=${FLOWISE_URL}, UPLOAD_DIR=${UPLOAD_DIR}, DOCUMENT_STORE_ID=${DOCUMENT_STORE_ID}`
-  );
-});
+let serverInstance = null;
+
+export const startServer = async (port = PORT) => {
+  if (serverInstance) return serverInstance;
+  await connectToMongo(MONGO_URI, MONGO_DB_NAME || undefined);
+  await ensureUploadFolder();
+
+  serverInstance = await new Promise((resolve, reject) => {
+    const listener = app
+      .listen(port, () => {
+        console.log(
+          `Flowise-proxy running on ${port}. FLOWISE_URL=${FLOWISE_URL}, UPLOAD_DIR=${UPLOAD_DIR}, DOCUMENT_STORE_ID=${DOCUMENT_STORE_ID}`
+        );
+        resolve(listener);
+      })
+      .on("error", reject);
+  });
+
+  return serverInstance;
+};
+
+export const stopServer = async () => {
+  if (!serverInstance) return;
+  await new Promise((resolve, reject) => {
+    serverInstance.close((err) => {
+      if (err) return reject(err);
+      return resolve();
+    });
+  });
+  serverInstance = null;
+  
+  // Close MongoDB connection
+  try {
+    const mongoose = await import("mongoose");
+    if (mongoose.default.connection.readyState !== 0) {
+      await mongoose.default.disconnect();
+    }
+  } catch (_err) {
+    // Ignore if mongoose isn't loaded
+  }
+};
+
+if (process.env.NODE_ENV !== "test") {
+  startServer().catch((err) => {
+    console.error("Failed to start flowise-proxy server", err);
+    process.exit(1);
+  });
+}
