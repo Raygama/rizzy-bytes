@@ -61,7 +61,7 @@ User registration endpoint.
   "email": "newuser@example.com",
   "usn": "username_or_student_id",
   "password": "secure_password",
-  "role": "student",  // optional, defaults to "student"
+  "role": "guest",  // optional, defaults to "guest"
   "photoProfile": "url_to_profile_pic"  // optional
 }
 ```
