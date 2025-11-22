@@ -8,7 +8,7 @@ const brokerURL = process.env.BROKER_URL || "http://broker-service:3000";
 const genOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // =========================
-// REGISTER (Tidak ada perubahan besar)
+// REGISTER — TANPA OTP
 // =========================
 export const register = async (req, res) => {
   try {
@@ -26,18 +26,8 @@ export const register = async (req, res) => {
       photoProfile,
     });
 
-    const otp = genOTP();
-    await axios
-      .post(`${brokerURL}/publish/otp`, {
-        type: "SEND_OTP",
-        to: email,
-        otp,
-        purpose: "register",
-      })
-      .catch(() => {});
-
     res.status(201).json({
-      message: "User created, OTP sent",
+      message: "User created",
       user: { email: user.email, usn: user.usn, role: user.role },
     });
   } catch (err) {
@@ -46,7 +36,7 @@ export const register = async (req, res) => {
 };
 
 // =========================
-// LOGIN STEP 1 — SEND OTP
+// LOGIN STEP 1 — SEND OTP (TETAP SAMA)
 // =========================
 export const login = async (req, res) => {
   try {
@@ -90,7 +80,7 @@ export const login = async (req, res) => {
 };
 
 // =========================
-// LOGIN STEP 2 — VERIFY OTP
+// LOGIN STEP 2 — VERIFY OTP (TETAP SAMA)
 // =========================
 export const verifyLoginOTP = async (req, res) => {
   try {
