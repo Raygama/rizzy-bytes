@@ -2,6 +2,7 @@ import axios from "axios";
 import User from "../models/userModel.js";
 import OTP from "../models/otpModel.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
+import jwt from "jsonwebtoken";
 
 const brokerURL = process.env.BROKER_URL || "http://broker-service:3000";
 
@@ -86,17 +87,41 @@ export const verifyLoginOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
+    // cek OTP
     const otpDoc = await OTP.findOne({ email, otp, purpose: "login" });
-    if (!otpDoc) return res.status(400).json({ message: "Invalid OTP" });
+    if (!otpDoc) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
 
-    if (otpDoc.expiresAt < new Date())
+    if (otpDoc.expiresAt <= new Date()) {
       return res.status(400).json({ message: "OTP expired" });
+    }
 
-    // delete OTP after use
+    // ambil data user berdasarkan email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // hapus semua OTP login untuk email tsb
     await OTP.deleteMany({ email, purpose: "login" });
 
-    res.json({ message: "Login success" });
+    // generate JWT
+    const payload = {
+      usn: user.usn,
+      role: user.role,
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "1d",
+    });
+
+    return res.json({
+      message: "Login success",
+      token,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(err);
+    return res.status(500).json({ message: err.message });
   }
 };
