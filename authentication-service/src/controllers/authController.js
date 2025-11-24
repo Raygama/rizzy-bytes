@@ -68,6 +68,7 @@ export const login = async (req, res) => {
         to: user.email,
         otp,
         purpose: "login",
+        username: user.usn,
       })
       .catch(() => {});
 

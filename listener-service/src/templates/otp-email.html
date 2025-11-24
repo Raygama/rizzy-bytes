@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kode Verifikasi 2-Langkah - Telkom University</title>
+
+    <link
+      href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --primary-color: #bf0101;
+        --primary-hover: #a00101;
+        --text-primary: #2d3748;
+        --text-secondary: #718096;
+        --border-color: #e2e8f0;
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #f5f5f5;
+        margin: 0;
+        padding: 40px 20px;
+      }
+
+      .email-container {
+        max-width: 720px;
+        margin: auto;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      .email-header {
+        background: #fff;
+        padding: 24px 32px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .flex {
+        display: flex;
+        align-items: center;
+      }
+
+      .flex-start {
+        display: flex;
+        align-items: flex-start;
+      }
+
+      .space-x-3 > * + * {
+        margin-left: 12px;
+      }
+
+      .space-x-4 > * + * {
+        margin-left: 16px;
+      }
+
+      .email-body {
+        padding: 40px 32px;
+      }
+
+      .text-primary {
+        color: var(--text-primary);
+      }
+      .text-secondary {
+        color: var(--text-secondary);
+      }
+
+      .otp-code {
+        font-size: 48px;
+        font-weight: bold;
+        text-align: center;
+        padding: 32px 0;
+        letter-spacing: 6px;
+        background: #f9fafb;
+        border: 2px solid var(--primary-color);
+        border-radius: 12px;
+        margin-top: 20px;
+      }
+
+      .info-box {
+        background: #fef2f2;
+        border: 1px solid #fee2e2;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 24px;
+      }
+
+      .email-footer {
+        background: #f9fafb;
+        padding: 24px 32px;
+        border-top: 1px solid #e2e8f0;
+        text-align: center;
+      }
+
+      .footer-links a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .footer-links a:hover {
+        text-decoration: underline;
+      }
+
+      .divider {
+        color: #d1d5db;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <!-- Header -->
+      <div class="email-header">
+        <div class="flex space-x-3">
+          <div
+            style="
+              width: 48px;
+              height: 48px;
+              background: var(--primary-color);
+              border-radius: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-size: 20px;
+              font-weight: bold;
+            "
+          >
+            IF
+          </div>
+
+          <div>
+            <h1
+              style="
+                font-size: 20px;
+                font-weight: bold;
+                color: var(--text-primary);
+                margin: 0;
+              "
+            >
+              Telkom University
+            </h1>
+            <p style="font-size: 14px; color: var(--text-secondary); margin: 0">
+              Fakultas Informatika
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="email-body">
+        <h2
+          style="
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+          "
+        >
+          Kode Verifikasi 2-Langkah: {{OTP_CODE}}
+        </h2>
+
+        <p class="text-secondary" style="font-size: 16px; margin-bottom: 24px">
+          Halo,
+        </p>
+
+        <p class="text-primary" style="font-size: 16px; margin-bottom: 16px">
+          <span style="font-weight: 600">{{OTP_CODE}}</span> adalah kode
+          Verifikasi 2-Langkah Telkom University Anda untuk
+          <span style="font-weight: 600">{{USERNAME}}</span>.
+        </p>
+
+        <p class="text-primary" style="font-size: 16px; margin-bottom: 24px">
+          Masukkan kode di atas ke layar Verifikasi 2-Langkah untuk
+          menyelesaikan login. Kode ini akan kedaluwarsa dalam 15 menit.
+        </p>
+
+        <div class="otp-code">
+          <span style="color: var(--primary-color)">{{OTP_CODE}}</span>
+        </div>
+
+        <p class="text-primary" style="font-size: 16px; margin-top: 24px">
+          Permintaan login ini diterima dari
+          <span style="font-weight: 600">Bandung, West Java, Indonesia</span>.
+        </p>
+
+        <div class="info-box">
+          <div class="flex-start space-x-3">
+            <div
+              class="icon-alert-triangle"
+              style="
+                font-size: 20px;
+                color: var(--primary-color);
+                margin-top: 3px;
+              "
+            ></div>
+            <div>
+              <p
+                style="
+                  font-weight: 600;
+                  color: var(--primary-color);
+                  margin-bottom: 8px;
+                "
+              >
+                PENTING:
+              </p>
+              <p class="text-primary" style="font-size: 14px">
+                Jangan bagikan kode keamanan Anda kepada siapa pun. Telkom
+                University tidak akan pernah meminta kode Anda. Ini mencakup
+                pesan, screensharing, dll. Dengan membagikan kode, akun Anda
+                bisa berisiko.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-primary" style="font-size: 16px; margin-top: 32px">
+          Terima Kasih,<br />
+          <span style="font-weight: 600">Tim Telkom University</span>
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="email-footer">
+        <p class="text-secondary" style="font-size: 12px; margin-bottom: 16px">
+          Jangan balas email ini. Anda menerima email ini karena terdapat upaya
+          login. Jika bukan Anda, segera ubah password.
+        </p>
+
+        <div
+          class="footer-links flex justify-center space-x-4"
+          style="font-size: 12px; margin-bottom: 16px"
+        >
+          <a href="#">Pelajari Lebih Lanjut</a>
+          <span class="divider">|</span>
+          <a href="#">Keamanan Akun</a>
+          <span class="divider">|</span>
+          <a href="#">Dukungan</a>
+        </div>
+
+        <p class="text-secondary" style="font-size: 12px">
+          © 2025 Fakultas Informatika, Telkom University<br />
+          Bandung, West Java, Indonesia
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
