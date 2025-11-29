@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 import { randomUUID } from "crypto";
 import { ChatHistoryStore } from "./history/chatHistoryStore.js";
 import { connectToMongo } from "./history/mongoClient.js";
+import { logEvent, requestContext, requestLogger } from "./logger.js";
 
 dotenv.config();
 
@@ -241,6 +242,8 @@ const corsOptions = createCorsOptions();
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(express.json());
+app.use(requestContext);
+app.use(requestLogger);
 
 // multer storage
 const storage = multer.diskStorage({

@@ -13,6 +13,7 @@ This document covers all HTTP API endpoints available in the rizzy-bytes helpdes
 | **Mail Service** | 3004 | localhost | mail-service | `http://localhost:3004` or `http://mail-service:3000` |
 | **Flowise Proxy** | 4000 | localhost | flowise-proxy | `http://localhost:4000` or `http://flowise-proxy:4000` |
 | **Front-end** | 3000 | localhost | front-end | `http://localhost:3000` |
+| **Logger Service** | 3005 | localhost | logger-service | `http://localhost:3005` or `http://logger-service:3000` |
 
 ---
 
@@ -129,10 +130,14 @@ Publish log event for centralized logging.
 **Request:**
 ```json
 {
-  "type": "LOG_EVENT",
   "service": "authentication-service",
   "level": "info",  // or "warn", "error", "debug"
-  "message": "User john@example.com logged in"
+  "event": "user_registered",
+  "message": "User john@example.com logged in",
+  "context": {
+    "userId": "123",
+    "extra": "metadata"
+  }
 }
 ```
 
@@ -142,9 +147,92 @@ Publish log event for centralized logging.
 ```
 
 **Notes:**
-- Services use this to log events asynchronously
-- Logger service consumes and stores logs
+- Services use this to log events asynchronously; listener binds to `log.*` and forwards into logger-service
+- Logger service consumes and stores logs; sampling/redaction applied automatically
 - Useful for debugging and monitoring
+ 
+---
+
+## Logger Service (`http://localhost:3005`)
+
+Centralized log ingestion and retrieval.
+
+### POST `/logs`
+Ingest a structured log event (HTTP path; services normally publish via broker).
+
+**Request:**
+```json
+{
+  "level": "info",       // fatal|error|warn|info|debug|trace
+  "event": "otp_requested",
+  "message": "OTP issued for login",
+  "service": "authentication-service",
+  "requestId": "uuid-req",
+  "correlationId": "uuid-corr",
+  "userId": "optional-user-id",
+  "resource": "/auth/login",
+  "statusCode": 200,
+  "durationMs": 120,
+  "tags": ["auth", "otp"],
+  "context": {
+    "email": "user@example.com",
+    "usn": "USR123"
+  }
+}
+```
+
+**Response (202):**
+```json
+{ "received": true, "sampled": true }
+```
+
+**Notes:**
+- Avoids sensitive keys (password/token/otp/secret/cookie/etc. are stripped).
+- Typically invoked via `broker-service /publish/log` to go through RabbitMQ.
+- Uses sampling; errors/warns always kept, info/debug sampled via `LOG_SAMPLE_RATE`.
+
+### GET `/logs`
+Fetch recent log entries from the current (date-based) log file. Requires JWT with role `admin` or `staff`.
+
+**Headers:**
+- `Authorization: Bearer <jwt>` (same secret as authentication-service `JWT_SECRET`)
+
+**Query Params (optional):**
+- `date=YYYY-MM-DD` (default: today)
+- `limit=200` (max 1000)
+- `service=authenticaton-service` (filter by service)
+- `level=error` (filter by level)
+- `event=otp_requested` (filter by event name)
+- `q=search text` (search in message/context)
+
+**Response (200):**
+```json
+{
+  "logs": [
+    {
+      "level": "info",
+      "time": "2025-11-29T09:45:41.930Z",
+      "service": "authentication-service",
+      "event": "otp_requested",
+      "message": "OTP issued for login",
+      "requestId": "uuid-req",
+      "correlationId": "uuid-corr",
+      "resource": "/auth/login",
+      "statusCode": 200,
+      "durationMs": 120,
+      "context": { "email": "user@example.com", "usn": "USR123" }
+    }
+  ],
+  "count": 1
+}
+```
+
+**Auth & Roles:**
+- Uses JWT verification (`AUTH_JWT_SECRET`/`JWT_SECRET`); requires `role` claim to be `admin` or `staff`.
+  
+**Notes:**
+- Logs are stored as JSON lines in `logs/logger-YYYY-MM-DD.log` with retention control.
+- Pretty console output is enabled by default; disable with `LOG_PRETTY=false`.
 
 ---
 

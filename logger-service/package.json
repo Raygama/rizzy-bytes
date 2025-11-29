@@ -1,18 +1,25 @@
 {
-  "name": "listener-service",
+  "name": "logger-service",
   "version": "1.0.0",
   "type": "module",
-  "main": "src/worker.js",
+  "main": "src/app.js",
   "scripts": {
-    "start": "node src/worker.js",
-    "dev": "nodemon src/worker.js"
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "cross-env NODE_ENV=test node --test"
   },
   "dependencies": {
-    "amqplib": "^0.10.3",
-    "axios": "^1.7.7",
-    "dotenv": "^16.4.5"
+    "amqplib": "^0.10.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.2.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "nodemon": "^3.1.0",
+    "cross-env": "^7.0.3",
+    "supertest": "^7.1.1"
   }
 }

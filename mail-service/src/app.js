@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import nodemailer from "nodemailer";
+import { logEvent, maskEmail, requestContext, requestLogger } from "./logger.js";
 
 dotenv.config();
 const app = express();
@@ -43,6 +44,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(express.json());
+app.use(requestContext);
+app.use(requestLogger);
 
 const PORT = process.env.PORT || 3000;
 const SMTP_HOST = process.env.SMTP_HOST || "mailhog";
@@ -63,9 +66,33 @@ app.post("/send", async (req, res) => {
     const { to, subject, text, html } = req.body;
     await transporter.sendMail({ from: SMTP_FROM, to, subject, text, html });
     res.json({ sent: true });
+    logEvent({
+      level: "info",
+      event: "mail_sent",
+      message: "Email dispatched",
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { to: maskEmail(to), subject }
+    });
   } catch (e) {
+    logEvent({
+      level: "error",
+      event: "mail_send_failed",
+      message: e.message,
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { to: maskEmail(req.body?.to), subject: req.body?.subject }
+    });
     res.status(500).json({ error: e.message });
   }
 });
 
-app.listen(PORT, () => console.log(`Mail service listening on ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Mail service listening on ${PORT}`);
+  logEvent({
+    level: "info",
+    event: "service_started",
+    message: `Mail service listening on ${PORT}`,
+    requestId: "startup"
+  });
+});
