@@ -34,3 +34,4 @@ Thumbs.db
 .vscode/
 *.swp
 /project/postgres-data
+/logger-service/node_modules
