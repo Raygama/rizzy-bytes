@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
+import { logEvent, requestContext, requestLogger } from "./utils/logger.js";
 
 dotenv.config();
 const app = express();
@@ -49,6 +50,8 @@ app.use(
 );
 
 app.use(express.json());
+app.use(requestContext);
+app.use(requestLogger);
 
 app.use("/auth", authRoutes);
 app.get("/health", (req, res) => res.json({ status: "ok" }));
@@ -56,8 +59,33 @@ app.get("/health", (req, res) => res.json({ status: "ok" }));
 
 mongoose
   .connect(process.env.MONGO_URI, { dbName: "helpdesk" })
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .then(() => {
+    console.log("MongoDB connected");
+    logEvent({
+      level: "info",
+      event: "db_connected",
+      message: "MongoDB connected",
+      requestId: "startup"
+    });
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+    logEvent({
+      level: "error",
+      event: "db_connect_error",
+      message: err.message,
+      requestId: "startup",
+      context: { stack: err.stack }
+    });
+  });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Auth service running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Auth service running on port ${PORT}`);
+  logEvent({
+    level: "info",
+    event: "service_started",
+    message: `Auth service running on port ${PORT}`,
+    requestId: "startup"
+  });
+});

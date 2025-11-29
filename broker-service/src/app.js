@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import { initAMQP, publish } from "./amqp.js";
+import { logEvent, requestContext, requestLogger } from "./logger.js";
 
 dotenv.config();
 const app = express();
@@ -43,6 +44,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(express.json());
+app.use(requestContext);
+app.use(requestLogger);
 
 const PORT = process.env.PORT || 3000;
 const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
@@ -54,8 +57,24 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.post("/publish/otp", async (req, res) => {
   try {
     await publish("mail.otp", req.body);
+    logEvent({
+      level: "info",
+      event: "otp_job_published",
+      message: "OTP job published",
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { routingKey: "mail.otp" }
+    });
     res.json({ ok: true });
   } catch (e) {
+    logEvent({
+      level: "error",
+      event: "otp_publish_failed",
+      message: e.message,
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { routingKey: "mail.otp" }
+    });
     res.status(500).json({ error: e.message });
   }
 });
@@ -97,6 +116,12 @@ app.listen(PORT, async () => {
   try {
     await connectWithRetry(RABBITMQ_URL);
     console.log(`Broker service listening on ${PORT}`);
+    logEvent({
+      level: "info",
+      event: "service_started",
+      message: `Broker service listening on ${PORT}`,
+      requestId: "startup"
+    });
   } catch (e) {
     console.error("Failed to initialize AMQP:", e);
     process.exit(1);

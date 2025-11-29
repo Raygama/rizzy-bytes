@@ -3,6 +3,7 @@ import User from "../models/userModel.js";
 import OTP from "../models/otpModel.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
 import jwt from "jsonwebtoken";
+import { logEvent } from "../utils/logger.js";
 
 const brokerURL = process.env.BROKER_URL || "http://broker-service:3000";
 
@@ -16,7 +17,17 @@ export const register = async (req, res) => {
     const { email, usn, password, role = "student", photoProfile } = req.body;
 
     const exists = await User.findOne({ $or: [{ email }, { usn }] });
-    if (exists) return res.status(400).json({ error: "User already exists" });
+    if (exists) {
+      logEvent({
+        level: "warn",
+        event: "user_exists",
+        message: "Registration attempted for existing user",
+        requestId: req.requestId,
+        correlationId: req.correlationId,
+        context: { email, usn }
+      });
+      return res.status(400).json({ error: "User already exists" });
+    }
 
     const hashed = await hashPassword(password);
     const user = await User.create({
@@ -31,7 +42,24 @@ export const register = async (req, res) => {
       message: "User created",
       user: { email: user.email, usn: user.usn, role: user.role },
     });
+
+    logEvent({
+      level: "info",
+      event: "user_registered",
+      message: "User registered",
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { email: user.email, usn: user.usn, role: user.role }
+    });
   } catch (err) {
+    logEvent({
+      level: "error",
+      event: "register_failed",
+      message: err.message,
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { stack: err.stack }
+    });
     res.status(500).json({ error: err.message });
   }
 };
@@ -45,10 +73,30 @@ export const login = async (req, res) => {
     const id = identifier || email;
 
     const user = await User.findOne({ $or: [{ email: id }, { usn: id }] });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      logEvent({
+        level: "warn",
+        event: "login_user_not_found",
+        message: "Login attempted for unknown user",
+        requestId: req.requestId,
+        correlationId: req.correlationId,
+        context: { identifier: id }
+      });
+      return res.status(404).json({ message: "User not found" });
+    }
 
     const match = await comparePassword(password, user.password);
-    if (!match) return res.status(400).json({ message: "Invalid credentials" });
+    if (!match) {
+      logEvent({
+        level: "warn",
+        event: "invalid_credentials",
+        message: "Invalid login credentials",
+        requestId: req.requestId,
+        correlationId: req.correlationId,
+        context: { email: user.email, usn: user.usn }
+      });
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
     // generate OTP
     const otp = genOTP();
@@ -70,13 +118,39 @@ export const login = async (req, res) => {
         purpose: "login",
         username: user.usn,
       })
-      .catch(() => {});
+      .catch((err) => {
+        logEvent({
+          level: "warn",
+          event: "otp_dispatch_failed",
+          message: err.message,
+          requestId: req.requestId,
+          correlationId: req.correlationId,
+          context: { email: user.email }
+        });
+      });
 
     res.json({
       message: "OTP sent to email",
       email: user.email,
     });
+
+    logEvent({
+      level: "info",
+      event: "otp_requested",
+      message: "OTP issued for login",
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { email: user.email, usn: user.usn, purpose: "login" }
+    });
   } catch (err) {
+    logEvent({
+      level: "error",
+      event: "login_failed",
+      message: err.message,
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { identifier: req.body?.identifier || req.body?.email, stack: err.stack }
+    });
     res.status(500).json({ message: err.message });
   }
 };
@@ -91,10 +165,26 @@ export const verifyLoginOTP = async (req, res) => {
     // cek OTP
     const otpDoc = await OTP.findOne({ email, otp, purpose: "login" });
     if (!otpDoc) {
+      logEvent({
+        level: "warn",
+        event: "otp_invalid",
+        message: "Invalid login OTP",
+        requestId: req.requestId,
+        correlationId: req.correlationId,
+        context: { email }
+      });
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
     if (otpDoc.expiresAt <= new Date()) {
+      logEvent({
+        level: "warn",
+        event: "otp_expired",
+        message: "Expired login OTP",
+        requestId: req.requestId,
+        correlationId: req.correlationId,
+        context: { email }
+      });
       return res.status(400).json({ message: "OTP expired" });
     }
 
@@ -117,12 +207,29 @@ export const verifyLoginOTP = async (req, res) => {
       expiresIn: process.env.JWT_EXPIRES_IN || "1d",
     });
 
+    logEvent({
+      level: "info",
+      event: "login_verified",
+      message: "OTP verified, issuing token",
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { email }
+    });
+
     return res.json({
       message: "Login success",
       token,
     });
   } catch (err) {
     console.error(err);
+    logEvent({
+      level: "error",
+      event: "verify_login_failed",
+      message: err.message,
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { email: req.body?.email, stack: err.stack }
+    });
     return res.status(500).json({ message: err.message });
   }
 };

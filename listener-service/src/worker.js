@@ -4,6 +4,7 @@ import axios from "axios";
 import fs from "fs"; // [ADDED] untuk baca file template HTML
 import path from "path"; // [ADDED] untuk handle path file
 import { fileURLToPath } from "url"; // [ADDED] untuk dapat __dirname di ES Module
+import { logEvent, newRequestIds } from "./logger.js";
 
 dotenv.config();
 
@@ -54,6 +55,12 @@ async function connectRabbitMQ() {
       return conn;
     } catch (err) {
       console.error("RabbitMQ not ready, retrying in 5s...", err.message);
+      logEvent({
+        level: "warn",
+        event: "amqp_connect_retry",
+        message: err.message,
+        context: { retriesLeft: retries - 1 }
+      });
       retries -= 1;
       await new Promise((res) => setTimeout(res, 5000));
     }
@@ -65,19 +72,22 @@ async function connectRabbitMQ() {
   const conn = await connectRabbitMQ();
   const ch = await conn.createChannel();
   await ch.assertExchange(EXCHANGE, "topic", { durable: true });
+  logEvent({
+    level: "info",
+    event: "amqp_connected",
+    message: "Listener connected to RabbitMQ",
+    context: { exchange: EXCHANGE }
+  });
 
   // Mail queue
   const mailQ = await ch.assertQueue("mail-service", { durable: true });
   await ch.bindQueue(mailQ.queue, EXCHANGE, "mail.*");
 
-  // Log queue (optional)
-  const logQ = await ch.assertQueue("logger-service", { durable: true });
-  await ch.bindQueue(logQ.queue, EXCHANGE, "log.*");
-
   ch.consume(
     mailQ.queue,
     async (msg) => {
       if (!msg) return;
+      const { requestId } = newRequestIds();
       try {
         const payload = JSON.parse(msg.content.toString());
         if (payload.type === "SEND_OTP") {
@@ -93,29 +103,27 @@ async function connectRabbitMQ() {
         }
 
         ch.ack(msg);
+        logEvent({
+          level: "info",
+          event: "mail_job_processed",
+          message: "Mail job processed",
+          requestId,
+          context: { queue: mailQ.queue, type: payload.type, to: payload.to, purpose: payload.purpose }
+        });
       } catch (e) {
         console.error("mail consumer failed:", e.message);
+        logEvent({
+          level: "error",
+          event: "mail_job_failed",
+          message: e.message,
+          requestId,
+          context: { queue: mailQ.queue }
+        });
         ch.nack(msg, false, true);
       }
     },
     { noAck: false }
   );
 
-  ch.consume(
-    logQ.queue,
-    async (msg) => {
-      if (!msg) return;
-      try {
-        const payload = JSON.parse(msg.content.toString());
-        // Later: call logger-service API. For now, just log.
-        console.log("LOG EVENT:", payload);
-        ch.ack(msg);
-      } catch (e) {
-        ch.nack(msg, false, true);
-      }
-    },
-    { noAck: false }
-  );
-
-  console.log("Listener running. Waiting for messages…");
+  console.log("Listener running. Waiting for messages...");
 })();
