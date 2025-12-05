@@ -19,7 +19,7 @@ export default function ChatbotPage() {
     "Tata cara tanda tangan Kaprodi",
   ];
 
-  const username = jwtDecode(Cookies.get("token"))?.username || "User";
+  console.log("Token from cookie:", localStorage.getItem("token"));
 
   const messagesEndRef = useRef(null);
   const scrollToBottom = () => {
@@ -124,6 +124,9 @@ export default function ChatbotPage() {
     window.location.href = "/login";
   };
 
+  const decode = jwtDecode(localStorage.getItem("token"));
+  const username = decode?.usn || "User";
+  const role = decode?.role || "Guest";
   return (
     <div className="flex h-screen bg-[#F5F5F7] text-gray-900">
       {/* ===== LEFT SIDEBAR ===== */}
@@ -180,7 +183,7 @@ export default function ChatbotPage() {
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-semibold">{username}</span>
-              <span className="text-[11px] text-gray-500">Mahasiswa</span>
+              <span className="text-[11px] text-gray-500">{role}</span>
             </div>
           </div>
         </div>
