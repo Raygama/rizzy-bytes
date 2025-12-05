@@ -58,8 +58,15 @@ services:
     build:
       context: ../logger-service
       dockerfile: logger-service.dockerfile
+    environment:
+      - AUTH_JWT_SECRET=49fbc70a9ea76cff525c75784a406962
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB=logger
+      - MONGO_COLLECTION=logs
     ports:
       - "3005:3000"
+    depends_on:
+      - mongo
 
   front-end:
     build:

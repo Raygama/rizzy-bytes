@@ -1,9 +1,8 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.AUTH_JWT_SECRET || process.env.JWT_SECRET;
-
 export const requireAuth = (req, res, next) => {
   try {
+    const JWT_SECRET = process.env.AUTH_JWT_SECRET || process.env.JWT_SECRET;
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) {

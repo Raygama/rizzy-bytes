@@ -4,6 +4,7 @@ import os from "os";
 import { Writable } from "stream";
 import pino from "pino";
 import pinoPretty from "pino-pretty";
+import { insertLog } from "./mongo.js";
 
 const SERVICE_NAME = process.env.SERVICE_NAME || "logger-service";
 const LOG_LEVEL = process.env.LOG_LEVEL || "info";
@@ -204,7 +205,15 @@ export const ingestLog = (payload, meta = {}) => {
   if (!sampled) return { skipped: true, sampled };
 
   const entry = buildLogEntry(payload, { sampled, ...meta });
+  const createdAt = new Date();
+  const persistable = { ...entry, level, createdAt };
+
   logger[level](entry, entry.message);
+
+  // Persist asynchronously to avoid blocking ingestion path
+  insertLog(persistable).catch((err) => {
+    logger.warn({ event: "mongo_persist_failed", error: err?.message }, "Failed to store log");
+  });
   return { skipped: false, sampled };
 };
 

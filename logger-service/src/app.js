@@ -4,9 +4,17 @@ import dotenv from "dotenv";
 import fs from "fs";
 import readline from "readline";
 import path from "path";
-import { ingestLog, logger, sanitizePayload, shouldSample, LOG_DIR, LOG_FILE_PREFIX } from "./logger.js";
+import {
+  ingestLog,
+  logger,
+  sanitizePayload,
+  shouldSample,
+  LOG_DIR,
+  LOG_FILE_PREFIX
+} from "./logger.js";
 import { startLogConsumer } from "./amqp.js";
 import { requireAuth, requireRole } from "./auth.js";
+import { fetchLogs as fetchLogsFromDb } from "./mongo.js";
 
 dotenv.config();
 
@@ -164,7 +172,7 @@ const readLogs = async ({ date, limit, service, level, event, q }) => {
 app.get("/logs", requireAuth, requireRole("admin", "staff"), async (req, res) => {
   try {
     const limit = parseLimit(req.query.limit, 200);
-    const logs = await readLogs({
+    const dbLogs = await fetchLogsFromDb({
       date: req.query.date,
       limit,
       service: req.query.service,
@@ -172,10 +180,106 @@ app.get("/logs", requireAuth, requireRole("admin", "staff"), async (req, res) =>
       event: req.query.event,
       q: req.query.q
     });
+
+    const logs =
+      Array.isArray(dbLogs) && dbLogs.length
+        ? dbLogs
+        : await readLogs({
+            date: req.query.date,
+            limit,
+            service: req.query.service,
+            level: req.query.level,
+            event: req.query.event,
+            q: req.query.q
+          });
     res.json({ logs, count: logs.length });
   } catch (err) {
     logger.error({ event: "logs_fetch_failed", error: err.message }, "Failed to fetch logs");
     res.status(500).json({ error: "Failed to fetch logs" });
+  }
+});
+
+const toCsvValue = (val) => {
+  if (val === undefined || val === null) return "";
+  const str = typeof val === "string" ? val : JSON.stringify(val);
+  const escaped = str.replace(/"/g, '""');
+  return `"${escaped}"`;
+};
+
+const formatLogsCsv = (logs = []) => {
+  const header = [
+    "time",
+    "level",
+    "service",
+    "event",
+    "message",
+    "resource",
+    "statusCode",
+    "durationMs",
+    "requestId",
+    "correlationId",
+    "userId",
+    "tags",
+    "ip",
+    "context"
+  ];
+
+  const rows = logs.map((log) =>
+    [
+      log.createdAt || log.time || "",
+      log.level,
+      log.service,
+      log.event,
+      log.message,
+      log.resource,
+      log.statusCode,
+      log.durationMs,
+      log.requestId,
+      log.correlationId,
+      log.userId,
+      Array.isArray(log.tags) ? log.tags.join("|") : log.tags,
+      log.ip,
+      log.context
+    ]
+      .map(toCsvValue)
+      .join(",")
+  );
+
+  return [header.join(","), ...rows].join("\n");
+};
+
+app.get("/logs/export", requireAuth, requireRole("admin", "staff"), async (req, res) => {
+  try {
+    const limit = parseLimit(req.query.limit, 500);
+    const dbLogs = await fetchLogsFromDb({
+      date: req.query.date,
+      limit,
+      service: req.query.service,
+      level: req.query.level,
+      event: req.query.event,
+      q: req.query.q
+    });
+
+    const logs =
+      Array.isArray(dbLogs) && dbLogs.length
+        ? dbLogs
+        : await readLogs({
+            date: req.query.date,
+            limit,
+            service: req.query.service,
+            level: req.query.level,
+            event: req.query.event,
+            q: req.query.q
+          });
+
+    const csv = formatLogsCsv(logs);
+    const filename = `logs-${req.query.date || new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (err) {
+    logger.error({ event: "logs_export_failed", error: err.message }, "Failed to export logs");
+    res.status(500).json({ error: "Failed to export logs" });
   }
 });
 
