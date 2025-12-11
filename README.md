@@ -53,7 +53,7 @@ project:
 - **RabbitMQ** → Message broker for async jobs  
 - **Keycloak** → Identity provider (RBAC, JWT)  
 - **Docker Compose** → Local orchestration  
-- **Prometheus/Grafana** (later) → Monitoring & compute evaluation  
+- **Prometheus/Grafana** → Monitoring & compute evaluation  
 
 ---
 
@@ -90,11 +90,22 @@ docker compose up --build
 - Use .env inside each service for secrets & configs.
 - Use docker-compose for local dev;
 - Write unit tests inside each service (__tests__/ or test/ directories) (if needed)
+- Observability: Prometheus scrapes `/metrics` on every service; Grafana is pre-provisioned (see “Observability” below).
 
 ## CORS Configuration
 - Every HTTP service (authentication-service, broker-service, mail-service, flowise-proxy) reads `CORS_ORIGINS`, a comma-separated list of allowed origins.
 - Defaults allow `http://localhost:3000` and `http://127.0.0.1:3000`, so the front end can call the APIs out of the box.
 - Override per environment (e.g., `CORS_ORIGINS=https://portal.example.com,https://admin.example.com`) and include `*` only when you intentionally want to accept every origin.
+
+## Observability (Prometheus / Grafana)
+- Prometheus: `http://localhost:9090` (in compose network: `http://prometheus:9090`).
+- Grafana: `http://localhost:3009` (admin/admin by default). Datasource and dashboard are auto-provisioned from `project/monitoring/grafana/`.
+- Metrics endpoints are exposed on every service at `/metrics` (listener worker is on port 9464).
+- PromQL HTTP API (for backend/front-end visualizations via proxy):
+  - Instant: `GET /api/v1/query?query=<PROMQL>`
+  - Range: `GET /api/v1/query_range?query=<PROMQL>&start=<ts>&end=<ts>&step=<s>`
+  - Example: `http://localhost:9090/api/v1/query?query=rate(flowise_proxy_http_request_duration_seconds_count[5m])`
+- Front-end note: Prometheus does not enable CORS. Fetch via your backend/proxy (or Grafana) instead of direct browser calls.
 
 
 # Rebuilding Docker Containers

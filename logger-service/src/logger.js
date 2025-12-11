@@ -5,6 +5,7 @@ import { Writable } from "stream";
 import pino from "pino";
 import pinoPretty from "pino-pretty";
 import { insertLog } from "./mongo.js";
+import { recordIngest } from "./metrics.js";
 
 const SERVICE_NAME = process.env.SERVICE_NAME || "logger-service";
 const LOG_LEVEL = process.env.LOG_LEVEL || "info";
@@ -209,6 +210,7 @@ export const ingestLog = (payload, meta = {}) => {
   const persistable = { ...entry, level, createdAt };
 
   logger[level](entry, entry.message);
+  recordIngest(level, entry.source);
 
   // Persist asynchronously to avoid blocking ingestion path
   insertLog(persistable).catch((err) => {

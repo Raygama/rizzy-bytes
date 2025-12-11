@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import nodemailer from "nodemailer";
 import { logEvent, maskEmail, requestContext, requestLogger } from "./logger.js";
+import { metricsMiddleware, metricsHandler, recordSend } from "./metrics.js";
 
 dotenv.config();
 const app = express();
@@ -46,6 +47,7 @@ app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(requestContext);
 app.use(requestLogger);
+app.use(metricsMiddleware);
 
 const PORT = process.env.PORT || 3000;
 const SMTP_HOST = process.env.SMTP_HOST || "mailhog";
@@ -66,6 +68,7 @@ app.post("/send", async (req, res) => {
     const { to, subject, text, html } = req.body;
     await transporter.sendMail({ from: SMTP_FROM, to, subject, text, html });
     res.json({ sent: true });
+    recordSend("success");
     logEvent({
       level: "info",
       event: "mail_sent",
@@ -75,6 +78,7 @@ app.post("/send", async (req, res) => {
       context: { to: maskEmail(to), subject }
     });
   } catch (e) {
+    recordSend("failure");
     logEvent({
       level: "error",
       event: "mail_send_failed",
@@ -86,6 +90,8 @@ app.post("/send", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+app.get("/metrics", metricsHandler);
 
 app.listen(PORT, () => {
   console.log(`Mail service listening on ${PORT}`);

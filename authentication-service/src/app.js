@@ -4,6 +4,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
 import { logEvent, requestContext, requestLogger } from "./utils/logger.js";
+import { metricsMiddleware, metricsHandler } from "./metrics.js";
 
 dotenv.config();
 const app = express();
@@ -52,9 +53,11 @@ app.use(
 app.use(express.json());
 app.use(requestContext);
 app.use(requestLogger);
+app.use(metricsMiddleware);
 
 app.use("/auth", authRoutes);
 app.get("/health", (req, res) => res.json({ status: "ok" }));
+app.get("/metrics", metricsHandler);
 
 
 mongoose
