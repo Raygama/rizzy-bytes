@@ -232,7 +232,28 @@ Fetch recent log entries from the current (date-based) log file. Requires JWT wi
   
 **Notes:**
 - Logs are stored as JSON lines in `logs/logger-YYYY-MM-DD.log` with retention control.
+- Logs are also persisted to MongoDB when `MONGO_URI` is configured (defaults to `mongodb://mongo:27017`).
 - Pretty console output is enabled by default; disable with `LOG_PRETTY=false`.
+
+---
+
+### GET `/logs/export`
+Export recent logs as CSV (human-friendly). Requires JWT with role `admin` or `staff`.
+
+**Headers:**
+- `Authorization: Bearer <jwt>`
+
+**Query Params (optional):**
+- `date=YYYY-MM-DD` (default: today)
+- `limit=500` (max 1000)
+- `service`, `level`, `event`, `q` (same filters as `/logs`)
+
+**Response (200):**
+- `text/csv` with columns: `time, level, service, event, message, resource, statusCode, durationMs, requestId, correlationId, userId, tags, ip, context`
+
+**Notes:**
+- Reads from MongoDB when available, otherwise falls back to local log files.
+- Sets `Content-Disposition` for easier download.
 
 ---
 
