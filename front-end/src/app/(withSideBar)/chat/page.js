@@ -19,8 +19,6 @@ export default function ChatbotPage() {
     "Tata cara tanda tangan Kaprodi",
   ];
 
-  const username = jwtDecode(Cookies.get("token"))?.username || "User";
-
   const messagesEndRef = useRef(null);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,12 +31,12 @@ export default function ChatbotPage() {
   const getBotResponse = async (userMessage) => {
     try {
       const response = await fetch(
-        "http://localhost:3006/api/v1/prediction/df8c77d6-4a6e-4483-8e83-2e6ff46fb17f",
+        "http://localhost:3006/api/v1/prediction/2d844a72-3dc8-4475-8134-9f034015741f",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            authorization: "Bearer TYZ8fobwREuqXvo70fL7wwgsu4aeWNmuVF80MhJJvrk",
+            authorization: "Bearer pTnZk73MAtw2YhSYUw28urAeKa4dSTGHlZKwOVPVoy4",
           },
           body: JSON.stringify({ question: userMessage }),
         }
@@ -119,10 +117,16 @@ export default function ChatbotPage() {
 
   const handleLogout = () => {
     // Hapus token dari cookies
+    localStorage.removeItem("token");
     Cookies.remove("token");
     // Redirect ke halaman login
     window.location.href = "/login";
   };
+
+  const username = jwtDecode(localStorage.getItem("token"))?.usn || "User";
+  const role = jwtDecode(localStorage.getItem("token"))?.role || "Guest";
+  console.log("Decoded username:", username);
+  console.log("Decoded role:", role);
 
   return (
     <div className="flex h-screen bg-[#F5F5F7] text-gray-900">
@@ -180,7 +184,7 @@ export default function ChatbotPage() {
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-semibold">{username}</span>
-              <span className="text-[11px] text-gray-500">Mahasiswa</span>
+              <span className="text-[11px] text-gray-500">{role}</span>
             </div>
           </div>
         </div>

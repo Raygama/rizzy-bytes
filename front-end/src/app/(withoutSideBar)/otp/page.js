@@ -42,6 +42,8 @@ export default function VerifyPage() {
     e.preventDefault();
 
     const finalOtp = otp.join(""); // gabungkan 6 angka menjadi 1 string
+    console.log("Final OTP:", finalOtp);
+    console.log("Email:", email);
 
     try {
       const res = await fetch("http://localhost:3001/auth/login/verify", {
@@ -56,8 +58,10 @@ export default function VerifyPage() {
       const data = await res.json();
       console.log("Response:", data);
       const token = data.token;
+
       if (token) {
         Cookies.set("token", token);
+        localStorage.setItem("token", token);
       }
 
       alert("OTP submitted: " + finalOtp);
