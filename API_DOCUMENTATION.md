@@ -14,8 +14,18 @@ This document covers all HTTP API endpoints available in the rizzy-bytes helpdes
 | **Flowise Proxy** | 4000 | localhost | flowise-proxy | `http://localhost:4000` or `http://flowise-proxy:4000` |
 | **Front-end** | 3000 | localhost | front-end | `http://localhost:3000` |
 | **Logger Service** | 3005 | localhost | logger-service | `http://localhost:3005` or `http://logger-service:3000` |
+| **Prometheus (metrics API)** | 9090 | localhost | prometheus | `http://localhost:9090` or `http://prometheus:9090` |
 
 ---
+
+## Metrics / Observability
+
+- Every service exposes Prometheus metrics at `/metrics` (listener worker listens on port 9464).
+- Prometheus HTTP API (no CORS; call from backend/proxy):
+  - Instant query: `GET /api/v1/query?query=<PROMQL>`
+  - Range query: `GET /api/v1/query_range?query=<PROMQL>&start=<ts>&end=<ts>&step=<s>`
+  - Example: `http://localhost:9090/api/v1/query?query=rate(flowise_proxy_http_request_duration_seconds_count[5m])`
+- Front-end guidance: fetch Prometheus via your backend/proxy (or Grafana), not directly from the browser.
 
 ## Authentication Service (`http://localhost:3001`)
 
@@ -815,4 +825,3 @@ Content-Type: application/json
 ### Chat History
 GET http://localhost:4000/api/chat/history/2d844a72-3dc8-4475-8134-9f034015741f
 ```
-

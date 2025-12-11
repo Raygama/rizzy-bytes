@@ -12,6 +12,7 @@ import { randomUUID } from "crypto";
 import { ChatHistoryStore } from "./history/chatHistoryStore.js";
 import { connectToMongo } from "./history/mongoClient.js";
 import { logEvent, requestContext, requestLogger } from "./logger.js";
+import { metricsMiddleware, metricsHandler } from "./metrics.js";
 
 dotenv.config();
 
@@ -244,6 +245,7 @@ app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(requestContext);
 app.use(requestLogger);
+app.use(metricsMiddleware);
 
 // multer storage
 const storage = multer.diskStorage({
@@ -948,6 +950,7 @@ app.post("/api/kb/refresh", refreshHandler);
 app.post("/api/kb/:storeId/refresh", refreshHandler);
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/metrics", metricsHandler);
 
 let serverInstance = null;
 

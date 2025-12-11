@@ -18,6 +18,8 @@ redis-data/
 postgres-data/
 chroma-data/
 ollama-data/
+prometheus-data/
+grafana-data/
 
 mailhog-data/
 
@@ -33,5 +35,3 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
-/project/postgres-data
-/logger-service/node_modules
