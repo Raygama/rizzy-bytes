@@ -33,12 +33,12 @@ export default function ChatbotPage() {
   const getBotResponse = async (userMessage) => {
     try {
       const response = await fetch(
-        "http://localhost:3006/api/v1/prediction/df8c77d6-4a6e-4483-8e83-2e6ff46fb17f",
+        "http://localhost:3006/api/v1/prediction/2d844a72-3dc8-4475-8134-9f034015741f",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            authorization: "Bearer TYZ8fobwREuqXvo70fL7wwgsu4aeWNmuVF80MhJJvrk",
+            authorization: "Bearer pTnZk73MAtw2YhSYUw28urAeKa4dSTGHlZKwOVPVoy4",
           },
           body: JSON.stringify({ question: userMessage }),
         }
@@ -119,75 +119,20 @@ export default function ChatbotPage() {
 
   const handleLogout = () => {
     // Hapus token dari cookies
+    localStorage.removeItem("token");
     Cookies.remove("token");
     // Redirect ke halaman login
     window.location.href = "/login";
   };
 
-  const decode = jwtDecode(localStorage.getItem("token"));
-  const username = decode?.usn || "User";
-  const role = decode?.role || "Guest";
+  const username = jwtDecode(localStorage.getItem("token"))?.usn || "User";
+  const role = jwtDecode(localStorage.getItem("token"))?.role || "Guest";
+  console.log("Decoded username:", username);
+  console.log("Decoded role:", role);
+
   return (
     <div className="flex h-screen bg-[#F5F5F7] text-gray-900">
       {/* ===== LEFT SIDEBAR ===== */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        {/* App title */}
-        <div className="px-6 pt-6 pb-4">
-          <h1 className="text-lg font-semibold tracking-tight">
-            Informatics AI
-          </h1>
-        </div>
-
-        {/* Nav */}
-        <nav className="px-3 space-y-1">
-          {/* Chat (active) */}
-          <button
-            type="button"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-red-100 text-red-600 text-sm font-medium"
-          >
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-red-500 text-white">
-              <Menu size={16} />
-            </span>
-            <span>Chat</span>
-          </button>
-
-          {/* Setting (dummy) */}
-          <button
-            type="button"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-medium"
-          >
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-200 text-gray-700">
-              ⚙
-            </span>
-            <span>Setting</span>
-          </button>
-        </nav>
-
-        {/* Logout */}
-        <div className="mt-auto px-3 pb-4 pt-6 space-y-3">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-medium"
-          >
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-200 text-gray-700">
-              ⏻
-            </span>
-            <span>Logout</span>
-          </button>
-
-          {/* User card */}
-          <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-50 border border-gray-200">
-            <div className="h-9 w-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-semibold">
-              MR
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold">{username}</span>
-              <span className="text-[11px] text-gray-500">{role}</span>
-            </div>
-          </div>
-        </div>
-      </aside>
 
       {/* ===== RIGHT MAIN AREA ===== */}
       <main className="flex-1 flex flex-col bg-[#FAFAFB]">

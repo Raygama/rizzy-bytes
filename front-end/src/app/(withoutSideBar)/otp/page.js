@@ -42,6 +42,8 @@ export default function VerifyPage() {
     e.preventDefault();
 
     const finalOtp = otp.join(""); // gabungkan 6 angka menjadi 1 string
+    console.log("Final OTP:", finalOtp);
+    console.log("Email:", email);
 
     try {
       console.log("Submitting OTP:", finalOtp);
@@ -61,6 +63,7 @@ export default function VerifyPage() {
       localStorage.setItem("token", token);
       if (token) {
         Cookies.set("token", token);
+        localStorage.setItem("token", token);
       }
 
       alert("OTP submitted: " + finalOtp);
