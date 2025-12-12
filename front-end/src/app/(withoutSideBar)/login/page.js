@@ -51,10 +51,10 @@ export default function Login() {
         throw new Error(data.message || "Email atau password salah");
       }
 
-      // Jika login berhasil (server merespon OK)
-      // const data = await response.json(); // Mungkin Anda dapat token di sini
+      //Jika login berhasil (server merespon OK)
+      const data = await response.json(); // Mungkin Anda dapat token di sini
 
-      // Arahkan (redirect) pengguna ke halaman chat
+      //Arahkan (redirect) pengguna ke halaman chat
       if (activeIndex === 0) {
         sessionStorage.setItem("email", email); // simpan email di sessionStorage buat otp
         router.push("/otp");

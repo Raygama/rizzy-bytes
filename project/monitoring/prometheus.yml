@@ -1,0 +1,68 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ["node-exporter:9100"]
+    metrics_path: /metrics
+    scheme: http
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: host
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    metrics_path: /metrics
+    scheme: http
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: containers
+
+  - job_name: dcgm-exporter
+    static_configs:
+      - targets: ["dcgm-exporter:9400"]
+    metrics_path: /metrics
+    scheme: http
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: gpu
+
+  - job_name: authentication-service
+    static_configs:
+      - targets: ["authentication-service:3000"]
+    metrics_path: /metrics
+
+  - job_name: broker-service
+    static_configs:
+      - targets: ["broker-service:3000"]
+    metrics_path: /metrics
+
+  - job_name: mail-service
+    static_configs:
+      - targets: ["mail-service:3000"]
+    metrics_path: /metrics
+
+  - job_name: logger-service
+    static_configs:
+      - targets: ["logger-service:3000"]
+    metrics_path: /metrics
+
+  - job_name: flowise-proxy
+    static_configs:
+      - targets: ["flowise-proxy:4000"]
+    metrics_path: /metrics
+
+  - job_name: listener-service
+    static_configs:
+      - targets: ["listener-service:9464"]
+    metrics_path: /metrics

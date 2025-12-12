@@ -5,8 +5,10 @@ import fs from "fs"; // [ADDED] untuk baca file template HTML
 import path from "path"; // [ADDED] untuk handle path file
 import { fileURLToPath } from "url"; // [ADDED] untuk dapat __dirname di ES Module
 import { logEvent, newRequestIds } from "./logger.js";
+import { startMetricsServer, trackJob } from "./metrics.js";
 
 dotenv.config();
+startMetricsServer();
 
 const RABBITMQ_URL =
   process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
@@ -88,6 +90,7 @@ async function connectRabbitMQ() {
     async (msg) => {
       if (!msg) return;
       const { requestId } = newRequestIds();
+      const started = Date.now();
       try {
         const payload = JSON.parse(msg.content.toString());
         if (payload.type === "SEND_OTP") {
@@ -103,6 +106,7 @@ async function connectRabbitMQ() {
         }
 
         ch.ack(msg);
+        trackJob(mailQ.queue, payload.type, "success", (Date.now() - started) / 1000);
         logEvent({
           level: "info",
           event: "mail_job_processed",
@@ -112,6 +116,7 @@ async function connectRabbitMQ() {
         });
       } catch (e) {
         console.error("mail consumer failed:", e.message);
+        trackJob(mailQ.queue, "unknown", "failure", (Date.now() - started) / 1000);
         logEvent({
           level: "error",
           event: "mail_job_failed",

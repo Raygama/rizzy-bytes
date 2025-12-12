@@ -15,6 +15,7 @@ import {
 import { startLogConsumer } from "./amqp.js";
 import { requireAuth, requireRole } from "./auth.js";
 import { fetchLogs as fetchLogsFromDb } from "./mongo.js";
+import { metricsMiddleware, metricsHandler } from "./metrics.js";
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(express.json({ limit: "256kb" }));
+app.use(metricsMiddleware);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -84,6 +86,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/metrics", metricsHandler);
 
 app.post("/logs", (req, res) => {
   const {

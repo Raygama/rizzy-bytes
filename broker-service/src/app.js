@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { initAMQP, publish } from "./amqp.js";
 import { logEvent, requestContext, requestLogger } from "./logger.js";
+import { metricsMiddleware, metricsHandler, recordPublish } from "./metrics.js";
 
 dotenv.config();
 const app = express();
@@ -46,6 +47,7 @@ app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(requestContext);
 app.use(requestLogger);
+app.use(metricsMiddleware);
 
 const PORT = process.env.PORT || 3000;
 const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
@@ -57,6 +59,7 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.post("/publish/otp", async (req, res) => {
   try {
     await publish("mail.otp", req.body);
+    recordPublish("mail.otp");
     logEvent({
       level: "info",
       event: "otp_job_published",
@@ -82,11 +85,14 @@ app.post("/publish/otp", async (req, res) => {
 app.post("/publish/log", async (req, res) => {
   try {
     await publish("log.event", req.body);
+    recordPublish("log.event");
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
+
+app.get("/metrics", metricsHandler);
 
 const RETRY_DELAY_MS = parseInt(process.env.AMQP_RETRY_DELAY_MS, 10) || 5000;
 const MAX_RETRIES = process.env.AMQP_MAX_RETRIES ? parseInt(process.env.AMQP_MAX_RETRIES, 10) : -1;
