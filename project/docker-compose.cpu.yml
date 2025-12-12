@@ -1,0 +1,244 @@
+services:
+  authentication-service:
+    build:
+      context: ../authentication-service
+      dockerfile: authentication-service.dockerfile
+    ports:
+    - 3001:3000
+    environment:
+    - PORT=3000
+    - MONGO_URI=mongodb://mongo:27017
+    - BROKER_URL=http://broker-service:3000
+    - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    depends_on:
+    - mongo
+    - rabbitmq
+  broker-service:
+    build:
+      context: ../broker-service
+      dockerfile: broker-service.dockerfile
+    ports:
+    - 3002:3000
+    environment:
+    - PORT=3000
+    - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+    - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    depends_on:
+    - rabbitmq
+  listener-service:
+    build:
+      context: ../listener-service
+      dockerfile: listener-service.dockerfile
+    environment:
+    - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+    - MAIL_SERVICE_URL=http://mail-service:3000
+    depends_on:
+    - rabbitmq
+    - mail-service
+  mail-service:
+    build:
+      context: ../mail-service
+      dockerfile: mail-service.dockerfile
+    environment:
+    - PORT=3000
+    - SMTP_HOST=mailhog
+    - SMTP_PORT=1025
+    - SMTP_FROM=no-reply@helpdesk.local
+    - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    ports:
+    - 3004:3000
+    depends_on:
+    - mailhog
+  logger-service:
+    build:
+      context: ../logger-service
+      dockerfile: logger-service.dockerfile
+    environment:
+    - AUTH_JWT_SECRET=49fbc70a9ea76cff525c75784a406962
+    - MONGO_URI=mongodb://mongo:27017
+    - MONGO_DB=logger
+    - MONGO_COLLECTION=logs
+    ports:
+    - 3005:3000
+    depends_on:
+    - mongo
+  front-end:
+    build:
+      context: ../front-end
+      dockerfile: front-end.dockerfile
+    ports:
+    - 3000:3000
+    environment:
+    - NODE_ENV=production
+  mongo:
+    image: mongo:6
+    ports:
+    - 27017:27017
+  redis:
+    image: redis:7
+    ports:
+    - 6379:6379
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+    - 5672:5672
+    - 15672:15672
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+    - 1025:1025
+    - 8025:8025
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+    - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+    - 9090:9090
+    depends_on:
+    - cadvisor
+    - node-exporter
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+    - GF_SECURITY_ADMIN_USER=admin
+    - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+    - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    ports:
+    - 3009:3000
+    depends_on:
+    - prometheus
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    privileged: true
+    ports:
+    - 9100:9100
+    command:
+    - --path.procfs=/host/proc
+    - --path.sysfs=/host/sys
+    - --collector.filesystem.ignored-mount-points=^/(dev|proc|sys|run|var/lib/docker/.+)($$|/)
+    volumes:
+    - /proc:/host/proc:ro
+    - /sys:/host/sys:ro
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    ports:
+    - 8080:8080
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - /sys:/sys:ro
+  flowise:
+    image: flowiseai/flowise:latest
+    container_name: flowise
+    restart: always
+    ports:
+    - 3006:3000
+    environment:
+    - PORT=3000
+    - FLOWISE_USERNAME=admin
+    - FLOWISE_PASSWORD=secret
+    - DATABASE_PATH=/root/.flowise
+    - VECTOR_STORE=chroma
+    - CHROMA_URL=http://chroma:8000
+    - DATABASE=postgres
+    - DATABASE_HOST=postgres
+    - DATABASE_PORT=5432
+    - DATABASE_USER=flowise
+    - DATABASE_PASSWORD=flowisepass
+    - DATABASE_NAME=flowise_db
+    volumes:
+    - ./flowise-data:/root/.flowise
+    - ./flowise-uploads:/uploads
+    depends_on:
+    - mongo
+    - redis
+  flowise-proxy:
+    build:
+      context: ../flowise-proxy
+      dockerfile: Dockerfile
+    container_name: flowise-proxy
+    env_file:
+    - ../flowise-proxy/.env
+    environment:
+    - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    volumes:
+    - ../flowise-uploads:/uploads
+    ports:
+    - 4000:4000
+    depends_on:
+    - flowise
+  chroma:
+    image: ghcr.io/chroma-core/chroma:0.6.1
+    container_name: chroma
+    restart: always
+    ports:
+    - 8000:8000
+    volumes:
+    - ./chroma-data:/data
+  chroma-init:
+    image: curlimages/curl:8.8.0
+    container_name: chroma-init
+    depends_on:
+    - chroma
+    environment:
+      TENANT: default_tenant
+      DB: default_database
+      NAME: helpdesk_kb
+      DIM: '768'
+    entrypoint:
+    - /bin/sh
+    - -lc
+    command:
+    - "set -ex\necho \"[init] TENANT=$$TENANT DB=$$DB NAME=$$NAME DIM=$$DIM\"\n\n\
+      # Wait for Chroma (retry up to ~60s)\ncurl --retry-all-errors --retry 60 --retry-delay\
+      \ 1 --fail \\\n  http://chroma:8000/api/v2/heartbeat >/dev/null\n\n# Create\
+      \ tenant (idempotent)\nprintf '{\"name\":\"%s\"}' \"$$TENANT\" | \\\n  curl\
+      \ -s -X POST http://chroma:8000/api/v2/tenants \\\n      -H 'Content-Type: application/json'\
+      \ \\\n      --data-binary @- || true\n\n# Create database (idempotent)\nprintf\
+      \ '{\"name\":\"%s\"}' \"$$DB\" | \\\n  curl -s -X POST http://chroma:8000/api/v2/tenants/$$TENANT/databases\
+      \ \\\n      -H 'Content-Type: application/json' \\\n      --data-binary @- ||\
+      \ true\n\n# Create collection with dimension (idempotent)\nprintf '{\"name\"\
+      :\"%s\",\"dimension\":%s,\"metadata\":{\"created_by\":\"init\"}}' \"$$NAME\"\
+      \ \"$$DIM\" | \\\n  curl -s -X POST http://chroma:8000/api/v2/tenants/$$TENANT/databases/$$DB/collections\
+      \ \\\n      -H 'Content-Type: application/json' \\\n      --data-binary @- ||\
+      \ true\n\necho \"[init] Chroma bootstrap done.\"\n"
+    restart: 'no'
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: flowise
+      POSTGRES_PASSWORD: flowisepass
+      POSTGRES_DB: flowise_db
+    ports:
+    - 5432:5432
+    volumes:
+    - ./postgres-data:/var/lib/postgresql/data
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: always
+    ports:
+    - 11434:11434
+    volumes:
+    - ./ollama-data:/root/.ollama
+    environment:
+    - OLLAMA_MODELS=mistral nomic-embed-text
+    entrypoint: "sh -c '\n  set -e\n  ollama serve &\n  # wait for API\n  for i in\
+      \ 1 2 3 4 5; do\n    if curl -sSf http://127.0.0.1:11434/api/tags >/dev/null;\
+      \ then break; fi\n    echo \"waiting for ollama...\" && sleep 2\n  done\n  for\
+      \ m in $${OLLAMA_MODELS}; do\n    # pull only if missing\n    ollama show \"\
+      $$m\" >/dev/null 2>&1 || ollama pull \"$$m\"\n  done\n  wait\n'\n"
