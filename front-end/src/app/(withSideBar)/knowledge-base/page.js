@@ -21,7 +21,7 @@ export default function KnowledgeBasePage() {
   ])
 
   const handleAddNewEntry = () => {
-    router.push("/withSideBar/knowledge-base/add")
+    router.push("/knowledge-base/add")
   }
 
   const handleDelete = (id) => {
