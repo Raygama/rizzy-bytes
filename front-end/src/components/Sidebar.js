@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
-import { Menu, Send } from "lucide-react";
+import { Icon, Menu, Send } from "lucide-react";
 import {
   MessageCircle,
   BarChart2,
@@ -53,13 +53,15 @@ export default function Sidebar() {
     },
   ];
 
+  console.log(menu);
+
   const username = jwtDecode(localStorage.getItem("token"))?.usn || "User";
   const role = jwtDecode(localStorage.getItem("token"))?.role || "Guest";
   console.log("Decoded username:", username);
   console.log("Decoded role:", role);
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+    <aside className="w-64 bg-white border-r h-screen border-gray-200 flex flex-col">
       {/* App title */}
       <div className="px-6 pt-6 pb-4">
         <h1 className="text-lg font-semibold tracking-tight">Informatics AI</h1>
@@ -68,26 +70,24 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="px-3 space-y-1">
         {/* Chat (active) */}
-        <button
-          type="button"
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-red-100 text-red-600 text-sm font-medium"
-        >
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-red-500 text-white">
-            <Menu size={16} />
-          </span>
-          <span>Chat</span>
-        </button>
 
         {/* Setting (dummy) */}
-        <button
-          type="button"
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-medium"
-        >
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-200 text-gray-700">
-            ⚙
-          </span>
-          <span>Setting</span>
-        </button>
+
+        {/* Menu */}
+        {menu.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              type="button"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-medium"
+            >
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-200 text-gray-700">
+                <Icon size={18} />
+              </span>
+              <span>{item.name}</span>
+            </button>
+          );
+        })}
       </nav>
 
       {/* Logout */}
