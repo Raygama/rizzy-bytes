@@ -19,6 +19,8 @@ export default function ChatbotPage() {
     "Tata cara tanda tangan Kaprodi",
   ];
 
+  console.log("Token from cookie:", localStorage.getItem("token"));
+
   const messagesEndRef = useRef(null);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
