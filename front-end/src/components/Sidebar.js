@@ -37,12 +37,12 @@ export default function Sidebar() {
     },
     {
       name: "User Management",
-      href: "/dashboard/users",
+      href: "/dashboard/user-management",
       icon: Users,
     },
     {
       name: "Knowledge Base",
-      href: "/dashboard/knowledge",
+      href: "/dashboard/knowledge-base",
       icon: Database,
       activeColor: "bg-red-100 text-red-600 border-red-300",
     },
