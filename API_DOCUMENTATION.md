@@ -27,6 +27,69 @@ This document covers all HTTP API endpoints available in the rizzy-bytes helpdes
   - Example: `http://localhost:9090/api/v1/query?query=rate(flowise_proxy_http_request_duration_seconds_count[5m])`
 - Front-end guidance: fetch Prometheus via your backend/proxy (or Grafana), not directly from the browser.
 
+### Common PromQL Examples (for front-end via backend/proxy)
+
+**Note:** Use **range queries** to fetch data for the past 15 minutes (for visualization). Range queries return time-series data points instead of single values.
+
+#### Helper Function (JavaScript/Frontend)
+```javascript
+async function getPrometheusData(query) {
+  const now = Math.floor(Date.now() / 1000);  // Current timestamp (seconds)
+  const start = now - (15 * 60);              // 15 minutes ago
+  const step = '30s';                         
+  
+  const encodedQuery = encodeURIComponent(query);
+  const url = `http://localhost:9090/api/v1/query_range?query=${encodedQuery}&start=${start}&end=${now}&step=${step}`;
+  
+  const response = await fetch(url);
+  const data = await response.json();
+  return data.data.result;  
+}
+```
+
+#### CPU Avg %
+- **PromQL:** `100 * (1 - avg by (instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])))`
+- **Range Query (15 min):**
+  ```
+  GET http://localhost:9090/api/v1/query_range?query=100%20*%20(1%20-%20avg%20by%20(instance)(rate(node_cpu_seconds_total%7Bmode%3D%22idle%22%7D%5B5m%5D)))&start=<now-900>&end=<now>&step=30s
+  ```
+- **JavaScript Example:**
+  ```javascript
+  const query = '100 * (1 - avg by (instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])))';
+  const cpuData = await getPrometheusData(query);
+  // cpuData = [{ metric: {...}, values: [[timestamp, value], ...] }, ...]
+  ```
+
+#### GPU Utilization (if available)
+- **PromQL:** `DCGM_FI_DEV_GPU_UTIL` (or `nvidia_gpu_utilization` depending on exporter)
+- **Range Query (15 min):**
+  ```
+  GET http://localhost:9090/api/v1/query_range?query=DCGM_FI_DEV_GPU_UTIL&start=<now-900>&end=<now>&step=30s
+  ```
+- **JavaScript Example:**
+  ```javascript
+  const query = 'DCGM_FI_DEV_GPU_UTIL';
+  const gpuData = await getPrometheusData(query);
+  ```
+
+#### Memory Breakdown
+- **Used Memory:** `node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes`
+- **Cached Memory:** `node_memory_Cached_bytes`
+- **Buffer Memory:** `node_memory_Buffers_bytes`
+- **Range Query Examples (15 min):**
+  ```
+  GET http://localhost:9090/api/v1/query_range?query=node_memory_MemTotal_bytes%20-%20node_memory_MemAvailable_bytes&start=<now-900>&end=<now>&step=30s
+  GET http://localhost:9090/api/v1/query_range?query=node_memory_Cached_bytes&start=<now-900>&end=<now>&step=30s
+  GET http://localhost:9090/api/v1/query_range?query=node_memory_Buffers_bytes&start=<now-900>&end=<now>&step=30s
+  ```
+- **JavaScript Example:**
+  ```javascript
+  const usedMem = await getPrometheusData('node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes');
+  const cached = await getPrometheusData('node_memory_Cached_bytes');
+  const buffers = await getPrometheusData('node_memory_Buffers_bytes');
+  ```
+
+
 ## Authentication Service (`http://localhost:3001`)
 
 ### POST `/auth/login`
