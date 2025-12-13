@@ -181,6 +181,8 @@ services:
     ports:
       - "3006:3000"  
     environment:
+      - CHROMA_SERVER_CORS_ALLOW_ORIGINS=["*"]
+      - CHROMA_SERVER_HOST=0.0.0.0
       - PORT=3000
       - FLOWISE_USERNAME=admin
       - FLOWISE_PASSWORD=secret
@@ -201,6 +203,7 @@ services:
     depends_on:
       - mongo
       - redis
+    
   flowise-proxy:
     build:
       context: ../flowise-proxy
@@ -221,6 +224,9 @@ services:
     image: ghcr.io/chroma-core/chroma:0.6.1 
     container_name: chroma
     restart: always
+    environment:
+      - CHROMA_SERVER_CORS_ALLOW_ORIGINS=["*"]
+      - CHROMA_SERVER_HOST=0.0.0.0
     ports:
       - "8000:8000"
     volumes:
