@@ -11,8 +11,15 @@ import dotenv from "dotenv";
 import { randomUUID } from "crypto";
 import { ChatHistoryStore } from "./history/chatHistoryStore.js";
 import { connectToMongo } from "./history/mongoClient.js";
+import { knowledgeBaseStore } from "./knowledgeBaseStore.js";
 import { logEvent, requestContext, requestLogger } from "./logger.js";
-import { metricsMiddleware, metricsHandler } from "./metrics.js";
+import {
+  metricsMiddleware,
+  metricsHandler,
+  observePredictionMetrics,
+  estimateTokens,
+  sampleGpuUtilization
+} from "./metrics.js";
 
 dotenv.config();
 
@@ -22,12 +29,25 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || "/uploads";
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const READ_TIMEOUT_MS = parseInt(process.env.READ_TIMEOUT_MS || "60000", 10);
 const DOCUMENT_STORE_ID = process.env.DOCUMENT_STORE_ID || "d21759a2-d263-414e-b5a4-f2e5819d516e";
+const BROKER_URL = process.env.BROKER_URL || "http://broker-service:3000";
+const ASYNC_KB = (process.env.ASYNC_KB || "true").toLowerCase() === "true";
+const WORKER_TOKEN = process.env.WORKER_TOKEN || process.env.INTERNAL_JOB_TOKEN || "change-me";
 const MONGO_URI = process.env.MONGO_URI || "mongodb://mongo:27017/helpdesk";
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME || null;
+const COST_PER_1K_TOKENS = (() => {
+  const parsed = Number(process.env.COST_PER_1K_TOKENS_USD || 0);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+})();
 const DEFAULT_TEXT_SPLITTER = {
   chunkSize: 1000,
   chunkOverlap: 200
 };
+
+const MAX_CONCURRENT_PREDICTIONS = (() => {
+  const parsed = Number(process.env.MAX_CONCURRENT_PREDICTIONS || 4);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
+})();
+let activePredictions = 0;
 
 const safeParseJSON = (raw, fallback) => {
   if (!raw) return fallback;
@@ -58,6 +78,19 @@ const EMBEDDING_CONFIG = safeParseJSON(process.env.FLOWISE_EMBEDDING_CONFIG, {})
 
 const RECORD_MANAGER_NAME = process.env.FLOWISE_RECORD_MANAGER_NAME || null;
 const RECORD_MANAGER_CONFIG = safeParseJSON(process.env.FLOWISE_RECORD_MANAGER_CONFIG, {});
+
+const hrtimeSeconds = (startBigInt) => Number(process.hrtime.bigint() - startBigInt) / 1e9;
+
+const cpuUsageSeconds = (cpuStart) => {
+  const diff = process.cpuUsage(cpuStart);
+  return (diff.user + diff.system) / 1e6;
+};
+
+const estimateCostUsdFromTokens = (tokens) => {
+  if (!Number.isFinite(tokens) || tokens <= 0) return 0;
+  if (!Number.isFinite(COST_PER_1K_TOKENS) || COST_PER_1K_TOKENS <= 0) return 0;
+  return (tokens / 1000) * COST_PER_1K_TOKENS;
+};
 
 const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
 
@@ -226,6 +259,32 @@ const parsePositiveInt = (value, fallback = 1) => {
 
 const MANIFEST_FILE = (storeId) => path.join(UPLOAD_DIR, `${storeId || "default"}-manifest.json`);
 
+const DEFAULT_ALLOWED_FILE_TYPES = [".pdf", ".doc", ".docx", ".csv", ".xls", ".xlsx"];
+const ALLOWED_FILE_TYPES = new Set(
+  safeParseJSON(process.env.FLOWISE_ALLOWED_FILE_TYPES, DEFAULT_ALLOWED_FILE_TYPES) || DEFAULT_ALLOWED_FILE_TYPES
+);
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/csv",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+]);
+
+const isAllowedFileType = (file) => {
+  if (!file) return false;
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  if (ALLOWED_FILE_TYPES.has(ext)) return true;
+  if (file.mimetype && ALLOWED_MIME_TYPES.has(file.mimetype.toLowerCase())) return true;
+  return false;
+};
+
+const describeAllowedFileTypes = () =>
+  Array.from(ALLOWED_FILE_TYPES)
+    .map((ext) => ext.replace(/^\./, "").toUpperCase())
+    .join(", ");
+
 // load API key either from env or from secret file path
 let FLOWISE_API_KEY = process.env.FLOWISE_API_KEY || null;
 if (!FLOWISE_API_KEY && process.env.FLOWISE_API_KEY_FILE) {
@@ -264,7 +323,16 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}_${sanitized}`);
   }
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (isAllowedFileType(file)) {
+      return cb(null, true);
+    }
+    req.fileValidationError = `Unsupported file type. Allowed types: ${describeAllowedFileTypes()}`;
+    return cb(null, false);
+  }
+});
 
 const pickFirstString = (value) => {
   if (!value && value !== 0) return null;
@@ -276,6 +344,13 @@ const pickFirstString = (value) => {
     return trimmed || null;
   }
   return null;
+};
+
+const pickNonEmptyString = (value) => {
+  const candidate = pickFirstString(value);
+  if (candidate === null) return null;
+  const trimmed = `${candidate}`.trim();
+  return trimmed || null;
 };
 
 const getHeaderValue = (req, name) => {
@@ -319,6 +394,19 @@ const getStoreIdFromReq = (req) => {
   );
 };
 
+const resolveStoreIdForLoader = async (req, loaderId) => {
+  const explicit =
+    pickFirstString(req.params?.storeId) ||
+    pickFirstString(req.query?.storeId) ||
+    pickFirstString(req.body?.storeId);
+  if (explicit) return explicit;
+  if (loaderId) {
+    const kbEntry = await knowledgeBaseStore.findByLoader({ loaderId });
+    if (kbEntry?.storeId) return kbEntry.storeId;
+  }
+  return DOCUMENT_STORE_ID;
+};
+
 const parseMetadataInput = (raw, fallback = null) => {
   if (!raw && raw !== 0) return fallback;
   if (typeof raw === "object") return raw;
@@ -339,6 +427,25 @@ const ensureFlowiseComponentsConfigured = () => {
       }
     };
   }
+};
+
+const pruneConfig = (config) => {
+  if (!config || typeof config !== "object") return {};
+  const result = {};
+  Object.entries(config).forEach(([key, value]) => {
+    const isString = typeof value === "string";
+    const isEmptyString = isString && !value.trim();
+    if (value === undefined || value === null || isEmptyString) return;
+    result[key] = value;
+  });
+  return result;
+};
+
+const mergeComponentConfig = (primary = {}, secondary = {}) => {
+  return pruneConfig({
+    ...pruneConfig(secondary),
+    ...pruneConfig(primary)
+  });
 };
 
 const getComponentPayloads = () => {
@@ -401,6 +508,58 @@ const writeManifest = async (storeId, data) => {
   await fsp.writeFile(MANIFEST_FILE(storeId), JSON.stringify(data, null, 2));
 };
 
+const JOB_STATUS_DIR = path.join(UPLOAD_DIR, "jobs");
+
+const ensureJobDir = async () => {
+  await fsp.mkdir(JOB_STATUS_DIR, { recursive: true });
+};
+
+const jobStatusPath = (jobId) => path.join(JOB_STATUS_DIR, `${jobId}.json`);
+
+const setJobStatus = async (jobId, patch = {}) => {
+  await ensureJobDir();
+  const now = new Date().toISOString();
+  let existing = {};
+  try {
+    existing = JSON.parse(await fsp.readFile(jobStatusPath(jobId), "utf8"));
+  } catch (_) {
+    existing = { jobId, createdAt: now };
+  }
+  const payload = {
+    ...existing,
+    ...patch,
+    jobId,
+    createdAt: existing.createdAt || now,
+    updatedAt: now
+  };
+  await fsp.writeFile(jobStatusPath(jobId), JSON.stringify(payload, null, 2));
+  return payload;
+};
+
+const readJobStatus = async (jobId) => {
+  try {
+    const raw = await fsp.readFile(jobStatusPath(jobId), "utf8");
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+};
+
+const isWorkerRequest = (req) => {
+  const tokenHeader = req.get("x-worker-token") || req.get("authorization");
+  if (!tokenHeader) return false;
+  const token = tokenHeader.startsWith("Bearer ") ? tokenHeader.slice(7) : tokenHeader;
+  return token === WORKER_TOKEN;
+};
+
+const ensureWorkerAuth = (req, res) => {
+  if (!isWorkerRequest(req)) {
+    res.status(403).json({ error: "forbidden" });
+    return false;
+  }
+  return true;
+};
+
 const upsertManifestEntry = async (storeId, patch) => {
   if (!patch?.docId) return;
   const manifest = await readManifest(storeId);
@@ -430,71 +589,145 @@ const fetchFlowiseStore = async (storeId) => {
   return callFlowise("get", pathUrl);
 };
 
-const mergeFlowiseLoadersWithManifest = (loaders, manifest) => {
-  if (!Array.isArray(loaders) || !loaders.length) return [...manifest];
-  const manifestMap = new Map(manifest.map((entry) => [entry.docId, entry]));
-  const merged = loaders.map((loader) => {
-    const manifestEntry = manifestMap.get(loader.id) || {};
-    return {
-      docId: loader.id,
-      ...loader,
-      ...manifestEntry
-    };
-  });
+const resolveComponentPayloads = async (storeId) => {
+  const base = getComponentPayloads();
+  let storeConfig = null;
+  try {
+    storeConfig = await fetchFlowiseStore(storeId);
+  } catch (err) {
+    console.warn("Unable to read Flowise store config, falling back to .env values:", err?.message || err);
+  }
 
-  manifest.forEach((entry) => {
-    if (!loaders.some((loader) => loader.id === entry.docId)) {
-      merged.push(entry);
-    }
-  });
+  const storeVectorConfig = storeConfig?.vectorStore?.config || {};
+  const storeEmbeddingConfig = storeConfig?.embedding?.config || {};
+  const storeRecordManagerConfig = storeConfig?.recordManager?.config || {};
 
-  return merged;
+  return {
+    loader: base.loader,
+    splitter: base.splitter,
+    vectorStore: {
+      ...base.vectorStore,
+      config: mergeComponentConfig(base.vectorStore?.config, storeVectorConfig)
+    },
+    embedding: {
+      ...base.embedding,
+      config: mergeComponentConfig(base.embedding?.config, storeEmbeddingConfig)
+    },
+    recordManager: base.recordManager
+      ? {
+          ...base.recordManager,
+          config: mergeComponentConfig(base.recordManager?.config, storeRecordManagerConfig)
+        }
+      : null
+  };
+};
+
+const mergeLoaderWithKbEntry = ({ loader, kbEntry, storeId }) => {
+  const metadata =
+    loader?.metadata && typeof loader.metadata === "object" && !Array.isArray(loader.metadata)
+      ? loader.metadata
+      : {};
+  const resolvedStoreId = kbEntry?.storeId || storeId || DOCUMENT_STORE_ID;
+  const loaderId = kbEntry?.loaderId || loader?.id || metadata?.docId || null;
+  const nameCandidate =
+    kbEntry?.name ||
+    resolveName({ name: null, metadata: { ...metadata, name: loader?.name }, fallback: loaderId || loader?.fileName });
+  const descriptionCandidate = resolveDescription({
+    description: kbEntry?.description,
+    metadata
+  });
+  const filename =
+    kbEntry?.filename || loader?.fileName || metadata?.originalFileName || metadata?.filename || metadata?.name || null;
+  const size = kbEntry?.size || metadata?.size || loader?.size || null;
+  const uploadedAt =
+    kbEntry?.uploadedAt ||
+    metadata?.uploadedAt ||
+    loader?.uploadedAt ||
+    loader?.createdAt ||
+    kbEntry?.createdAt ||
+    null;
+  const mergedMetadata =
+    kbEntry?.metadata && Object.keys(kbEntry.metadata || {}).length ? kbEntry.metadata : metadata;
+
+  return {
+    storeId: resolvedStoreId,
+    loaderId,
+    kbId: kbEntry?.kbId || null,
+    name: nameCandidate || "KB Entry",
+    description: descriptionCandidate || "",
+    filename,
+    size,
+    metadata: mergedMetadata || {},
+    uploadedAt,
+    createdAt: kbEntry?.createdAt || loader?.createdAt || null,
+    updatedAt: kbEntry?.updatedAt || loader?.updatedAt || null,
+    flowiseLoader: loader || null
+  };
 };
 
 const loadDocuments = async (storeId) => {
-  const manifest = await readManifest(storeId);
+  const kbEntries = await knowledgeBaseStore.list(storeId);
+  const kbMap = new Map(kbEntries.map((entry) => [entry.loaderId, entry]));
+
   try {
     const storeData = await fetchFlowiseStore(storeId);
     const loaders = Array.isArray(storeData?.loaders) ? storeData.loaders : [];
-    const documents = mergeFlowiseLoadersWithManifest(loaders, manifest);
+    const documents = loaders.map((loader) =>
+      mergeLoaderWithKbEntry({ loader, kbEntry: kbMap.get(loader.id), storeId })
+    );
+
+    kbEntries.forEach((entry) => {
+      if (!documents.some((doc) => doc.loaderId === entry.loaderId)) {
+        documents.push(
+          mergeLoaderWithKbEntry({
+            loader: null,
+            kbEntry: entry,
+            storeId: entry.storeId || storeId
+          })
+        );
+      }
+    });
+
     return { storeData, documents };
   } catch (err) {
-    if (!manifest.length) {
+    if (!kbEntries.length) {
       throw err;
     }
-    console.warn("Flowise fetch failed, falling back to manifest cache:", err?.message || err);
-    return { storeData: null, documents: manifest };
+    console.warn("Flowise fetch failed, falling back to Mongo cache:", err?.message || err);
+    const documents = kbEntries.map((entry) =>
+      mergeLoaderWithKbEntry({ loader: null, kbEntry: entry, storeId: entry.storeId || storeId })
+    );
+    return { storeData: null, documents };
   }
 };
 
 const buildUpsertForm = ({ docId, metadata, replaceExisting = false, file }) => {
   const componentPayloads = getComponentPayloads();
-  const resolvedFileName =
-    file?.originalname ||
-    (metadata &&
-      typeof metadata === "object" &&
-      (metadata.originalFileName || metadata.filename || metadata.fileName || metadata.name));
-  if (componentPayloads?.loader?.config) {
-    componentPayloads.loader.config = withOmitMetadataRules(componentPayloads.loader.config, resolvedFileName);
-  }
   const form = new FormData();
-  form.append("replaceExisting", replaceExisting ? "true" : "false");
+  
+  if (replaceExisting) {
+    form.append("replaceExisting", "true");
+  }
   if (docId) {
     form.append("docId", docId);
   }
   if (metadata && Object.keys(metadata).length) {
     form.append("metadata", JSON.stringify(metadata));
   }
+  // Send all required components for the upsert
   form.append("loader", JSON.stringify(componentPayloads.loader));
   form.append("splitter", JSON.stringify(componentPayloads.splitter));
   form.append("vectorStore", JSON.stringify(componentPayloads.vectorStore));
   form.append("embedding", JSON.stringify(componentPayloads.embedding));
+  
   if (componentPayloads.recordManager) {
     form.append("recordManager", JSON.stringify(componentPayloads.recordManager));
   }
+  
   if (file) {
     form.append("files", fs.createReadStream(file.path), file.originalname);
   }
+  
   return form;
 };
 
@@ -504,6 +737,137 @@ const sendUpsertForm = async (storeId, form) => {
     headers,
     maxBodyLength: Infinity
   });
+};
+
+const resolveName = ({ name, metadata, fallback }) => {
+  return (
+    pickNonEmptyString(name) ||
+    pickNonEmptyString(metadata?.name) ||
+    pickNonEmptyString(metadata?.title) ||
+    pickNonEmptyString(metadata?.filename) ||
+    pickNonEmptyString(metadata?.originalFileName) ||
+    pickNonEmptyString(fallback) ||
+    "KB Entry"
+  );
+};
+
+const resolveDescription = ({ description, metadata }) => {
+  if (typeof description === "string" && description.trim()) return description.trim();
+  if (metadata?.description && `${metadata.description}`.trim()) return `${metadata.description}`.trim();
+  if (metadata?.summary && `${metadata.summary}`.trim()) return `${metadata.summary}`.trim();
+  return "";
+};
+
+const performUpsert = async ({ storeId, filePath, originalName, metadata, replaceExisting, name, description }) => {
+  if (!filePath || !originalName) {
+    throw { status: 400, body: { error: "filePath and originalName are required" } };
+  }
+  const stat = await fsp.stat(filePath);
+  const fauxFile = {
+    path: filePath,
+    originalname: originalName,
+    size: stat.size
+  };
+
+  const form = buildUpsertForm({
+    metadata: metadata || { originalFileName: originalName },
+    replaceExisting: !!replaceExisting,
+    file: fauxFile
+  });
+  const result = await sendUpsertForm(storeId, form);
+  const kbEntry = await knowledgeBaseStore.upsert({
+    storeId,
+    loaderId: result.docId,
+    name: resolveName({ name, metadata, fallback: result.docId || originalName }),
+    description: resolveDescription({ description, metadata }),
+    metadata,
+    filename: originalName,
+    size: stat.size,
+    uploadedAt: new Date()
+  });
+  await upsertManifestEntry(storeId, {
+    docId: result.docId,
+    filename: originalName,
+    size: stat.size,
+    metadata,
+    uploadedAt: new Date().toISOString()
+  });
+  await cleanupUploadedFile(fauxFile);
+  return { ...result, storeId, kbEntry };
+};
+
+const performReprocess = async ({
+  storeId,
+  loaderId,
+  metadata,
+  replaceExisting = true,
+  filePath,
+  originalName,
+  name,
+  description
+}) => {
+  if (!loaderId) {
+    throw { status: 400, body: { error: "loaderId is required" } };
+  }
+
+  let fauxFile = null;
+  if (filePath && originalName) {
+    const stat = await fsp.stat(filePath);
+    fauxFile = { path: filePath, originalname: originalName, size: stat.size };
+  }
+
+  const form = buildUpsertForm({
+    docId: loaderId,
+    metadata: metadata || undefined,
+    replaceExisting: replaceExisting !== false,
+    file: fauxFile || undefined
+  });
+
+  const result = await sendUpsertForm(storeId, form);
+  const kbEntry = await knowledgeBaseStore.upsert({
+    storeId,
+    loaderId,
+    name: resolveName({ name, metadata, fallback: loaderId }),
+    description: resolveDescription({ description, metadata }),
+    metadata,
+    filename: originalName || undefined
+  });
+  await upsertManifestEntry(storeId, {
+    docId: loaderId,
+    metadata: metadata || undefined,
+    processedAt: new Date().toISOString()
+  });
+
+  if (fauxFile) {
+    await cleanupUploadedFile(fauxFile);
+  }
+  return { ...result, storeId, kbEntry };
+};
+
+const performJsonUpsert = async ({ storeId, body }) => {
+  if (!body || typeof body !== "object" || !Object.keys(body).length) {
+    throw { status: 400, body: { error: "Request body is required" } };
+  }
+  const pathUrl = `/api/v1/document-store/upsert/${storeId}`;
+  const result = await callFlowise("post", pathUrl, body);
+  if (result?.docId) {
+    await knowledgeBaseStore.upsert({
+      storeId,
+      loaderId: result.docId,
+      name: resolveName({ name: body.name, metadata: body.metadata, fallback: result.docId }),
+      description: resolveDescription({ description: body.description, metadata: body.metadata }),
+      metadata: body.metadata || {},
+      filename: body.filename || body.metadata?.originalFileName || null,
+      size: body.metadata?.size || null,
+      uploadedAt: body.uploadedAt ? new Date(body.uploadedAt) : new Date()
+    });
+  }
+  return result;
+};
+
+const performRefresh = async ({ storeId, body }) => {
+  const pathUrl = `/api/v1/document-store/refresh/${storeId}`;
+  return callFlowise("post", pathUrl, body || {});
 };
 
 // helper to forward to Flowise, forwarding error body
@@ -531,6 +895,15 @@ const callFlowise = async (method, url, data, config = {}) => {
     }
     throw { status: 500, body: { error: err.message } };
   }
+};
+
+const enqueueJob = async (routingKey, payload, jobId) => {
+  const target = `${BROKER_URL}/publish/job`;
+  await axios.post(
+    target,
+    { routingKey, payload, jobId },
+    { timeout: READ_TIMEOUT_MS }
+  );
 };
 
 const extractTokensFromSseChunk = (chunk) => {
@@ -591,13 +964,43 @@ const listDocumentsHandler = async (req, res) => {
   }
 };
 
-const listChunksHandler = async (req, res) => {
+const getLoaderHandler = async (req, res) => {
   try {
-    const storeId = getStoreIdFromReq(req);
     const loaderId = pickFirstString(req.params?.loaderId);
     if (!loaderId) {
       return res.status(400).json({ error: "loaderId is required" });
     }
+    const storeId = await resolveStoreIdForLoader(req, loaderId);
+    const kbEntry = await knowledgeBaseStore.findByLoader({ loaderId, storeId });
+    let loader = null;
+
+    try {
+      const storeData = await fetchFlowiseStore(storeId);
+      loader = Array.isArray(storeData?.loaders)
+        ? storeData.loaders.find((entry) => entry.id === loaderId) || null
+        : null;
+    } catch (err) {
+      if (!kbEntry) {
+        throw err;
+      }
+      console.warn("Flowise fetch failed for loader, serving Mongo data:", err?.message || err);
+    }
+
+    const document = mergeLoaderWithKbEntry({ loader, kbEntry, storeId });
+    return res.json(document);
+  } catch (err) {
+    console.error("get loader error:", err);
+    return res.status(err.status || 500).json(err.body || { error: "Unable to read knowledge base entry" });
+  }
+};
+
+const listChunksHandler = async (req, res) => {
+  try {
+    const loaderId = pickFirstString(req.params?.loaderId);
+    if (!loaderId) {
+      return res.status(400).json({ error: "loaderId is required" });
+    }
+    const storeId = await resolveStoreIdForLoader(req, loaderId);
     const pageSource = req.query?.page ?? req.query?.pageNo ?? req.body?.page ?? req.body?.pageNo;
     const page = parsePositiveInt(pageSource, 1);
     const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${page}`;
@@ -615,18 +1018,112 @@ const listChunksHandler = async (req, res) => {
   }
 };
 
+const listLoaderEntriesHandler = async (req, res) => {
+  try {
+    const storeId = getStoreIdFromReq(req);
+    const { documents } = await loadDocuments(storeId);
+    const entries = (documents || []).map((doc) => ({
+      storeId: doc.storeId || storeId,
+      loaderId: doc.loaderId || doc.docId || null,
+      kbId: doc.kbId || null,
+      name: doc.name || null,
+      description: doc.description || "",
+      filename: doc.filename || null,
+      size: doc.size ?? null,
+      uploadedAt: doc.uploadedAt || null,
+      metadata: doc.metadata || {},
+      createdAt: doc.createdAt || null,
+      updatedAt: doc.updatedAt || null
+    }));
+    return res.json(entries);
+  } catch (err) {
+    console.error("list loader entries error:", err);
+    return res.status(err.status || 500).json(err.body || { error: "Unable to read loader entries" });
+  }
+};
+
+const updateChunkHandler = async (req, res) => {
+  try {
+    const loaderId = pickFirstString(req.params?.loaderId);
+    const chunkId = pickFirstString(req.params?.chunkId);
+    if (!loaderId || !chunkId) {
+      return res.status(400).json({ error: "loaderId and chunkId are required" });
+    }
+    const storeId = await resolveStoreIdForLoader(req, loaderId);
+    const body = req.body && Object.keys(req.body).length ? req.body : {};
+    const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${chunkId}`;
+    const result = await callFlowise("put", pathUrl, body);
+    return res.json(result);
+  } catch (err) {
+    console.error("update chunk error:", err);
+    return res.status(err.status || 500).json(err.body || { error: "Unable to update chunk" });
+  }
+};
+
 const uploadAndUpsertHandler = async (req, res) => {
   const storeId = getStoreIdFromReq(req);
+  if (req.fileValidationError) {
+    return res.status(400).json({ error: req.fileValidationError });
+  }
   if (!req.file) {
     return res.status(400).json({ error: "file field is required" });
   }
 
-  let metadata = { originalFileName: req.file.originalname };
+  const name = pickNonEmptyString(req.body?.name);
+  const description = pickNonEmptyString(req.body?.description);
+  if (!name) {
+    await cleanupUploadedFile(req.file);
+    return res.status(400).json({ error: "name is required" });
+  }
+  if (!description) {
+    await cleanupUploadedFile(req.file);
+    return res.status(400).json({ error: "description is required" });
+  }
+
+  let metadata = {
+    originalFileName: req.file.originalname,
+    name,
+    description
+  };
   try {
-    metadata = parseMetadataInput(req.body?.metadata, metadata) || metadata;
+    const parsedMetadata = parseMetadataInput(req.body?.metadata, {});
+    metadata = {
+      ...metadata,
+      ...(parsedMetadata || {}),
+      name,
+      description
+    };
   } catch (err) {
     await cleanupUploadedFile(req.file);
     return res.status(err.status || 400).json(err.body || { error: "Invalid metadata" });
+  }
+
+  // enqueue heavy KB ingestion if async mode is enabled
+  if (ASYNC_KB) {
+    try {
+      const jobId = randomUUID();
+      await setJobStatus(jobId, {
+        status: "queued",
+        type: "kb.ingest",
+        storeId,
+        payload: { name, description, filename: req.file.originalname }
+      });
+      await enqueueJob("kb.ingest", {
+        jobId,
+        storeId,
+        filePath: req.file.path,
+        originalName: req.file.originalname,
+        metadata,
+        replaceExisting: req.body?.replaceExisting === "true",
+        name,
+        description
+      });
+      return res.status(202).json({ jobId, status: "queued" });
+    } catch (err) {
+      console.error("enqueue kb.ingest failed:", err);
+      await cleanupUploadedFile(req.file);
+      return res.status(500).json({ error: "Unable to enqueue KB ingestion" });
+    }
   }
 
   try {
@@ -636,57 +1133,172 @@ const uploadAndUpsertHandler = async (req, res) => {
       file: req.file
     });
     const result = await sendUpsertForm(storeId, form);
+
+    let kbEntry = null;
+    try {
+      kbEntry = await knowledgeBaseStore.create({
+        storeId,
+        loaderId: result.docId,
+        name,
+        description,
+        filename: req.file.originalname,
+        size: req.file.size,
+        metadata,
+        uploadedAt: new Date()
+      });
+    } catch (kbErr) {
+      // attempt cleanup in Flowise to avoid orphan loader if KB create fails
+      try {
+        await callFlowise("delete", `/api/v1/document-store/loader/${storeId}/${result.docId}`);
+      } catch (_cleanupErr) {
+        // ignore cleanup failures
+      }
+      throw kbErr;
+    }
+
     await upsertManifestEntry(storeId, {
       docId: result.docId,
       filename: req.file.originalname,
       size: req.file.size,
       metadata,
-      uploadedAt: new Date().toISOString()
+      uploadedAt: kbEntry?.uploadedAt?.toISOString?.() || new Date().toISOString(),
+      kbId: kbEntry?.kbId,
+      name: kbEntry?.name,
+      description: kbEntry?.description
     });
-    return res.json({ ...result, storeId });
+    return res.json({ ...result, storeId, kb: kbEntry, kbId: kbEntry?.kbId });
   } catch (err) {
     console.error("upsert upload error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to upsert document" });
   } finally {
-    await cleanupUploadedFile(req.file);
+    if (!ASYNC_KB) {
+      await cleanupUploadedFile(req.file);
+    }
   }
 };
 
 const reprocessHandler = async (req, res) => {
-  const storeId = getStoreIdFromReq(req);
-  const { loaderId } = req.params;
+  const loaderId = pickFirstString(req.params?.loaderId);
   if (!loaderId) {
     if (req.file) await cleanupUploadedFile(req.file);
     return res.status(400).json({ error: "loaderId is required" });
   }
+  const storeId = await resolveStoreIdForLoader(req, loaderId);
+
+  if (req.fileValidationError) {
+    if (req.file) await cleanupUploadedFile(req.file);
+    return res.status(400).json({ error: req.fileValidationError });
+  }
+
+  let existingEntry = null;
+  try {
+    existingEntry = await knowledgeBaseStore.findByLoader({ loaderId, storeId });
+  } catch (_err) {
+    // non-fatal for processing
+  }
+
+  const name = pickNonEmptyString(req.body?.name) || existingEntry?.name;
+  const descriptionInput = pickFirstString(req.body?.description);
+  const description =
+    descriptionInput === null || typeof descriptionInput === "undefined"
+      ? existingEntry?.description || ""
+      : `${descriptionInput}`.trim();
+
+  if (!name) {
+    if (req.file) await cleanupUploadedFile(req.file);
+    return res.status(400).json({ error: "name is required" });
+  }
+  if (!description) {
+    if (req.file) await cleanupUploadedFile(req.file);
+    return res.status(400).json({ error: "description is required" });
+  }
 
   let metadataPatch = null;
   try {
-    metadataPatch = parseMetadataInput(req.body?.metadata, null);
+    metadataPatch = parseMetadataInput(req.body?.metadata, {});
   } catch (err) {
     if (req.file) await cleanupUploadedFile(req.file);
     return res.status(err.status || 400).json(err.body || { error: "Invalid metadata" });
   }
 
+  const metadata = {
+    ...(existingEntry?.metadata || {}),
+    ...(metadataPatch || {}),
+    name,
+    description
+  };
+  if (existingEntry?.kbId) {
+    metadata.kbId = existingEntry.kbId;
+  }
+  if (req.file) {
+    metadata.originalFileName = req.file.originalname;
+    metadata.size = req.file.size;
+  }
+
+  if (ASYNC_KB) {
+    try {
+      const jobId = randomUUID();
+      await setJobStatus(jobId, {
+        status: "queued",
+        type: "kb.reprocess",
+        storeId,
+        payload: { loaderId, name, description }
+      });
+      await enqueueJob("kb.reprocess", {
+        jobId,
+        storeId,
+        loaderId,
+        metadata,
+        replaceExisting: req.body?.replaceExisting !== "false",
+        filePath: req.file?.path,
+        originalName: req.file?.originalname,
+        name,
+        description
+      });
+      return res.status(202).json({ jobId, status: "queued" });
+    } catch (err) {
+      console.error("enqueue kb.reprocess failed:", err);
+      if (req.file) {
+        await cleanupUploadedFile(req.file);
+      }
+      return res.status(500).json({ error: "Unable to enqueue KB reprocess" });
+    }
+  }
+
   try {
     const form = buildUpsertForm({
       docId: loaderId,
-      metadata: metadataPatch || undefined,
+      metadata,
       replaceExisting: req.body?.replaceExisting !== "false",
       file: req.file || undefined
     });
     const result = await sendUpsertForm(storeId, form);
+    const kbEntry = await knowledgeBaseStore.upsert({
+      storeId,
+      loaderId,
+      name,
+      description,
+      filename: req.file?.originalname || existingEntry?.filename || null,
+      size: req.file?.size ?? existingEntry?.size ?? null,
+      metadata,
+      uploadedAt: req.file ? new Date() : existingEntry?.uploadedAt || new Date()
+    });
     await upsertManifestEntry(storeId, {
       docId: loaderId,
-      metadata: metadataPatch || undefined,
-      processedAt: new Date().toISOString()
+      metadata,
+      processedAt: new Date().toISOString(),
+      kbId: kbEntry?.kbId,
+      name: kbEntry?.name,
+      description: kbEntry?.description,
+      filename: kbEntry?.filename,
+      size: kbEntry?.size
     });
-    return res.json({ ...result, storeId });
+    return res.json({ ...result, storeId, kb: kbEntry, kbId: kbEntry?.kbId });
   } catch (err) {
     console.error("reprocess error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to process document" });
   } finally {
-    if (req.file) {
+    if (!ASYNC_KB && req.file) {
       await cleanupUploadedFile(req.file);
     }
   }
@@ -694,11 +1306,11 @@ const reprocessHandler = async (req, res) => {
 
 const deleteLoaderHandler = async (req, res) => {
   try {
-    const storeId = getStoreIdFromReq(req);
-    const { loaderId } = req.params;
+    const loaderId = pickFirstString(req.params?.loaderId);
     if (!loaderId) {
       return res.status(400).json({ error: "loaderId is required" });
     }
+    const storeId = await resolveStoreIdForLoader(req, loaderId);
     const pathUrl = `/api/v1/document-store/loader/${storeId}/${loaderId}`;
     const result = await callFlowise("delete", pathUrl);
     if (typeof result === "string" && result.trim().startsWith("<!DOCTYPE")) {
@@ -708,8 +1320,19 @@ const deleteLoaderHandler = async (req, res) => {
       };
     }
     await removeManifestEntry(storeId, loaderId);
+    await knowledgeBaseStore.remove({ loaderId, storeId });
     return res.json({ ...result, storeId, loaderId });
   } catch (err) {
+    const flowiseMessage = err?.body?.message || err?.message || "";
+    const isNotFound =
+      err?.status === 404 ||
+      /unable to locate loader/i.test(flowiseMessage) ||
+      /not found/i.test(flowiseMessage);
+
+    if (isNotFound) {
+      return res.status(404).json({ error: "Loader not found in document store" });
+    }
+
     console.error("delete loader error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to delete document" });
   }
@@ -721,8 +1344,18 @@ const jsonUpsertHandler = async (req, res) => {
     if (!req.body || !Object.keys(req.body).length) {
       return res.status(400).json({ error: "Request body is required" });
     }
-    const pathUrl = `/api/v1/document-store/upsert/${storeId}`;
-    const result = await callFlowise("post", pathUrl, req.body);
+    if (ASYNC_KB) {
+      const jobId = randomUUID();
+      await setJobStatus(jobId, {
+        status: "queued",
+        type: "kb.upsert",
+        storeId,
+        payload: { docId: req.body?.docId }
+      });
+      await enqueueJob("kb.upsert", { jobId, storeId, body: req.body });
+      return res.status(202).json({ jobId, status: "queued" });
+    }
+    const result = await performJsonUpsert({ storeId, body: req.body });
     return res.json(result);
   } catch (err) {
     console.error("json upsert error:", err);
@@ -734,12 +1367,171 @@ const refreshHandler = async (req, res) => {
   try {
     const storeId = getStoreIdFromReq(req);
     const body = req.body && Object.keys(req.body).length ? req.body : {};
-    const pathUrl = `/api/v1/document-store/refresh/${storeId}`;
-    const result = await callFlowise("post", pathUrl, body);
+    if (ASYNC_KB) {
+      const jobId = randomUUID();
+      await setJobStatus(jobId, { status: "queued", type: "kb.refresh", storeId });
+      await enqueueJob("kb.refresh", { jobId, storeId, body });
+      return res.status(202).json({ jobId, status: "queued" });
+    }
+    const result = await performRefresh({ storeId, body });
     return res.json(result);
   } catch (err) {
     console.error("refresh error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to refresh document store" });
+  }
+};
+
+const internalKbIngestHandler = async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const {
+    jobId,
+    storeId: rawStoreId,
+    filePath,
+    originalName,
+    metadata,
+    replaceExisting,
+    name,
+    description
+  } = req.body || {};
+  if (!jobId || !filePath || !originalName) {
+    return res.status(400).json({ error: "jobId, filePath, and originalName are required" });
+  }
+  const existingStatus = await readJobStatus(jobId);
+  if (existingStatus?.status === "succeeded") {
+    return res.json(existingStatus);
+  }
+  const storeId = rawStoreId || DOCUMENT_STORE_ID;
+  await setJobStatus(jobId, { status: "processing", type: "kb.ingest", storeId });
+  try {
+    const result = await performUpsert({
+      storeId,
+      filePath,
+      originalName,
+      metadata,
+      replaceExisting,
+      name,
+      description
+    });
+    await setJobStatus(jobId, { status: "succeeded", type: "kb.ingest", storeId, result: { docId: result.docId } });
+    return res.json({ ok: true, jobId, result });
+  } catch (err) {
+    await setJobStatus(jobId, {
+      status: "failed",
+      type: "kb.ingest",
+      storeId,
+      error: err?.body?.error || err?.message || "Job failed"
+    });
+    return res.status(err.status || 500).json(err.body || { error: "Job failed" });
+  }
+};
+
+const internalKbReprocessHandler = async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const {
+    jobId,
+    storeId: rawStoreId,
+    loaderId,
+    metadata,
+    replaceExisting,
+    filePath,
+    originalName,
+    name,
+    description
+  } = req.body || {};
+  if (!jobId || !loaderId) {
+    return res.status(400).json({ error: "jobId and loaderId are required" });
+  }
+  const existingStatus = await readJobStatus(jobId);
+  if (existingStatus?.status === "succeeded") {
+    return res.json(existingStatus);
+  }
+  const storeId = rawStoreId || DOCUMENT_STORE_ID;
+  await setJobStatus(jobId, { status: "processing", type: "kb.reprocess", storeId });
+  try {
+    const result = await performReprocess({
+      storeId,
+      loaderId,
+      metadata,
+      replaceExisting,
+      filePath,
+      originalName,
+      name,
+      description
+    });
+    await setJobStatus(jobId, {
+      status: "succeeded",
+      type: "kb.reprocess",
+      storeId,
+      result: { docId: result.docId || loaderId }
+    });
+    return res.json({ ok: true, jobId, result });
+  } catch (err) {
+    await setJobStatus(jobId, {
+      status: "failed",
+      type: "kb.reprocess",
+      storeId,
+      error: err?.body?.error || err?.message || "Job failed"
+    });
+    return res.status(err.status || 500).json(err.body || { error: "Job failed" });
+  }
+};
+
+const internalKbUpsertHandler = async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const { jobId, storeId: rawStoreId, body } = req.body || {};
+  if (!jobId) {
+    return res.status(400).json({ error: "jobId is required" });
+  }
+  const existingStatus = await readJobStatus(jobId);
+  if (existingStatus?.status === "succeeded") {
+    return res.json(existingStatus);
+  }
+  const storeId = rawStoreId || DOCUMENT_STORE_ID;
+  await setJobStatus(jobId, { status: "processing", type: "kb.upsert", storeId });
+  try {
+    const result = await performJsonUpsert({ storeId, body: body || {} });
+    await setJobStatus(jobId, {
+      status: "succeeded",
+      type: "kb.upsert",
+      storeId,
+      result: { docId: result?.docId }
+    });
+    return res.json({ ok: true, jobId, result });
+  } catch (err) {
+    await setJobStatus(jobId, {
+      status: "failed",
+      type: "kb.upsert",
+      storeId,
+      error: err?.body?.error || err?.message || "Job failed"
+    });
+    return res.status(err.status || 500).json(err.body || { error: "Job failed" });
+  }
+};
+
+const internalKbRefreshHandler = async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const { jobId, storeId: rawStoreId, body } = req.body || {};
+  if (!jobId) {
+    return res.status(400).json({ error: "jobId is required" });
+  }
+  const existingStatus = await readJobStatus(jobId);
+  if (existingStatus?.status === "succeeded") {
+    return res.json(existingStatus);
+  }
+  const storeId = rawStoreId || DOCUMENT_STORE_ID;
+  await setJobStatus(jobId, { status: "processing", type: "kb.refresh", storeId });
+  try {
+    const result = await performRefresh({ storeId, body: body || {} });
+    await setJobStatus(jobId, { status: "succeeded", type: "kb.refresh", storeId });
+    return res.json({ ok: true, jobId, result });
+  } catch (err) {
+    await setJobStatus(jobId, {
+      status: "failed",
+      type: "kb.refresh",
+      storeId,
+      error: err?.body?.error || err?.message || "Job failed"
+    });
+    return res.status(err.status || 500).json(err.body || { error: "Job failed" });
   }
 };
 
@@ -762,7 +1554,17 @@ const persistChatInteraction = async ({ flowId, sessionId, question, answer, req
   });
 };
 
-const streamPredictionToClient = async ({ req, res, flowId, payload, sessionId, userId, question, requestMeta }) => {
+const streamPredictionToClient = async ({
+  req,
+  res,
+  flowId,
+  payload,
+  sessionId,
+  userId,
+  question,
+  requestMeta,
+  metricContext
+}) => {
   payload.streaming = true;
 
   const headers = {
@@ -811,6 +1613,17 @@ const streamPredictionToClient = async ({ req, res, flowId, payload, sessionId, 
     if (upstream?.data?.destroy) {
       upstream.data.destroy();
     }
+    if (metricContext?.startedAt) {
+      const durationSeconds = hrtimeSeconds(metricContext.startedAt);
+      const cpuSeconds = cpuUsageSeconds(metricContext.cpuStart || process.cpuUsage());
+      observePredictionMetrics({
+        flowId,
+        status: "error",
+        stream: true,
+        durationSeconds,
+        cpuSeconds
+      });
+    }
   };
 
   upstream.data.on("data", handleChunk);
@@ -819,8 +1632,36 @@ const streamPredictionToClient = async ({ req, res, flowId, payload, sessionId, 
     try {
       const answerPayload = { text: aggregated, streamTokens };
       await persistChatInteraction({ flowId, sessionId, question, answer: answerPayload, requestMeta, userId });
+      if (metricContext?.startedAt) {
+        const durationSeconds = hrtimeSeconds(metricContext.startedAt);
+        const cpuSeconds = cpuUsageSeconds(metricContext.cpuStart || process.cpuUsage());
+        const tokens = estimateTokens(aggregated);
+        const costUsd = estimateCostUsdFromTokens(tokens);
+        const gpuUtilPercent = sampleGpuUtilization();
+        observePredictionMetrics({
+          flowId,
+          status: "success",
+          stream: true,
+          durationSeconds,
+          cpuSeconds,
+          tokens,
+          costUsd,
+          gpuUtilPercent
+        });
+      }
     } catch (err) {
       console.error("stream persistence error:", err);
+      if (metricContext?.startedAt) {
+        const durationSeconds = hrtimeSeconds(metricContext.startedAt);
+        const cpuSeconds = cpuUsageSeconds(metricContext.cpuStart || process.cpuUsage());
+        observePredictionMetrics({
+          flowId,
+          status: "error",
+          stream: true,
+          durationSeconds,
+          cpuSeconds
+        });
+      }
     } finally {
       if (!res.writableEnded) {
         res.write("event: done\ndata: \"done\"\n\n");
@@ -837,7 +1678,16 @@ const streamPredictionToClient = async ({ req, res, flowId, payload, sessionId, 
 };
 
 const predictionProxyHandler = async (req, res) => {
+  const metricContext = {
+    startedAt: process.hrtime.bigint(),
+    cpuStart: process.cpuUsage()
+  };
   try {
+    if (activePredictions >= MAX_CONCURRENT_PREDICTIONS) {
+      return res.status(429).json({ error: "Too many concurrent predictions, please retry shortly" });
+    }
+    activePredictions += 1;
+
     const { flowId } = req.params;
     if (!flowId) {
       return res.status(400).json({ error: "flowId is required" });
@@ -875,7 +1725,8 @@ const predictionProxyHandler = async (req, res) => {
         sessionId,
         userId,
         question,
-        requestMeta
+        requestMeta,
+        metricContext
       });
       return;
     }
@@ -883,10 +1734,46 @@ const predictionProxyHandler = async (req, res) => {
     const response = await callFlowise("post", `/api/v1/prediction/${flowId}`, payload);
     await persistChatInteraction({ flowId, sessionId, question, answer: response, requestMeta, userId });
 
+    const durationSeconds = hrtimeSeconds(metricContext.startedAt);
+    const cpuSeconds = cpuUsageSeconds(metricContext.cpuStart);
+    const textCandidate =
+      typeof response?.text === "string"
+        ? response.text
+        : typeof response === "string"
+          ? response
+          : JSON.stringify(response || {});
+    const tokens = estimateTokens(textCandidate);
+    const costUsd = Number.isFinite(response?.costUsd)
+      ? Number(response.costUsd)
+      : estimateCostUsdFromTokens(tokens);
+    const gpuUtilPercent = sampleGpuUtilization();
+
+    observePredictionMetrics({
+      flowId,
+      status: "success",
+      stream: false,
+      durationSeconds,
+      cpuSeconds,
+      tokens,
+      costUsd,
+      gpuUtilPercent
+    });
+
     return res.json({ ...response, sessionId });
   } catch (err) {
     console.error("prediction proxy error:", err);
+    const durationSeconds = metricContext?.startedAt ? hrtimeSeconds(metricContext.startedAt) : undefined;
+    const cpuSeconds = metricContext?.cpuStart ? cpuUsageSeconds(metricContext.cpuStart) : cpuUsageSeconds(process.cpuUsage());
+    observePredictionMetrics({
+      flowId: req?.params?.flowId,
+      status: "error",
+      stream: false,
+      durationSeconds,
+      cpuSeconds
+    });
     return res.status(err.status || 500).json(err.body || { error: "Unable to complete prediction" });
+  } finally {
+    activePredictions = Math.max(0, activePredictions - 1);
   }
 };
 
@@ -931,8 +1818,14 @@ app.get("/api/kb/store/:storeId", getManifestHandler);
 
 app.get("/api/kb/loaders", listDocumentsHandler);
 app.get("/api/kb/:storeId/loaders", listDocumentsHandler);
+app.get("/api/kb/entries", listLoaderEntriesHandler);
+app.get("/api/kb/:storeId/entries", listLoaderEntriesHandler);
+app.get("/api/kb/loaders/:loaderId", getLoaderHandler);
+app.get("/api/kb/:storeId/loaders/:loaderId", getLoaderHandler);
 app.get("/api/kb/loaders/:loaderId/chunks", listChunksHandler);
 app.get("/api/kb/:storeId/loaders/:loaderId/chunks", listChunksHandler);
+app.put("/api/kb/loaders/:loaderId/chunks/:chunkId", updateChunkHandler);
+app.put("/api/kb/:storeId/loaders/:loaderId/chunks/:chunkId", updateChunkHandler);
 
 app.post("/api/kb/loaders", upload.single("file"), uploadAndUpsertHandler);
 app.post("/api/kb/:storeId/loaders", upload.single("file"), uploadAndUpsertHandler);
@@ -940,6 +1833,8 @@ app.post("/api/kb/:storeId/loaders", upload.single("file"), uploadAndUpsertHandl
 app.delete("/api/kb/loaders/:loaderId", deleteLoaderHandler);
 app.delete("/api/kb/:storeId/loaders/:loaderId", deleteLoaderHandler);
 
+app.put("/api/kb/loaders/:loaderId", upload.single("file"), reprocessHandler);
+app.put("/api/kb/:storeId/loaders/:loaderId", upload.single("file"), reprocessHandler);
 app.post("/api/kb/loaders/:loaderId/process", upload.single("file"), reprocessHandler);
 app.post("/api/kb/:storeId/loaders/:loaderId/process", upload.single("file"), reprocessHandler);
 
@@ -948,6 +1843,26 @@ app.post("/api/kb/:storeId/upsert", jsonUpsertHandler);
 
 app.post("/api/kb/refresh", refreshHandler);
 app.post("/api/kb/:storeId/refresh", refreshHandler);
+
+app.get("/api/jobs/:jobId", async (req, res) => {
+  const status = await readJobStatus(req.params.jobId);
+  if (!status) return res.status(404).json({ error: "Job not found" });
+  return res.json(status);
+});
+
+app.post("/internal/jobs/kb/ingest", internalKbIngestHandler);
+app.post("/internal/jobs/kb/reprocess", internalKbReprocessHandler);
+app.post("/internal/jobs/kb/upsert", internalKbUpsertHandler);
+app.post("/internal/jobs/kb/refresh", internalKbRefreshHandler);
+app.post("/internal/jobs/status", async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const { jobId, status, error, result, type, storeId } = req.body || {};
+  if (!jobId || !status) {
+    return res.status(400).json({ error: "jobId and status are required" });
+  }
+  const record = await setJobStatus(jobId, { status, error, result, type, storeId });
+  return res.json(record);
+});
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/metrics", metricsHandler);

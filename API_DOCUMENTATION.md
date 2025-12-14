@@ -590,8 +590,7 @@ Get full chat history for a specific session.
 ---
 
 ### GET `/api/kb` or `/api/kb/store/:storeId`
-
-Get knowledge base documents (manifest).
+Get knowledge base documents with metadata.
 
 **Response (200):**
 
@@ -600,7 +599,11 @@ Get knowledge base documents (manifest).
   "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
   "documents": [
     {
-      "docId": "loader-1",
+      "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+      "loaderId": "loader-1",
+      "kbId": "kb-entry-uuid",
+      "name": "Office Hours Policy",
+      "description": "Company office hours and schedule",
       "filename": "office_hours.pdf",
       "size": 245632,
       "uploadedAt": "2025-11-20T15:30:00Z",
@@ -610,7 +613,11 @@ Get knowledge base documents (manifest).
       }
     },
     {
-      "docId": "loader-2",
+      "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+      "loaderId": "loader-2",
+      "kbId": "kb-entry-uuid-2",
+      "name": "FAQ",
+      "description": "Frequently asked questions",
       "filename": "faq.pdf",
       "size": 512000,
       "uploadedAt": "2025-11-19T10:00:00Z"
@@ -631,8 +638,84 @@ List documents in knowledge base (same as manifest).
 
 ---
 
-### GET `/api/kb/:storeId/loaders/:loaderId/chunks`
+### GET `/api/kb/entries` or `/api/kb/:storeId/entries`
+Get normalized knowledge base entries with full metadata from MongoDB KB store.
 
+**Response (200):**
+```json
+{
+  "entries": [
+    {
+      "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+      "loaderId": "loader-1",
+      "kbId": "kb-entry-uuid",
+      "name": "Office Hours Policy",
+      "description": "Company office hours and schedule",
+      "filename": "office_hours.pdf",
+      "size": 245632,
+      "uploadedAt": "2025-11-20T15:30:00Z",
+      "createdAt": "2025-11-20T15:30:00Z",
+      "updatedAt": "2025-11-20T15:30:00Z",
+      "metadata": {
+        "department": "HR",
+        "category": "policies",
+        "version": "1.0"
+      }
+    },
+    {
+      "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+      "loaderId": "loader-2",
+      "kbId": "kb-entry-uuid-2",
+      "name": "FAQ",
+      "description": "Frequently asked questions",
+      "filename": "faq.pdf",
+      "size": 512000,
+      "uploadedAt": "2025-11-19T10:00:00Z",
+      "createdAt": "2025-11-19T10:00:00Z",
+      "updatedAt": "2025-11-19T10:00:00Z",
+      "metadata": {}
+    }
+  ]
+}
+```
+
+**Notes:**
+- Returns normalized entries directly from MongoDB KB store
+- Includes full metadata for each entry (name, description, creation/update timestamps)
+- `/api/kb/entries` uses default store ID
+- `/api/kb/:storeId/entries` uses explicit store ID in URL
+
+---
+
+### GET `/api/kb/:storeId/loaders/:loaderId` or `/api/kb/loaders/:loaderId`
+Get a single document with full details.
+
+**Response (200):**
+```json
+{
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "loaderId": "loader-1",
+  "kbId": "kb-entry-uuid",
+  "name": "Office Hours Policy",
+  "description": "Company office hours and schedule",
+  "filename": "office_hours.pdf",
+  "size": 245632,
+  "uploadedAt": "2025-11-20T15:30:00Z",
+  "metadata": {
+    "department": "HR",
+    "category": "policies"
+  },
+  "createdAt": "2025-11-20T15:30:00Z",
+  "updatedAt": "2025-11-20T15:30:00Z"
+}
+```
+
+**Error Responses:**
+- `404 { "error": "Unable to read knowledge base entry" }` — Loader not found
+
+---
+
+### GET `/api/kb/:storeId/loaders/:loaderId/chunks` or `/api/kb/loaders/:loaderId/chunks`
 Get chunks (text segments) from a document.
 
 **Query Parameters:**
@@ -661,32 +744,65 @@ Get chunks (text segments) from a document.
 }
 ```
 
+**Error Responses:**
+- `400 { "error": "loaderId is required" }` — Missing loader ID
+
+---
+
+### PUT `/api/kb/:storeId/loaders/:loaderId/chunks/:chunkId` or `/api/kb/loaders/:loaderId/chunks/:chunkId`
+Update content of a specific chunk.
+
+**Request:**
+```json
+{
+  "content": "Updated chunk content here...",
+  "metadata": {
+    "reviewed": true,
+    "reviewer": "admin@example.com"
+  }
+}
+```
+
+**Response (200):**
+```json
+{
+  "chunkId": "chunk-1",
+  "loaderId": "loader-1",
+  "updated": true,
+  "updatedAt": "2025-11-21T14:15:00Z"
+}
+```
+
+**Error Responses:**
+- `400 { "error": "content is required" }` — Missing content field
+
 ---
 
 ### POST `/api/kb/:storeId/loaders` or `/api/kb/loaders`
-
-Upload a document to knowledge base.
+Upload a document to knowledge base and automatically process it (extract text, split into chunks, embed).
 
 **Request:**
 
 - **Content-Type:** `multipart/form-data`
 - **Fields:**
-  - `file` (required) — PDF, DOCX, TXT, etc.
-  - `metadata` (optional) — JSON string with custom metadata
-  - `replaceExisting` (optional) — "true" to replace if docId exists
+  - `file` (required) — PDF, DOCX, CSV, TXT, etc. (Allowed: .pdf, .doc, .docx, .csv, .xls, .xlsx)
+  - `name` (required) — Display name for the document
+  - `description` (required) — Brief description of document content
+  - `metadata` (optional) — JSON string with additional custom metadata
+  - `replaceExisting` (optional) — "true" to replace existing document
 
 **Example (using FormData):**
 
 ```javascript
 const formData = new FormData();
-formData.append("file", file); // File object
-formData.append(
-  "metadata",
-  JSON.stringify({
-    department: "HR",
-    category: "policies",
-  })
-);
+formData.append('file', file);  // File object
+formData.append('name', 'Office Hours Policy');
+formData.append('description', 'Company office hours and business schedule');
+formData.append('metadata', JSON.stringify({
+  department: 'HR',
+  category: 'policies',
+  version: '1.0'
+}));
 ```
 
 **Response (200):**
@@ -694,12 +810,21 @@ formData.append(
 ```json
 {
   "docId": "loader-new-1",
+  "loaderId": "loader-new-1",
+  "kbId": "kb-entry-uuid",
   "filename": "office_hours.pdf",
   "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
   "size": 245632,
   "uploadedAt": "2025-11-21T14:00:00Z"
 }
 ```
+
+**Error Responses:**
+- `400 { "error": "file field is required" }` — No file provided
+- `400 { "error": "name is required" }` — Missing document name
+- `400 { "error": "description is required" }` — Missing description
+- `400 { "error": "Unsupported file type..." }` — Invalid file type
+- `500 { "error": "Unable to upsert document" }` — Processing error
 
 ---
 
@@ -712,50 +837,86 @@ Delete a document from knowledge base.
 ```json
 {
   "docId": "loader-1",
+  "loaderId": "loader-1",
   "deleted": true,
   "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e"
 }
 ```
 
+**Error Responses:**
+- `400 { "error": "loaderId is required" }` — Missing loader ID
+- `500 { "error": "Unable to delete document" }` — Deletion error
+
 ---
 
-### POST `/api/kb/:storeId/loaders/:loaderId/process` or `/api/kb/loaders/:loaderId/process`
-
-Reprocess a document (update metadata, re-split chunks, etc.).
+### PUT `/api/kb/:storeId/loaders/:loaderId` or `/api/kb/loaders/:loaderId`
+Update or reprocess a document (update metadata, replace file, re-split chunks).
 
 **Request:**
 
 - **Content-Type:** `multipart/form-data`
 - **Fields:**
-  - `file` (optional) — New file to replace
-  - `metadata` (optional) — Updated metadata
-  - `replaceExisting` (optional) — "true" to replace content
+  - `file` (optional) — New file to replace document
+  - `name` (optional) — Update document name
+  - `description` (optional) — Update description
+  - `metadata` (optional) — JSON string with updated metadata
+  - `replaceExisting` (optional) — "false" to append chunks instead of replacing (default: true)
+
+**Example (using FormData):**
+```javascript
+const formData = new FormData();
+formData.append('file', updatedFile);  // Optional
+formData.append('name', 'Updated Office Hours');
+formData.append('description', 'Updated office schedule and policies');
+formData.append('metadata', JSON.stringify({
+  version: '1.1',
+  lastReviewed: new Date().toISOString()
+}));
+```
 
 **Response (200):**
 
 ```json
 {
   "docId": "loader-1",
+  "loaderId": "loader-1",
+  "kbId": "kb-entry-uuid",
   "processedAt": "2025-11-21T14:10:00Z",
-  "status": "success"
+  "status": "success",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e"
 }
 ```
+
+**Error Responses:**
+- `400 { "error": "loaderId is required" }` — Missing loader ID
+- `400 { "error": "name is required" }` — Name cannot be empty
+- `400 { "error": "description is required" }` — Description cannot be empty
+- `500 { "error": "Unable to process document" }` — Processing error
+
+---
+
+### POST `/api/kb/:storeId/loaders/:loaderId/process` or `/api/kb/loaders/:loaderId/process`
+Reprocess a document (same as PUT, alternative endpoint).
+
+**Request:** Same as PUT endpoint
+
+**Response (200):** Same as PUT endpoint
 
 ---
 
 ### POST `/api/kb/:storeId/upsert` or `/api/kb/upsert`
-
-Upsert (insert or update) documents via JSON.
+Upsert (insert or update) documents via JSON (raw text content, not files).
 
 **Request:**
 
 ```json
 {
   "docId": "manual-doc-1",
-  "text": "Office policy content here...",
+  "text": "Office policy content here. Detailed text content that will be split into chunks...",
   "metadata": {
     "source": "manual",
-    "department": "HR"
+    "department": "HR",
+    "version": "1.0"
   }
 }
 ```
@@ -766,15 +927,19 @@ Upsert (insert or update) documents via JSON.
 {
   "docId": "manual-doc-1",
   "status": "upserted",
-  "chunksCount": 3
+  "chunksCount": 3,
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e"
 }
 ```
+
+**Error Responses:**
+- `400 { "error": "Request body is required" }` — Empty request body
+- `500 { "error": "Unable to upsert document" }` — Processing error
 
 ---
 
 ### POST `/api/kb/:storeId/refresh` or `/api/kb/refresh`
-
-Refresh/rebuild the knowledge base (reprocess all documents).
+Refresh/rebuild the knowledge base vector store (reindex all documents).
 
 **Request:** (empty body or {})
 
@@ -783,13 +948,17 @@ Refresh/rebuild the knowledge base (reprocess all documents).
 ```json
 {
   "status": "refresh_started",
-  "totalDocuments": 5
+  "totalDocuments": 5,
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e"
 }
 ```
 
-**Notes:**
+**Error Responses:**
+- `500 { "error": "Unable to refresh document store" }` — Refresh error
 
-- Async operation, returns immediately
+**Notes:**
+- Async operation, returns immediately after starting
+- Rebuilds vector embeddings for all documents in the store
 - Check document list later to see updated status
 
 ---
@@ -860,22 +1029,81 @@ displaySources(sourceDocuments);
 
 ```javascript
 const formData = new FormData();
-formData.append("file", fileInput.files[0]);
-formData.append(
-  "metadata",
-  JSON.stringify({
-    department: "IT",
-    category: "guides",
-  })
-);
+const file = fileInput.files[0];
+formData.append('file', file);
+formData.append('name', 'IT Guidelines');
+formData.append('description', 'IT department policies and guidelines for employees');
+formData.append('metadata', JSON.stringify({
+  department: 'IT',
+  category: 'guides',
+  version: '2.1'
+}));
 
-const uploadResponse = await fetch("http://localhost:4000/api/kb/loaders", {
-  method: "POST",
-  body: formData,
+const uploadResponse = await fetch('http://localhost:4000/api/kb/loaders', {
+  method: 'POST',
+  body: formData
 });
 
-const { docId, filename } = await uploadResponse.json();
-console.log(`Uploaded: ${filename} (${docId})`);
+if (!uploadResponse.ok) {
+  const error = await uploadResponse.json();
+  console.error('Upload failed:', error.error);
+} else {
+  const { docId, loaderId, filename } = await uploadResponse.json();
+  console.log(`Uploaded: ${filename} (${loaderId})`);
+}
+```
+
+### Update Document in KB
+```javascript
+const formData = new FormData();
+formData.append('name', 'Updated IT Guidelines');
+formData.append('description', 'Updated policies and procedures');
+formData.append('metadata', JSON.stringify({
+  version: '2.2',
+  lastUpdated: new Date().toISOString()
+}));
+
+const updateResponse = await fetch('http://localhost:4000/api/kb/loaders/loader-1', {
+  method: 'PUT',
+  body: formData
+});
+
+const result = await updateResponse.json();
+console.log(`Updated: ${result.loaderId}`);
+```
+
+### Get Document Details
+```javascript
+const loaderResponse = await fetch('http://localhost:4000/api/kb/loaders/loader-1');
+const document = await loaderResponse.json();
+
+console.log(`Name: ${document.name}`);
+console.log(`Description: ${document.description}`);
+console.log(`Uploaded: ${document.uploadedAt}`);
+console.log(`Size: ${document.size} bytes`);
+```
+
+### Get and Update Chunk Content
+```javascript
+// Get chunks from document
+const chunksResponse = await fetch('http://localhost:4000/api/kb/loaders/loader-1/chunks?page=1');
+const { chunks } = await chunksResponse.json();
+
+// Update a specific chunk
+const chunkUpdate = await fetch('http://localhost:4000/api/kb/loaders/loader-1/chunks/chunk-1', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    content: 'Corrected or updated chunk text...',
+    metadata: {
+      reviewed: true,
+      reviewer: 'admin@company.com'
+    }
+  })
+});
+
+const updateResult = await chunkUpdate.json();
+console.log('Chunk updated at:', updateResult.updatedAt);
 ```
 
 ### Stream Chat Response

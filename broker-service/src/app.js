@@ -4,6 +4,7 @@ import cors from "cors";
 import { initAMQP, publish } from "./amqp.js";
 import { logEvent, requestContext, requestLogger } from "./logger.js";
 import { metricsMiddleware, metricsHandler, recordPublish } from "./metrics.js";
+import crypto from "crypto";
 
 dotenv.config();
 const app = express();
@@ -88,6 +89,52 @@ app.post("/publish/log", async (req, res) => {
     recordPublish("log.event");
     res.json({ ok: true });
   } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+const ALLOWED_ROUTING_KEYS = new Set([
+  "kb.ingest",
+  "kb.reprocess",
+  "kb.upsert",
+  "kb.refresh",
+  "llm.batch",
+  "analytics.rollup"
+]);
+
+const createJobId = () => crypto.randomUUID();
+
+app.post("/publish/job", async (req, res) => {
+  try {
+    const { routingKey, payload = {}, jobId } = req.body || {};
+    if (!routingKey || !ALLOWED_ROUTING_KEYS.has(routingKey)) {
+      return res.status(400).json({ error: "Invalid routingKey" });
+    }
+
+    const id = jobId || createJobId();
+    const message = { ...payload, jobId: id, routingKey };
+
+    await publish(routingKey, message);
+    recordPublish(routingKey);
+
+    logEvent({
+      level: "info",
+      event: "job_published",
+      message: `Job published to ${routingKey}`,
+      requestId: req.requestId,
+      correlationId: req.correlationId,
+      context: { routingKey, jobId: id }
+    });
+
+    res.status(202).json({ ok: true, jobId: id });
+  } catch (e) {
+    logEvent({
+      level: "error",
+      event: "job_publish_failed",
+      message: e.message,
+      requestId: req.requestId,
+      correlationId: req.correlationId
+    });
     res.status(500).json({ error: e.message });
   }
 });
