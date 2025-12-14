@@ -571,6 +571,55 @@ List documents in knowledge base (same as manifest).
 
 ---
 
+### GET `/api/kb/entries` or `/api/kb/:storeId/entries`
+Get normalized knowledge base entries with full metadata from MongoDB KB store.
+
+**Response (200):**
+```json
+{
+  "entries": [
+    {
+      "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+      "loaderId": "loader-1",
+      "kbId": "kb-entry-uuid",
+      "name": "Office Hours Policy",
+      "description": "Company office hours and schedule",
+      "filename": "office_hours.pdf",
+      "size": 245632,
+      "uploadedAt": "2025-11-20T15:30:00Z",
+      "createdAt": "2025-11-20T15:30:00Z",
+      "updatedAt": "2025-11-20T15:30:00Z",
+      "metadata": {
+        "department": "HR",
+        "category": "policies",
+        "version": "1.0"
+      }
+    },
+    {
+      "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+      "loaderId": "loader-2",
+      "kbId": "kb-entry-uuid-2",
+      "name": "FAQ",
+      "description": "Frequently asked questions",
+      "filename": "faq.pdf",
+      "size": 512000,
+      "uploadedAt": "2025-11-19T10:00:00Z",
+      "createdAt": "2025-11-19T10:00:00Z",
+      "updatedAt": "2025-11-19T10:00:00Z",
+      "metadata": {}
+    }
+  ]
+}
+```
+
+**Notes:**
+- Returns normalized entries directly from MongoDB KB store
+- Includes full metadata for each entry (name, description, creation/update timestamps)
+- `/api/kb/entries` uses default store ID
+- `/api/kb/:storeId/entries` uses explicit store ID in URL
+
+---
+
 ### GET `/api/kb/:storeId/loaders/:loaderId` or `/api/kb/loaders/:loaderId`
 Get a single document with full details.
 

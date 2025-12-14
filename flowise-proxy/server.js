@@ -29,6 +29,9 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || "/uploads";
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const READ_TIMEOUT_MS = parseInt(process.env.READ_TIMEOUT_MS || "60000", 10);
 const DOCUMENT_STORE_ID = process.env.DOCUMENT_STORE_ID || "d21759a2-d263-414e-b5a4-f2e5819d516e";
+const BROKER_URL = process.env.BROKER_URL || "http://broker-service:3000";
+const ASYNC_KB = (process.env.ASYNC_KB || "true").toLowerCase() === "true";
+const WORKER_TOKEN = process.env.WORKER_TOKEN || process.env.INTERNAL_JOB_TOKEN || "change-me";
 const MONGO_URI = process.env.MONGO_URI || "mongodb://mongo:27017/helpdesk";
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME || null;
 const COST_PER_1K_TOKENS = (() => {
@@ -39,6 +42,12 @@ const DEFAULT_TEXT_SPLITTER = {
   chunkSize: 1000,
   chunkOverlap: 200
 };
+
+const MAX_CONCURRENT_PREDICTIONS = (() => {
+  const parsed = Number(process.env.MAX_CONCURRENT_PREDICTIONS || 4);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
+})();
+let activePredictions = 0;
 
 const safeParseJSON = (raw, fallback) => {
   if (!raw) return fallback;
@@ -499,6 +508,58 @@ const writeManifest = async (storeId, data) => {
   await fsp.writeFile(MANIFEST_FILE(storeId), JSON.stringify(data, null, 2));
 };
 
+const JOB_STATUS_DIR = path.join(UPLOAD_DIR, "jobs");
+
+const ensureJobDir = async () => {
+  await fsp.mkdir(JOB_STATUS_DIR, { recursive: true });
+};
+
+const jobStatusPath = (jobId) => path.join(JOB_STATUS_DIR, `${jobId}.json`);
+
+const setJobStatus = async (jobId, patch = {}) => {
+  await ensureJobDir();
+  const now = new Date().toISOString();
+  let existing = {};
+  try {
+    existing = JSON.parse(await fsp.readFile(jobStatusPath(jobId), "utf8"));
+  } catch (_) {
+    existing = { jobId, createdAt: now };
+  }
+  const payload = {
+    ...existing,
+    ...patch,
+    jobId,
+    createdAt: existing.createdAt || now,
+    updatedAt: now
+  };
+  await fsp.writeFile(jobStatusPath(jobId), JSON.stringify(payload, null, 2));
+  return payload;
+};
+
+const readJobStatus = async (jobId) => {
+  try {
+    const raw = await fsp.readFile(jobStatusPath(jobId), "utf8");
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+};
+
+const isWorkerRequest = (req) => {
+  const tokenHeader = req.get("x-worker-token") || req.get("authorization");
+  if (!tokenHeader) return false;
+  const token = tokenHeader.startsWith("Bearer ") ? tokenHeader.slice(7) : tokenHeader;
+  return token === WORKER_TOKEN;
+};
+
+const ensureWorkerAuth = (req, res) => {
+  if (!isWorkerRequest(req)) {
+    res.status(403).json({ error: "forbidden" });
+    return false;
+  }
+  return true;
+};
+
 const upsertManifestEntry = async (storeId, patch) => {
   if (!patch?.docId) return;
   const manifest = await readManifest(storeId);
@@ -569,13 +630,22 @@ const mergeLoaderWithKbEntry = ({ loader, kbEntry, storeId }) => {
   const resolvedStoreId = kbEntry?.storeId || storeId || DOCUMENT_STORE_ID;
   const loaderId = kbEntry?.loaderId || loader?.id || metadata?.docId || null;
   const nameCandidate =
-    kbEntry?.name || metadata?.name || metadata?.title || loader?.name || loader?.fileName || loaderId;
-  const descriptionCandidate = kbEntry?.description || metadata?.description || metadata?.summary || "";
+    kbEntry?.name ||
+    resolveName({ name: null, metadata: { ...metadata, name: loader?.name }, fallback: loaderId || loader?.fileName });
+  const descriptionCandidate = resolveDescription({
+    description: kbEntry?.description,
+    metadata
+  });
   const filename =
-    kbEntry?.filename || loader?.fileName || metadata?.originalFileName || metadata?.filename || null;
+    kbEntry?.filename || loader?.fileName || metadata?.originalFileName || metadata?.filename || metadata?.name || null;
   const size = kbEntry?.size || metadata?.size || loader?.size || null;
   const uploadedAt =
-    kbEntry?.uploadedAt || loader?.uploadedAt || metadata?.uploadedAt || loader?.createdAt || null;
+    kbEntry?.uploadedAt ||
+    metadata?.uploadedAt ||
+    loader?.uploadedAt ||
+    loader?.createdAt ||
+    kbEntry?.createdAt ||
+    null;
   const mergedMetadata =
     kbEntry?.metadata && Object.keys(kbEntry.metadata || {}).length ? kbEntry.metadata : metadata;
 
@@ -669,6 +739,137 @@ const sendUpsertForm = async (storeId, form) => {
   });
 };
 
+const resolveName = ({ name, metadata, fallback }) => {
+  return (
+    pickNonEmptyString(name) ||
+    pickNonEmptyString(metadata?.name) ||
+    pickNonEmptyString(metadata?.title) ||
+    pickNonEmptyString(metadata?.filename) ||
+    pickNonEmptyString(metadata?.originalFileName) ||
+    pickNonEmptyString(fallback) ||
+    "KB Entry"
+  );
+};
+
+const resolveDescription = ({ description, metadata }) => {
+  if (typeof description === "string" && description.trim()) return description.trim();
+  if (metadata?.description && `${metadata.description}`.trim()) return `${metadata.description}`.trim();
+  if (metadata?.summary && `${metadata.summary}`.trim()) return `${metadata.summary}`.trim();
+  return "";
+};
+
+const performUpsert = async ({ storeId, filePath, originalName, metadata, replaceExisting, name, description }) => {
+  if (!filePath || !originalName) {
+    throw { status: 400, body: { error: "filePath and originalName are required" } };
+  }
+  const stat = await fsp.stat(filePath);
+  const fauxFile = {
+    path: filePath,
+    originalname: originalName,
+    size: stat.size
+  };
+
+  const form = buildUpsertForm({
+    metadata: metadata || { originalFileName: originalName },
+    replaceExisting: !!replaceExisting,
+    file: fauxFile
+  });
+  const result = await sendUpsertForm(storeId, form);
+  const kbEntry = await knowledgeBaseStore.upsert({
+    storeId,
+    loaderId: result.docId,
+    name: resolveName({ name, metadata, fallback: result.docId || originalName }),
+    description: resolveDescription({ description, metadata }),
+    metadata,
+    filename: originalName,
+    size: stat.size,
+    uploadedAt: new Date()
+  });
+  await upsertManifestEntry(storeId, {
+    docId: result.docId,
+    filename: originalName,
+    size: stat.size,
+    metadata,
+    uploadedAt: new Date().toISOString()
+  });
+  await cleanupUploadedFile(fauxFile);
+  return { ...result, storeId, kbEntry };
+};
+
+const performReprocess = async ({
+  storeId,
+  loaderId,
+  metadata,
+  replaceExisting = true,
+  filePath,
+  originalName,
+  name,
+  description
+}) => {
+  if (!loaderId) {
+    throw { status: 400, body: { error: "loaderId is required" } };
+  }
+
+  let fauxFile = null;
+  if (filePath && originalName) {
+    const stat = await fsp.stat(filePath);
+    fauxFile = { path: filePath, originalname: originalName, size: stat.size };
+  }
+
+  const form = buildUpsertForm({
+    docId: loaderId,
+    metadata: metadata || undefined,
+    replaceExisting: replaceExisting !== false,
+    file: fauxFile || undefined
+  });
+
+  const result = await sendUpsertForm(storeId, form);
+  const kbEntry = await knowledgeBaseStore.upsert({
+    storeId,
+    loaderId,
+    name: resolveName({ name, metadata, fallback: loaderId }),
+    description: resolveDescription({ description, metadata }),
+    metadata,
+    filename: originalName || undefined
+  });
+  await upsertManifestEntry(storeId, {
+    docId: loaderId,
+    metadata: metadata || undefined,
+    processedAt: new Date().toISOString()
+  });
+
+  if (fauxFile) {
+    await cleanupUploadedFile(fauxFile);
+  }
+  return { ...result, storeId, kbEntry };
+};
+
+const performJsonUpsert = async ({ storeId, body }) => {
+  if (!body || typeof body !== "object" || !Object.keys(body).length) {
+    throw { status: 400, body: { error: "Request body is required" } };
+  }
+  const pathUrl = `/api/v1/document-store/upsert/${storeId}`;
+  const result = await callFlowise("post", pathUrl, body);
+  if (result?.docId) {
+    await knowledgeBaseStore.upsert({
+      storeId,
+      loaderId: result.docId,
+      name: resolveName({ name: body.name, metadata: body.metadata, fallback: result.docId }),
+      description: resolveDescription({ description: body.description, metadata: body.metadata }),
+      metadata: body.metadata || {},
+      filename: body.filename || body.metadata?.originalFileName || null,
+      size: body.metadata?.size || null,
+      uploadedAt: body.uploadedAt ? new Date(body.uploadedAt) : new Date()
+    });
+  }
+  return result;
+};
+
+const performRefresh = async ({ storeId, body }) => {
+  const pathUrl = `/api/v1/document-store/refresh/${storeId}`;
+  return callFlowise("post", pathUrl, body || {});
+};
+
 // helper to forward to Flowise, forwarding error body
 const callFlowise = async (method, url, data, config = {}) => {
   try {
@@ -694,6 +895,15 @@ const callFlowise = async (method, url, data, config = {}) => {
     }
     throw { status: 500, body: { error: err.message } };
   }
+};
+
+const enqueueJob = async (routingKey, payload, jobId) => {
+  const target = `${BROKER_URL}/publish/job`;
+  await axios.post(
+    target,
+    { routingKey, payload, jobId },
+    { timeout: READ_TIMEOUT_MS }
+  );
 };
 
 const extractTokensFromSseChunk = (chunk) => {
@@ -808,6 +1018,30 @@ const listChunksHandler = async (req, res) => {
   }
 };
 
+const listLoaderEntriesHandler = async (req, res) => {
+  try {
+    const storeId = getStoreIdFromReq(req);
+    const { documents } = await loadDocuments(storeId);
+    const entries = (documents || []).map((doc) => ({
+      storeId: doc.storeId || storeId,
+      loaderId: doc.loaderId || doc.docId || null,
+      kbId: doc.kbId || null,
+      name: doc.name || null,
+      description: doc.description || "",
+      filename: doc.filename || null,
+      size: doc.size ?? null,
+      uploadedAt: doc.uploadedAt || null,
+      metadata: doc.metadata || {},
+      createdAt: doc.createdAt || null,
+      updatedAt: doc.updatedAt || null
+    }));
+    return res.json(entries);
+  } catch (err) {
+    console.error("list loader entries error:", err);
+    return res.status(err.status || 500).json(err.body || { error: "Unable to read loader entries" });
+  }
+};
+
 const updateChunkHandler = async (req, res) => {
   try {
     const loaderId = pickFirstString(req.params?.loaderId);
@@ -864,6 +1098,34 @@ const uploadAndUpsertHandler = async (req, res) => {
     return res.status(err.status || 400).json(err.body || { error: "Invalid metadata" });
   }
 
+  // enqueue heavy KB ingestion if async mode is enabled
+  if (ASYNC_KB) {
+    try {
+      const jobId = randomUUID();
+      await setJobStatus(jobId, {
+        status: "queued",
+        type: "kb.ingest",
+        storeId,
+        payload: { name, description, filename: req.file.originalname }
+      });
+      await enqueueJob("kb.ingest", {
+        jobId,
+        storeId,
+        filePath: req.file.path,
+        originalName: req.file.originalname,
+        metadata,
+        replaceExisting: req.body?.replaceExisting === "true",
+        name,
+        description
+      });
+      return res.status(202).json({ jobId, status: "queued" });
+    } catch (err) {
+      console.error("enqueue kb.ingest failed:", err);
+      await cleanupUploadedFile(req.file);
+      return res.status(500).json({ error: "Unable to enqueue KB ingestion" });
+    }
+  }
+
   try {
     const form = buildUpsertForm({
       metadata,
@@ -909,7 +1171,9 @@ const uploadAndUpsertHandler = async (req, res) => {
     console.error("upsert upload error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to upsert document" });
   } finally {
-    await cleanupUploadedFile(req.file);
+    if (!ASYNC_KB) {
+      await cleanupUploadedFile(req.file);
+    }
   }
 };
 
@@ -971,6 +1235,36 @@ const reprocessHandler = async (req, res) => {
     metadata.size = req.file.size;
   }
 
+  if (ASYNC_KB) {
+    try {
+      const jobId = randomUUID();
+      await setJobStatus(jobId, {
+        status: "queued",
+        type: "kb.reprocess",
+        storeId,
+        payload: { loaderId, name, description }
+      });
+      await enqueueJob("kb.reprocess", {
+        jobId,
+        storeId,
+        loaderId,
+        metadata,
+        replaceExisting: req.body?.replaceExisting !== "false",
+        filePath: req.file?.path,
+        originalName: req.file?.originalname,
+        name,
+        description
+      });
+      return res.status(202).json({ jobId, status: "queued" });
+    } catch (err) {
+      console.error("enqueue kb.reprocess failed:", err);
+      if (req.file) {
+        await cleanupUploadedFile(req.file);
+      }
+      return res.status(500).json({ error: "Unable to enqueue KB reprocess" });
+    }
+  }
+
   try {
     const form = buildUpsertForm({
       docId: loaderId,
@@ -1004,7 +1298,7 @@ const reprocessHandler = async (req, res) => {
     console.error("reprocess error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to process document" });
   } finally {
-    if (req.file) {
+    if (!ASYNC_KB && req.file) {
       await cleanupUploadedFile(req.file);
     }
   }
@@ -1029,6 +1323,16 @@ const deleteLoaderHandler = async (req, res) => {
     await knowledgeBaseStore.remove({ loaderId, storeId });
     return res.json({ ...result, storeId, loaderId });
   } catch (err) {
+    const flowiseMessage = err?.body?.message || err?.message || "";
+    const isNotFound =
+      err?.status === 404 ||
+      /unable to locate loader/i.test(flowiseMessage) ||
+      /not found/i.test(flowiseMessage);
+
+    if (isNotFound) {
+      return res.status(404).json({ error: "Loader not found in document store" });
+    }
+
     console.error("delete loader error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to delete document" });
   }
@@ -1040,8 +1344,18 @@ const jsonUpsertHandler = async (req, res) => {
     if (!req.body || !Object.keys(req.body).length) {
       return res.status(400).json({ error: "Request body is required" });
     }
-    const pathUrl = `/api/v1/document-store/upsert/${storeId}`;
-    const result = await callFlowise("post", pathUrl, req.body);
+    if (ASYNC_KB) {
+      const jobId = randomUUID();
+      await setJobStatus(jobId, {
+        status: "queued",
+        type: "kb.upsert",
+        storeId,
+        payload: { docId: req.body?.docId }
+      });
+      await enqueueJob("kb.upsert", { jobId, storeId, body: req.body });
+      return res.status(202).json({ jobId, status: "queued" });
+    }
+    const result = await performJsonUpsert({ storeId, body: req.body });
     return res.json(result);
   } catch (err) {
     console.error("json upsert error:", err);
@@ -1053,12 +1367,171 @@ const refreshHandler = async (req, res) => {
   try {
     const storeId = getStoreIdFromReq(req);
     const body = req.body && Object.keys(req.body).length ? req.body : {};
-    const pathUrl = `/api/v1/document-store/refresh/${storeId}`;
-    const result = await callFlowise("post", pathUrl, body);
+    if (ASYNC_KB) {
+      const jobId = randomUUID();
+      await setJobStatus(jobId, { status: "queued", type: "kb.refresh", storeId });
+      await enqueueJob("kb.refresh", { jobId, storeId, body });
+      return res.status(202).json({ jobId, status: "queued" });
+    }
+    const result = await performRefresh({ storeId, body });
     return res.json(result);
   } catch (err) {
     console.error("refresh error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to refresh document store" });
+  }
+};
+
+const internalKbIngestHandler = async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const {
+    jobId,
+    storeId: rawStoreId,
+    filePath,
+    originalName,
+    metadata,
+    replaceExisting,
+    name,
+    description
+  } = req.body || {};
+  if (!jobId || !filePath || !originalName) {
+    return res.status(400).json({ error: "jobId, filePath, and originalName are required" });
+  }
+  const existingStatus = await readJobStatus(jobId);
+  if (existingStatus?.status === "succeeded") {
+    return res.json(existingStatus);
+  }
+  const storeId = rawStoreId || DOCUMENT_STORE_ID;
+  await setJobStatus(jobId, { status: "processing", type: "kb.ingest", storeId });
+  try {
+    const result = await performUpsert({
+      storeId,
+      filePath,
+      originalName,
+      metadata,
+      replaceExisting,
+      name,
+      description
+    });
+    await setJobStatus(jobId, { status: "succeeded", type: "kb.ingest", storeId, result: { docId: result.docId } });
+    return res.json({ ok: true, jobId, result });
+  } catch (err) {
+    await setJobStatus(jobId, {
+      status: "failed",
+      type: "kb.ingest",
+      storeId,
+      error: err?.body?.error || err?.message || "Job failed"
+    });
+    return res.status(err.status || 500).json(err.body || { error: "Job failed" });
+  }
+};
+
+const internalKbReprocessHandler = async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const {
+    jobId,
+    storeId: rawStoreId,
+    loaderId,
+    metadata,
+    replaceExisting,
+    filePath,
+    originalName,
+    name,
+    description
+  } = req.body || {};
+  if (!jobId || !loaderId) {
+    return res.status(400).json({ error: "jobId and loaderId are required" });
+  }
+  const existingStatus = await readJobStatus(jobId);
+  if (existingStatus?.status === "succeeded") {
+    return res.json(existingStatus);
+  }
+  const storeId = rawStoreId || DOCUMENT_STORE_ID;
+  await setJobStatus(jobId, { status: "processing", type: "kb.reprocess", storeId });
+  try {
+    const result = await performReprocess({
+      storeId,
+      loaderId,
+      metadata,
+      replaceExisting,
+      filePath,
+      originalName,
+      name,
+      description
+    });
+    await setJobStatus(jobId, {
+      status: "succeeded",
+      type: "kb.reprocess",
+      storeId,
+      result: { docId: result.docId || loaderId }
+    });
+    return res.json({ ok: true, jobId, result });
+  } catch (err) {
+    await setJobStatus(jobId, {
+      status: "failed",
+      type: "kb.reprocess",
+      storeId,
+      error: err?.body?.error || err?.message || "Job failed"
+    });
+    return res.status(err.status || 500).json(err.body || { error: "Job failed" });
+  }
+};
+
+const internalKbUpsertHandler = async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const { jobId, storeId: rawStoreId, body } = req.body || {};
+  if (!jobId) {
+    return res.status(400).json({ error: "jobId is required" });
+  }
+  const existingStatus = await readJobStatus(jobId);
+  if (existingStatus?.status === "succeeded") {
+    return res.json(existingStatus);
+  }
+  const storeId = rawStoreId || DOCUMENT_STORE_ID;
+  await setJobStatus(jobId, { status: "processing", type: "kb.upsert", storeId });
+  try {
+    const result = await performJsonUpsert({ storeId, body: body || {} });
+    await setJobStatus(jobId, {
+      status: "succeeded",
+      type: "kb.upsert",
+      storeId,
+      result: { docId: result?.docId }
+    });
+    return res.json({ ok: true, jobId, result });
+  } catch (err) {
+    await setJobStatus(jobId, {
+      status: "failed",
+      type: "kb.upsert",
+      storeId,
+      error: err?.body?.error || err?.message || "Job failed"
+    });
+    return res.status(err.status || 500).json(err.body || { error: "Job failed" });
+  }
+};
+
+const internalKbRefreshHandler = async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const { jobId, storeId: rawStoreId, body } = req.body || {};
+  if (!jobId) {
+    return res.status(400).json({ error: "jobId is required" });
+  }
+  const existingStatus = await readJobStatus(jobId);
+  if (existingStatus?.status === "succeeded") {
+    return res.json(existingStatus);
+  }
+  const storeId = rawStoreId || DOCUMENT_STORE_ID;
+  await setJobStatus(jobId, { status: "processing", type: "kb.refresh", storeId });
+  try {
+    const result = await performRefresh({ storeId, body: body || {} });
+    await setJobStatus(jobId, { status: "succeeded", type: "kb.refresh", storeId });
+    return res.json({ ok: true, jobId, result });
+  } catch (err) {
+    await setJobStatus(jobId, {
+      status: "failed",
+      type: "kb.refresh",
+      storeId,
+      error: err?.body?.error || err?.message || "Job failed"
+    });
+    return res.status(err.status || 500).json(err.body || { error: "Job failed" });
   }
 };
 
@@ -1210,6 +1683,11 @@ const predictionProxyHandler = async (req, res) => {
     cpuStart: process.cpuUsage()
   };
   try {
+    if (activePredictions >= MAX_CONCURRENT_PREDICTIONS) {
+      return res.status(429).json({ error: "Too many concurrent predictions, please retry shortly" });
+    }
+    activePredictions += 1;
+
     const { flowId } = req.params;
     if (!flowId) {
       return res.status(400).json({ error: "flowId is required" });
@@ -1294,6 +1772,8 @@ const predictionProxyHandler = async (req, res) => {
       cpuSeconds
     });
     return res.status(err.status || 500).json(err.body || { error: "Unable to complete prediction" });
+  } finally {
+    activePredictions = Math.max(0, activePredictions - 1);
   }
 };
 
@@ -1338,6 +1818,8 @@ app.get("/api/kb/store/:storeId", getManifestHandler);
 
 app.get("/api/kb/loaders", listDocumentsHandler);
 app.get("/api/kb/:storeId/loaders", listDocumentsHandler);
+app.get("/api/kb/entries", listLoaderEntriesHandler);
+app.get("/api/kb/:storeId/entries", listLoaderEntriesHandler);
 app.get("/api/kb/loaders/:loaderId", getLoaderHandler);
 app.get("/api/kb/:storeId/loaders/:loaderId", getLoaderHandler);
 app.get("/api/kb/loaders/:loaderId/chunks", listChunksHandler);
@@ -1361,6 +1843,26 @@ app.post("/api/kb/:storeId/upsert", jsonUpsertHandler);
 
 app.post("/api/kb/refresh", refreshHandler);
 app.post("/api/kb/:storeId/refresh", refreshHandler);
+
+app.get("/api/jobs/:jobId", async (req, res) => {
+  const status = await readJobStatus(req.params.jobId);
+  if (!status) return res.status(404).json({ error: "Job not found" });
+  return res.json(status);
+});
+
+app.post("/internal/jobs/kb/ingest", internalKbIngestHandler);
+app.post("/internal/jobs/kb/reprocess", internalKbReprocessHandler);
+app.post("/internal/jobs/kb/upsert", internalKbUpsertHandler);
+app.post("/internal/jobs/kb/refresh", internalKbRefreshHandler);
+app.post("/internal/jobs/status", async (req, res) => {
+  if (!ensureWorkerAuth(req, res)) return;
+  const { jobId, status, error, result, type, storeId } = req.body || {};
+  if (!jobId || !status) {
+    return res.status(400).json({ error: "jobId and status are required" });
+  }
+  const record = await setJobStatus(jobId, { status, error, result, type, storeId });
+  return res.json(record);
+});
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/metrics", metricsHandler);

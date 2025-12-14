@@ -14,6 +14,10 @@ const RABBITMQ_URL =
   process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
 const MAIL_SERVICE_URL =
   process.env.MAIL_SERVICE_URL || "http://mail-service:3000";
+const FLOWISE_PROXY_URL =
+  process.env.FLOWISE_PROXY_URL || "http://flowise-proxy:4000";
+const WORKER_TOKEN =
+  process.env.WORKER_TOKEN || process.env.INTERNAL_JOB_TOKEN || "change-me";
 const EXCHANGE = "jobs";
 
 // [ADDED] Setup __dirname dan path ke template OTP
@@ -47,6 +51,14 @@ function renderOtpHtml({ otp, username }) {
     .replace(/{{OTP_CODE}}/g, otp) // ganti semua {{OTP_CODE}}
     .replace(/{{USERNAME}}/g, username || ""); // ganti {{USERNAME}} kalau ada
 }
+
+const callProxy = async (path, payload) => {
+  const url = `${FLOWISE_PROXY_URL}${path}`;
+  return axios.post(url, payload, {
+    headers: { "x-worker-token": WORKER_TOKEN },
+    timeout: 120000
+  });
+};
 
 async function connectRabbitMQ() {
   let retries = 5;
@@ -125,6 +137,79 @@ async function connectRabbitMQ() {
           context: { queue: mailQ.queue }
         });
         ch.nack(msg, false, true);
+      }
+    },
+    { noAck: false }
+  );
+
+  const kbQ = await ch.assertQueue("kb-jobs", { durable: true });
+  await ch.bindQueue(kbQ.queue, EXCHANGE, "kb.*");
+  await ch.bindQueue(kbQ.queue, EXCHANGE, "llm.batch");
+  await ch.bindQueue(kbQ.queue, EXCHANGE, "analytics.rollup");
+
+  ch.consume(
+    kbQ.queue,
+    async (msg) => {
+      if (!msg) return;
+      const { requestId } = newRequestIds();
+      const started = Date.now();
+      let routingKey = msg.fields?.routingKey || "kb.unknown";
+      try {
+        const payload = JSON.parse(msg.content.toString());
+        const jobId = payload.jobId;
+
+        if (routingKey === "kb.ingest") {
+          await callProxy("/internal/jobs/kb/ingest", payload);
+        } else if (routingKey === "kb.reprocess") {
+          await callProxy("/internal/jobs/kb/reprocess", payload);
+        } else if (routingKey === "kb.upsert") {
+          await callProxy("/internal/jobs/kb/upsert", payload);
+        } else if (routingKey === "kb.refresh") {
+          await callProxy("/internal/jobs/kb/refresh", payload);
+        } else if (routingKey === "llm.batch" || routingKey === "analytics.rollup") {
+          if (jobId) {
+            await callProxy("/internal/jobs/status", {
+              jobId,
+              status: "failed",
+              type: routingKey,
+              error: "Handler not implemented"
+            });
+          }
+          throw new Error(`No handler for ${routingKey}`);
+        } else {
+          if (jobId) {
+            await callProxy("/internal/jobs/status", {
+              jobId,
+              status: "failed",
+              type: routingKey,
+              error: "Unknown routing key"
+            });
+          }
+          throw new Error(`Unknown routing key ${routingKey}`);
+        }
+
+        ch.ack(msg);
+        trackJob(kbQ.queue, routingKey, "success", (Date.now() - started) / 1000);
+        logEvent({
+          level: "info",
+          event: "kb_job_processed",
+          message: "KB/LLM job processed",
+          requestId,
+          context: { queue: kbQ.queue, routingKey, jobId }
+        });
+      } catch (e) {
+        console.error("kb job failed:", e.message);
+        routingKey = routingKey || "kb.unknown";
+        trackJob(kbQ.queue, routingKey, "failure", (Date.now() - started) / 1000);
+        logEvent({
+          level: "error",
+          event: "kb_job_failed",
+          message: e.message,
+          requestId,
+          context: { queue: kbQ.queue, routingKey }
+        });
+        // Do NOT requeue to avoid duplicate upserts in Flowise when partial failures occur
+        ch.ack(msg);
       }
     },
     { noAck: false }
