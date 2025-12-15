@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { Icon, Menu, Send } from "lucide-react";
@@ -15,7 +16,7 @@ import {
 
 const handleLogout = () => {
   // Hapus token dari cookies
-  localStorage.removeItem("token");
+
   Cookies.remove("token");
   // Redirect ke halaman login
   window.location.href = "/login";
@@ -23,40 +24,55 @@ const handleLogout = () => {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [user, setUser] = useState(null);
 
   const menu = [
     {
       name: "Chat",
-      href: "/dashboard/chat",
+      path: "/chat",
       icon: MessageCircle,
     },
     {
       name: "Analytics",
-      href: "/dashboard/analytics",
+      path: "/analytics",
       icon: BarChart2,
     },
     {
       name: "User Management",
-      href: "/dashboard/user-management",
+      path: "/user-management",
       icon: Users,
     },
     {
       name: "Knowledge Base",
-      href: "/dashboard/knowledge-base",
+      path: "/knowledge-base",
       icon: Database,
       activeColor: "bg-red-100 text-red-600 border-red-300",
     },
     {
       name: "Setting",
-      href: "/dashboard/setting",
+      path: "/setting",
       icon: Settings,
     },
   ];
 
-  console.log(menu);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  const username = jwtDecode(localStorage.getItem("token"))?.usn || "User";
-  const role = jwtDecode(localStorage.getItem("token"))?.role || "Guest";
+    try {
+      setUser(jwtDecode(token));
+    } catch {}
+  }, []);
+
+  const handleLogout = () => {
+    // Hapus token dari cookies
+    localStorage.removeItem("token");
+    // Redirect ke halaman login
+    window.location.href = "/login";
+  };
+
+  const username = user?.usn || "User";
+  const role = user?.role || "Guest";
   console.log("Decoded username:", username);
   console.log("Decoded role:", role);
 
@@ -74,17 +90,18 @@ export default function Sidebar() {
         {/* Setting (dummy) */}
 
         {/* Menu */}
-        {menu.map((item) => {
+        {menu.map((item, index) => {
           const Icon = item.icon;
           return (
             <button
+              key={index}
               type="button"
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-medium"
             >
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-200 text-gray-700">
                 <Icon size={18} />
               </span>
-              <span>{item.name}</span>
+              <Link href={item.path}>{item.name}</Link>
             </button>
           );
         })}

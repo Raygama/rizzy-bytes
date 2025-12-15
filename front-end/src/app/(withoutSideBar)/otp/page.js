@@ -60,7 +60,7 @@ export default function VerifyPage() {
       const data = await res.json();
       console.log("Response:", data);
       const token = data.token;
-      localStorage.setItem("token", token);
+
       if (token) {
         Cookies.set("token", token);
         localStorage.setItem("token", token);
@@ -69,6 +69,9 @@ export default function VerifyPage() {
       alert("OTP submitted: " + finalOtp);
       router.push("/chat");
     } catch (error) {
+      console.log("VERIFY URL =", "http://localhost:3001/auth/login/verify");
+      console.trace("TRACE verify call");
+
       console.error(error);
       alert("Error submitting OTP");
     }
@@ -78,11 +81,11 @@ export default function VerifyPage() {
     <div className="flex min-h-screen items-center justify-center bg-[#f8f7f7]">
       <div className="text-center max-w-md">
         <h1 className="text-2xl font-semibold mb-2">
-          Masukkan Kode Autentikasi
+          Masukkan Kode Autentikas
         </h1>
 
         <p className="text-sm text-gray-600 mb-6">
-          Kami telah mengirimkan kode autentikasi ke Email anda:
+          Kami telah mengirimkan kode autentikasi ke Email :
           <br />
           <span className="font-medium">{email}</span>
         </p>
