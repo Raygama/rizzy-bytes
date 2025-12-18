@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, ChevronLeft, ChevronRight, Trash2, Search, X } from "lucide-react"
+import { Plus, ChevronLeft, ChevronRight, Trash2, Search, X, Eye, EyeOff } from "lucide-react"
 import Swal from "sweetalert2"
 
 export default function UserManagementPage() {
@@ -11,8 +11,57 @@ export default function UserManagementPage() {
   const [formData, setFormData] = useState({
     fullname: "",
     email: "",
+    password: "",
+    confirmPassword: "",
     role: "mahasiswa",
   })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  const handleAddNewEntry = () => {
+    setShowModal(true)
+  }
+
+  const handleCloseModal = () => {
+    setShowModal(false)
+    setFormData({ fullname: "", email: "", password: "", confirmPassword: "", role: "mahasiswa" })
+    setShowPassword(false)
+    setShowConfirmPassword(false)
+  }
+
+  const handleCreate = () => {
+    console.log("Creating user:", formData)
+    // TODO: Implement create user logic
+    handleCloseModal()
+  }
+
+  const handleRoleSelect = (role) => {
+    setFormData({ ...formData, role })
+  }
+
+  const handleDeleteUser = (userId, userName) => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: `Do you want to delete ${userName}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#9ca3af",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Remove the user from the list
+        setUsers(users.filter((user) => user.id !== userId))
+        Swal.fire({
+          title: "Deleted!",
+          text: "User has been deleted.",
+          icon: "success",
+          confirmButtonColor: "#ef4444",
+        })
+      }
+    })
+  }
 
   const [users, setUsers] = useState([
     {
@@ -57,49 +106,6 @@ export default function UserManagementPage() {
     },
   ])
 
-  const handleAddNewEntry = () => {
-    setShowModal(true)
-  }
-
-  const handleCloseModal = () => {
-    setShowModal(false)
-    setFormData({ fullname: "", email: "", role: "mahasiswa" })
-  }
-
-  const handleCreate = () => {
-    console.log("Creating user:", formData)
-    // TODO: Implement create user logic
-    handleCloseModal()
-  }
-
-  const handleRoleSelect = (role) => {
-    setFormData({ ...formData, role })
-  }
-
-  const handleDeleteUser = (userId, userName) => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: `Do you want to delete ${userName}?`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#9ca3af",
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "Cancel",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        // Remove the user from the list
-        setUsers(users.filter((user) => user.id !== userId))
-        Swal.fire({
-          title: "Deleted!",
-          text: "User has been deleted.",
-          icon: "success",
-          confirmButtonColor: "#ef4444",
-        })
-      }
-    })
-  }
-
   return (
     <>
       <div className="min-h-screen bg-[#F5F5F7] p-6 md:p-8 lg:p-12">
@@ -107,7 +113,7 @@ export default function UserManagementPage() {
           {/* Header Section */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 lg:text-4xl">User Management</h1>
-            <p className="mt-2 text-sm text-gray-500">Manage User Across The System</p>
+            <p className="mt-2 text-sm text-gray-500">Monitor registered users on your system</p>
           </div>
 
           {/* Search Bar and Add Button */}
@@ -127,7 +133,7 @@ export default function UserManagementPage() {
               className="inline-flex items-center gap-2 rounded-full bg-red-500 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-red-600 transition-colors"
             >
               <Plus size={18} />
-              Add New Entry
+              Add New User
             </button>
           </div>
 
@@ -240,7 +246,7 @@ export default function UserManagementPage() {
       {/* Add New User Modal */}
       {showModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           onClick={handleCloseModal}
         >
           <div
@@ -253,7 +259,7 @@ export default function UserManagementPage() {
               className="absolute right-6 top-6 text-red-500 hover:text-red-600 transition-colors"
               aria-label="Close modal"
             >
-              <X size={24} strokeWidth={2} />
+              <X size={28} strokeWidth={2} />
             </button>
 
             {/* Modal Header */}
@@ -294,10 +300,60 @@ export default function UserManagementPage() {
                 />
               </div>
 
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="mb-2 block text-sm font-medium text-gray-900">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Enter user's password"
+                    className="w-full rounded-2xl border border-gray-300 bg-white px-5 py-4 pr-12 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label="Toggle password visibility"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label htmlFor="confirmPassword" className="mb-2 block text-sm font-medium text-gray-900">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    placeholder="Re-enter user's password"
+                    className="w-full rounded-2xl border border-gray-300 bg-white px-5 py-4 pr-12 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label="Toggle confirm password visibility"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
               {/* Role Selection */}
               <div>
                 <label className="mb-3 block text-sm font-medium text-gray-900">Role</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <button
                     type="button"
                     onClick={() => handleRoleSelect("mahasiswa")}
@@ -331,6 +387,17 @@ export default function UserManagementPage() {
                   >
                     Administrator
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRoleSelect("guest")}
+                    className={`rounded-2xl px-6 py-4 text-base font-semibold transition-all ${
+                      formData.role === "guest"
+                        ? "bg-red-500 text-white shadow-md"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                  >
+                    Guest
+                  </button>
                 </div>
               </div>
             </div>
@@ -341,7 +408,7 @@ export default function UserManagementPage() {
                 onClick={handleCloseModal}
                 className="rounded-full bg-gray-300 px-8 py-3 text-base font-semibold text-gray-800 hover:bg-gray-400 transition-colors"
               >
-                Cancel
+                Discard
               </button>
               <button
                 onClick={handleCreate}

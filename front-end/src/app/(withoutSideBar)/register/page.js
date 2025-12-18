@@ -45,7 +45,7 @@ export default function Register() {
       email: email,
       usn: username,
       password: password,
-      role: "student",
+      role: "admin",
     };
 
     // Simulasi pemanggilan API

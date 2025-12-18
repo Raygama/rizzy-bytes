@@ -16,7 +16,7 @@ import {
 const handleLogout = () => {
   // Hapus token dari cookies
   localStorage.removeItem("token");
-  Cookies.remove("token");
+ 
   // Redirect ke halaman login
   window.location.href = "/login";
 };
@@ -27,28 +27,28 @@ export default function Sidebar() {
   const menu = [
     {
       name: "Chat",
-      href: "/dashboard/chat",
+      path: "/chat",
       icon: MessageCircle,
     },
     {
       name: "Analytics",
-      href: "/dashboard/analytics",
+      path: "/analytics",
       icon: BarChart2,
     },
     {
       name: "User Management",
-      href: "/dashboard/user-management",
+      path: "/user-management",
       icon: Users,
     },
     {
       name: "Knowledge Base",
-      href: "/dashboard/knowledge-base",
+      path: "/knowledge-base",
       icon: Database,
       activeColor: "bg-red-100 text-red-600 border-red-300",
     },
     {
       name: "Setting",
-      href: "/dashboard/setting",
+      path: "/dashboard/setting",
       icon: Settings,
     },
   ];
@@ -74,17 +74,18 @@ export default function Sidebar() {
         {/* Setting (dummy) */}
 
         {/* Menu */}
-        {menu.map((item) => {
+        {menu.map((item, index) => {
           const Icon = item.icon;
           return (
             <button
+            key={index}
               type="button"
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-medium"
             >
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-200 text-gray-700">
                 <Icon size={18} />
               </span>
-              <span>{item.name}</span>
+              <Link href={item.path}>{item.name}</Link>
             </button>
           );
         })}
