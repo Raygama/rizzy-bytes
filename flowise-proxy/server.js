@@ -1041,7 +1041,17 @@ const listChunksHandler = async (req, res) => {
 const listLoaderEntriesHandler = async (req, res) => {
   try {
     const storeId = getStoreIdFromReq(req);
-    const { documents } = await loadDocuments(storeId);
+    const { storeData, documents } = await loadDocuments(storeId);
+
+    const statusMap = new Map();
+    if (Array.isArray(storeData?.loaders)) {
+      storeData.loaders.forEach((loader) => {
+        const id = loader?.id;
+        if (!id) return;
+        statusMap.set(id, loader.status || loader.state || null);
+      });
+    }
+
     const entries = (documents || []).map((doc) => ({
       storeId: doc.storeId || storeId,
       loaderId: doc.loaderId || doc.docId || null,
@@ -1053,7 +1063,8 @@ const listLoaderEntriesHandler = async (req, res) => {
       uploadedAt: doc.uploadedAt || null,
       metadata: doc.metadata || {},
       createdAt: doc.createdAt || null,
-      updatedAt: doc.updatedAt || null
+      updatedAt: doc.updatedAt || null,
+      status: statusMap.get(doc.loaderId || doc.docId || doc.id) || null
     }));
     return res.json(entries);
   } catch (err) {
@@ -1403,7 +1414,20 @@ const deleteLoaderHandler = async (req, res) => {
     }
     await removeManifestEntry(storeId, loaderId);
     await knowledgeBaseStore.remove({ loaderId, storeId });
-    return res.json({ ...result, storeId, loaderId });
+    // trigger refresh to reprocess remaining chunks/loaders (queued if async)
+    let refreshJobId = null;
+    if (ASYNC_KB) {
+      refreshJobId = randomUUID();
+      await setJobStatus(refreshJobId, { status: "queued", type: "kb.refresh", storeId });
+      await enqueueJob("kb.refresh", { jobId: refreshJobId, storeId, body: {} });
+    } else {
+      try {
+        await callFlowise("post", `/api/v1/document-store/refresh/${storeId}`, {});
+      } catch (refreshErr) {
+        console.warn("refresh after delete failed:", refreshErr?.message || refreshErr);
+      }
+    }
+    return res.json({ ...result, storeId, loaderId, refreshJobId });
   } catch (err) {
     const flowiseMessage = err?.body?.message || err?.message || "";
     const isNotFound =
