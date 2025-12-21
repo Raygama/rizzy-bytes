@@ -25,30 +25,36 @@ const allowedOrigins = (() => {
   return parsed.length ? parsed : DEFAULT_ALLOWED_ORIGINS;
 })();
 
+const allowAllOrigins = allowedOrigins.includes("*");
+
+const corsOptions = {
+  origin: allowAllOrigins
+    ? true
+    : (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
+        console.warn(`[CORS] Blocked request from origin: ${origin}`);
+        return callback(new Error(`Origin ${origin} not allowed by CORS`));
+      },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+  ],
+  optionsSuccessStatus: 204,
+};
+
 console.log("[CORS] Allowed origins:", allowedOrigins);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.warn(`[CORS] Blocked request from origin: ${origin}`);
-      return callback(new Error(`Origin ${origin} not allowed by CORS`));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept",
-    ],
-  })
-);
+// Handle both requests and preflight. Without the OPTIONS handler the browser
+// reports CORS failures for JSON POSTs to /auth/*.
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
 app.use(requestContext);

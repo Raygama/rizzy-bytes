@@ -172,7 +172,7 @@ const readLogs = async ({ date, limit, service, level, event, q }) => {
   return lines;
 };
 
-app.get("/logs", requireAuth, requireRole("admin", "staff"), async (req, res) => {
+app.get("/logs", requireAuth, requireRole("admin"), async (req, res) => {
   try {
     const limit = parseLimit(req.query.limit, 200);
     const dbLogs = await fetchLogsFromDb({
@@ -251,7 +251,7 @@ const formatLogsCsv = (logs = []) => {
   return [header.join(","), ...rows].join("\n");
 };
 
-app.get("/logs/export", requireAuth, requireRole("admin", "staff"), async (req, res) => {
+app.get("/logs/export", requireAuth, requireRole("admin"), async (req, res) => {
   try {
     const limit = parseLimit(req.query.limit, 500);
     const dbLogs = await fetchLogsFromDb({

@@ -11,8 +11,9 @@ import dotenv from "dotenv";
 import { randomUUID } from "crypto";
 import { ChatHistoryStore } from "./history/chatHistoryStore.js";
 import { connectToMongo } from "./history/mongoClient.js";
-import { knowledgeBaseStore } from "./knowledgeBaseStore.js";
+import { knowledgeBaseStore, nextKbId } from "./knowledgeBaseStore.js";
 import { logEvent, requestContext, requestLogger } from "./logger.js";
+import { requireAuth, requireRole } from "./auth.js";
 import {
   metricsMiddleware,
   metricsHandler,
@@ -769,18 +770,37 @@ const performUpsert = async ({ storeId, filePath, originalName, metadata, replac
     size: stat.size
   };
 
-  const form = buildUpsertForm({
-    metadata: metadata || { originalFileName: originalName },
-    replaceExisting: !!replaceExisting,
-    file: fauxFile
-  });
-  const result = await sendUpsertForm(storeId, form);
+  const reservedIds = await nextKbId();
+  const kbMetadataBase = {
+    ...(metadata || {}),
+    source: reservedIds.kbId,
+    name: resolveName({ name, metadata, fallback: originalName }),
+    description: resolveDescription({ description, metadata }),
+    tags: Array.isArray(metadata?.tags) ? metadata.tags : metadata?.tags ? [metadata.tags] : []
+  };
+
+  const result = await sendUpsertForm(
+    storeId,
+    buildUpsertForm({
+      metadata: kbMetadataBase,
+      replaceExisting: !!replaceExisting,
+      file: fauxFile
+    })
+  );
+
+  const kbMetadata = {
+    ...kbMetadataBase,
+    loaderId: result.docId
+  };
+
   const kbEntry = await knowledgeBaseStore.upsert({
     storeId,
     loaderId: result.docId,
-    name: resolveName({ name, metadata, fallback: result.docId || originalName }),
-    description: resolveDescription({ description, metadata }),
-    metadata,
+    kbId: reservedIds.kbId,
+    kbNumericId: reservedIds.kbNumericId,
+    name: kbMetadata.name,
+    description: kbMetadata.description,
+    metadata: kbMetadata,
     filename: originalName,
     size: stat.size,
     uploadedAt: new Date()
@@ -1060,6 +1080,62 @@ const updateChunkHandler = async (req, res) => {
   }
 };
 
+const updateKbMetaHandler = async (req, res) => {
+  try {
+    const loaderId = pickFirstString(req.params?.loaderId);
+    if (!loaderId) {
+      return res.status(400).json({ error: "loaderId is required" });
+    }
+    const storeId = await resolveStoreIdForLoader(req, loaderId);
+
+    const name = pickNonEmptyString(req.body?.name);
+    const descriptionInput = pickFirstString(req.body?.description);
+    const description =
+      typeof descriptionInput === "string" && descriptionInput.trim()
+        ? descriptionInput.trim()
+        : descriptionInput === "" || descriptionInput === null
+          ? ""
+          : null;
+
+    if (!name && description === null) {
+      return res.status(400).json({ error: "name and/or description is required" });
+    }
+
+    const existingEntry = await knowledgeBaseStore.findByLoader({ loaderId, storeId });
+    if (!existingEntry) {
+      return res.status(404).json({ error: "KB entry not found for loaderId" });
+    }
+
+    const mergedMetadata = {
+      ...(existingEntry.metadata || {}),
+      ...(name ? { name } : {}),
+      ...(description !== null ? { description } : {})
+    };
+
+    const updated = await knowledgeBaseStore.updateByLoader({
+      loaderId,
+      storeId,
+      patch: {
+        ...(name ? { name } : {}),
+        ...(description !== null ? { description } : {}),
+        metadata: mergedMetadata
+      }
+    });
+
+    await upsertManifestEntry(storeId, {
+      docId: loaderId,
+      name: updated?.name,
+      description: updated?.description,
+      metadata: updated?.metadata
+    });
+
+    return res.json(updated);
+  } catch (err) {
+    console.error("update kb meta error:", err);
+    return res.status(err.status || 500).json(err.body || { error: "Unable to update KB metadata" });
+  }
+};
+
 const uploadAndUpsertHandler = async (req, res) => {
   const storeId = getStoreIdFromReq(req);
   if (req.fileValidationError) {
@@ -1087,11 +1163,13 @@ const uploadAndUpsertHandler = async (req, res) => {
   };
   try {
     const parsedMetadata = parseMetadataInput(req.body?.metadata, {});
+    const sourceUrl = pickNonEmptyString(req.body?.sourceUrl);
     metadata = {
       ...metadata,
       ...(parsedMetadata || {}),
       name,
-      description
+      description,
+      ...(sourceUrl ? { sourceUrl } : {})
     };
   } catch (err) {
     await cleanupUploadedFile(req.file);
@@ -1234,6 +1312,10 @@ const reprocessHandler = async (req, res) => {
     metadata.originalFileName = req.file.originalname;
     metadata.size = req.file.size;
   }
+  const sourceUrl = pickNonEmptyString(req.body?.sourceUrl);
+  if (sourceUrl) {
+    metadata.sourceUrl = sourceUrl;
+  }
 
   if (ASYNC_KB) {
     try {
@@ -1355,7 +1437,15 @@ const jsonUpsertHandler = async (req, res) => {
       await enqueueJob("kb.upsert", { jobId, storeId, body: req.body });
       return res.status(202).json({ jobId, status: "queued" });
     }
-    const result = await performJsonUpsert({ storeId, body: req.body });
+    const bodyWithSource = { ...req.body };
+    const sourceUrl = pickNonEmptyString(req.body?.sourceUrl);
+    if (sourceUrl) {
+      bodyWithSource.metadata = {
+        ...(req.body?.metadata || {}),
+        sourceUrl
+      };
+    }
+    const result = await performJsonUpsert({ storeId, body: bodyWithSource });
     return res.json(result);
   } catch (err) {
     console.error("json upsert error:", err);
@@ -1808,41 +1898,46 @@ const getChatSessionHandler = async (req, res) => {
   }
 };
 
-app.post("/api/v1/prediction/:flowId", predictionProxyHandler);
-app.post("/api/v1/prediction/:flowId/stream", predictionProxyHandler);
-app.get("/api/chat/history/:flowId", listChatSessionsHandler);
-app.get("/api/chat/history/:flowId/:sessionId", getChatSessionHandler);
+app.post("/api/v1/prediction/:flowId", requireAuth, predictionProxyHandler);
+app.post("/api/v1/prediction/:flowId/stream", requireAuth, predictionProxyHandler);
+app.get("/api/chat/history/:flowId", requireAuth, listChatSessionsHandler);
+app.get("/api/chat/history/:flowId/:sessionId", requireAuth, getChatSessionHandler);
 
-app.get("/api/kb", getManifestHandler);
-app.get("/api/kb/store/:storeId", getManifestHandler);
+// KB routes: require staff/admin
+const requireKbRole = [requireAuth, requireRole("staff", "admin")];
 
-app.get("/api/kb/loaders", listDocumentsHandler);
-app.get("/api/kb/:storeId/loaders", listDocumentsHandler);
-app.get("/api/kb/entries", listLoaderEntriesHandler);
-app.get("/api/kb/:storeId/entries", listLoaderEntriesHandler);
-app.get("/api/kb/loaders/:loaderId", getLoaderHandler);
-app.get("/api/kb/:storeId/loaders/:loaderId", getLoaderHandler);
-app.get("/api/kb/loaders/:loaderId/chunks", listChunksHandler);
-app.get("/api/kb/:storeId/loaders/:loaderId/chunks", listChunksHandler);
-app.put("/api/kb/loaders/:loaderId/chunks/:chunkId", updateChunkHandler);
-app.put("/api/kb/:storeId/loaders/:loaderId/chunks/:chunkId", updateChunkHandler);
+app.get("/api/kb", requireKbRole, getManifestHandler);
+app.get("/api/kb/store/:storeId", requireKbRole, getManifestHandler);
 
-app.post("/api/kb/loaders", upload.single("file"), uploadAndUpsertHandler);
-app.post("/api/kb/:storeId/loaders", upload.single("file"), uploadAndUpsertHandler);
+app.get("/api/kb/loaders", requireKbRole, listDocumentsHandler);
+app.get("/api/kb/:storeId/loaders", requireKbRole, listDocumentsHandler);
+app.get("/api/kb/entries", requireKbRole, listLoaderEntriesHandler);
+app.get("/api/kb/:storeId/entries", requireKbRole, listLoaderEntriesHandler);
+app.get("/api/kb/loaders/:loaderId", requireKbRole, getLoaderHandler);
+app.get("/api/kb/:storeId/loaders/:loaderId", requireKbRole, getLoaderHandler);
+app.get("/api/kb/loaders/:loaderId/chunks", requireKbRole, listChunksHandler);
+app.get("/api/kb/:storeId/loaders/:loaderId/chunks", requireKbRole, listChunksHandler);
+app.put("/api/kb/loaders/:loaderId/chunks/:chunkId", requireKbRole, updateChunkHandler);
+app.put("/api/kb/:storeId/loaders/:loaderId/chunks/:chunkId", requireKbRole, updateChunkHandler);
+app.patch("/api/kb/loaders/:loaderId/meta", requireKbRole, updateKbMetaHandler);
+app.patch("/api/kb/:storeId/loaders/:loaderId/meta", requireKbRole, updateKbMetaHandler);
 
-app.delete("/api/kb/loaders/:loaderId", deleteLoaderHandler);
-app.delete("/api/kb/:storeId/loaders/:loaderId", deleteLoaderHandler);
+app.post("/api/kb/loaders", requireKbRole, upload.single("file"), uploadAndUpsertHandler);
+app.post("/api/kb/:storeId/loaders", requireKbRole, upload.single("file"), uploadAndUpsertHandler);
 
-app.put("/api/kb/loaders/:loaderId", upload.single("file"), reprocessHandler);
-app.put("/api/kb/:storeId/loaders/:loaderId", upload.single("file"), reprocessHandler);
-app.post("/api/kb/loaders/:loaderId/process", upload.single("file"), reprocessHandler);
-app.post("/api/kb/:storeId/loaders/:loaderId/process", upload.single("file"), reprocessHandler);
+app.delete("/api/kb/loaders/:loaderId", requireKbRole, deleteLoaderHandler);
+app.delete("/api/kb/:storeId/loaders/:loaderId", requireKbRole, deleteLoaderHandler);
 
-app.post("/api/kb/upsert", jsonUpsertHandler);
-app.post("/api/kb/:storeId/upsert", jsonUpsertHandler);
+app.put("/api/kb/loaders/:loaderId", requireKbRole, upload.single("file"), reprocessHandler);
+app.put("/api/kb/:storeId/loaders/:loaderId", requireKbRole, upload.single("file"), reprocessHandler);
+app.post("/api/kb/loaders/:loaderId/process", requireKbRole, upload.single("file"), reprocessHandler);
+app.post("/api/kb/:storeId/loaders/:loaderId/process", requireKbRole, upload.single("file"), reprocessHandler);
 
-app.post("/api/kb/refresh", refreshHandler);
-app.post("/api/kb/:storeId/refresh", refreshHandler);
+app.post("/api/kb/upsert", requireKbRole, jsonUpsertHandler);
+app.post("/api/kb/:storeId/upsert", requireKbRole, jsonUpsertHandler);
+
+app.post("/api/kb/refresh", requireKbRole, refreshHandler);
+app.post("/api/kb/:storeId/refresh", requireKbRole, refreshHandler);
 
 app.get("/api/jobs/:jobId", async (req, res) => {
   const status = await readJobStatus(req.params.jobId);

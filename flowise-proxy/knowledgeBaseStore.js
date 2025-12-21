@@ -42,7 +42,7 @@ const toPlain = (doc) => {
 
 const formatKbId = (numericId) => `${KB_ID_PREFIX}${String(numericId).padStart(KB_PAD_LENGTH, "0")}`;
 
-const nextKbId = async () => {
+export const nextKbId = async () => {
   const counter = await CounterModel.findOneAndUpdate(
     { _id: "kbId" },
     { $inc: { seq: 1 } },
@@ -56,7 +56,7 @@ class KnowledgeBaseStore {
   async create(entry) {
     let lastErr = null;
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const ids = await nextKbId();
+      const ids = entry?.kbId && entry?.kbNumericId ? {} : await nextKbId();
       try {
         const doc = await KnowledgeBaseModel.create({
           ...entry,

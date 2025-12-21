@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useRef, useEffect } from "react";
 import { Menu, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -19,8 +21,6 @@ export default function ChatbotPage() {
     "Tata cara tanda tangan Kaprodi",
   ];
 
-  console.log("Token from cookie:", localStorage.getItem("token"));
-
   const messagesEndRef = useRef(null);
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -32,17 +32,19 @@ export default function ChatbotPage() {
   // ===================== AMBIL JAWABAN DARI BACKEND (JSON) =====================
   const getBotResponse = async (userMessage) => {
     try {
-      const response = await fetch(
-        "http://localhost:3006/api/v1/prediction/2d844a72-3dc8-4475-8134-9f034015741f",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            authorization: "Bearer pTnZk73MAtw2YhSYUw28urAeKa4dSTGHlZKwOVPVoy4",
-          },
-          body: JSON.stringify({ question: userMessage }),
-        }
-      );
+      const PROXY_BASE =
+        process.env.NEXT_PUBLIC_FLOWISE_PROXY_URL || "http://localhost:4000";
+      // or just use the rewrite:
+      const PREDICTION_URL =
+        "/flowise/api/v1/prediction/2d844a72-3dc8-4475-8134-9f034015741f";
+      const response = await fetch(PREDICTION_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: "Bearer pTnZk73MAtw2YhSYUw28urAeKa4dSTGHlZKwOVPVoy4",
+        },
+        body: JSON.stringify({ question: userMessage }),
+      });
 
       const data = await response.json();
       console.log("backend response:", data);
@@ -116,19 +118,6 @@ export default function ChatbotPage() {
   const handleClearChat = () => {
     setMessages([]);
   };
-
-  const handleLogout = () => {
-    // Hapus token dari cookies
-    localStorage.removeItem("token");
-    Cookies.remove("token");
-    // Redirect ke halaman login
-    window.location.href = "/login";
-  };
-
-  const username = jwtDecode(localStorage.getItem("token"))?.usn || "User";
-  const role = jwtDecode(localStorage.getItem("token"))?.role || "Guest";
-  console.log("Decoded username:", username);
-  console.log("Decoded role:", role);
 
   return (
     <div className="flex h-screen bg-[#F5F5F7] text-gray-900">
