@@ -9,6 +9,11 @@ dotenv.config();
 const app = express();
 
 const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
+const parseBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  const lowered = String(value).toLowerCase().trim();
+  return ["1", "true", "yes", "y"].includes(lowered);
+};
 
 const parseOrigins = (value) =>
   value
@@ -53,15 +58,59 @@ const PORT = process.env.PORT || 3000;
 const SMTP_HOST = process.env.SMTP_HOST || "mailhog";
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || "1025", 10);
 const SMTP_FROM = process.env.SMTP_FROM || "no-reply@helpdesk.local";
+const SMTP_USER = process.env.SMTP_USER || "";
+const SMTP_PASS = process.env.SMTP_PASS || "";
+const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE, false);
+const SMTP_REQUIRE_TLS = parseBoolean(process.env.SMTP_REQUIRE_TLS, false);
+const SMTP_TLS_REJECT_UNAUTHORIZED = parseBoolean(
+  process.env.SMTP_TLS_REJECT_UNAUTHORIZED,
+  true
+);
 
-// Mail transporter (MailHog in dev)
-const transporter = nodemailer.createTransport({
+const transporterOptions = {
   host: SMTP_HOST,
   port: SMTP_PORT,
-  secure: false
-});
+  secure: SMTP_SECURE,
+  requireTLS: SMTP_REQUIRE_TLS,
+  tls: { rejectUnauthorized: SMTP_TLS_REJECT_UNAUTHORIZED }
+};
+
+if (SMTP_USER && SMTP_PASS) {
+  transporterOptions.auth = { user: SMTP_USER, pass: SMTP_PASS };
+}
+
+// Mail transporter (MailHog in dev, Gmail/other SMTP in prod)
+const transporter = nodemailer.createTransport(transporterOptions);
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+transporter
+  .verify()
+  .then(() => {
+    logEvent({
+      level: "info",
+      event: "smtp_verified",
+      message: "SMTP transporter ready",
+      requestId: "startup",
+      context: {
+        host: SMTP_HOST,
+        port: SMTP_PORT,
+        secure: SMTP_SECURE,
+        requireTLS: SMTP_REQUIRE_TLS,
+        authEnabled: Boolean(transporterOptions.auth),
+        tlsRejectUnauthorized: SMTP_TLS_REJECT_UNAUTHORIZED
+      }
+    });
+  })
+  .catch((err) => {
+    logEvent({
+      level: "error",
+      event: "smtp_verify_failed",
+      message: err.message,
+      requestId: "startup",
+      context: { host: SMTP_HOST, port: SMTP_PORT }
+    });
+  });
 
 app.post("/send", async (req, res) => {
   try {
