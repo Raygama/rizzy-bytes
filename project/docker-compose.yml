@@ -44,9 +44,14 @@ services:
       dockerfile: mail-service.dockerfile
     environment:
       - PORT=3000
-      - SMTP_HOST=mailhog
-      - SMTP_PORT=1025
-      - SMTP_FROM=no-reply@helpdesk.local
+      - SMTP_HOST=${SMTP_HOST:-mailhog}
+      - SMTP_PORT=${SMTP_PORT:-1025}
+      - SMTP_FROM=${SMTP_FROM:-no-reply@helpdesk.local}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_REQUIRE_TLS=${SMTP_REQUIRE_TLS:-false}
+      - SMTP_TLS_REJECT_UNAUTHORIZED=${SMTP_TLS_REJECT_UNAUTHORIZED:-true}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
     ports:
       - "3004:3000"
