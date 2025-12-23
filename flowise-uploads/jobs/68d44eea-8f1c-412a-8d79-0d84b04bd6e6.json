@@ -1,0 +1,13 @@
+{
+  "jobId": "68d44eea-8f1c-412a-8d79-0d84b04bd6e6",
+  "createdAt": "2025-12-21T09:50:35.300Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Panduan KP",
+    "description": "Informasi Panduan KP",
+    "filename": "20241112_Panduan KP 2024-signed (1).pdf"
+  },
+  "updatedAt": "2025-12-21T09:50:35.300Z"
+}

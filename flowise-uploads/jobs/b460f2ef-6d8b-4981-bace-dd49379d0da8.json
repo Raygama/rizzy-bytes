@@ -1,0 +1,13 @@
+{
+  "jobId": "b460f2ef-6d8b-4981-bace-dd49379d0da8",
+  "createdAt": "2025-12-21T08:26:12.474Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Kalender Akademik",
+    "description": "Kalender Akademik Universitas",
+    "filename": "Kalender Akademik dan Pendidikan Telkom University _ Bagian Standar dan Layanan Akademik.pdf"
+  },
+  "updatedAt": "2025-12-21T08:26:12.474Z"
+}

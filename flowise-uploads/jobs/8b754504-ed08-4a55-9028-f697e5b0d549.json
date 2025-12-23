@@ -1,0 +1,9 @@
+{
+  "jobId": "8b754504-ed08-4a55-9028-f697e5b0d549",
+  "createdAt": "2025-12-17T13:10:49.932Z",
+  "status": "failed",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "updatedAt": "2025-12-17T13:12:19.545Z",
+  "error": "Job failed"
+}

@@ -1,0 +1,13 @@
+{
+  "jobId": "c75c3542-edf1-4d29-b0d8-6a88923a25d8",
+  "createdAt": "2025-12-21T10:08:17.627Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Kode Etik Mahasiswa",
+    "description": "Info terkait Kode Etik Mahasiswa",
+    "filename": "kode etik mahasiswa.pdf"
+  },
+  "updatedAt": "2025-12-21T10:08:17.627Z"
+}

@@ -1,0 +1,13 @@
+{
+  "jobId": "3104df16-7a2f-499d-ae93-47639b80e4d0",
+  "createdAt": "2025-12-21T10:21:06.239Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "PANDUAN PENULISAN PROPOSAL",
+    "description": "Info terkait PANDUAN PENULISAN PROPOSAL",
+    "filename": "20241119_SK Dekan_Panduan PENULISAN PROPOSAL TA.pdf"
+  },
+  "updatedAt": "2025-12-21T10:21:06.239Z"
+}

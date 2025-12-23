@@ -1,0 +1,13 @@
+{
+  "jobId": "91dea455-e125-4328-a955-e5f998aac887",
+  "createdAt": "2025-12-21T08:54:03.887Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Panduan KP",
+    "description": "Sosialisasi Panduan KP",
+    "filename": "2324-2 dan 2425-1_Sosialisasi Panduan KP 2024 untuk Mahasiswa FIF.pdf"
+  },
+  "updatedAt": "2025-12-21T08:54:03.887Z"
+}

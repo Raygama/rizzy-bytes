@@ -1,0 +1,13 @@
+{
+  "jobId": "687dd2f0-1b73-45c9-858a-81cefe8f5a8f",
+  "createdAt": "2025-12-21T10:02:06.730Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Syarat SUMMA dan CUM LAUDE",
+    "description": "Info terkait Syarat SUMMA dan CUM LAUDE",
+    "filename": "PU_KRITERIA_TAMBAHAN_UNTUK_PREDIKAT_SUMMA_CUMLAUDE_DAN_CUMLAUDE (1).pdf"
+  },
+  "updatedAt": "2025-12-21T10:02:06.730Z"
+}

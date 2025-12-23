@@ -1,0 +1,13 @@
+{
+  "jobId": "7fa14f23-5be7-4f90-9e2c-7080c12d0cfc",
+  "createdAt": "2025-12-21T09:13:17.352Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Informasi Alur KP",
+    "description": "Informasi Panduan Alur KP",
+    "filename": "INFORMASI TAMBAHAN KP.pdf"
+  },
+  "updatedAt": "2025-12-21T09:13:17.352Z"
+}

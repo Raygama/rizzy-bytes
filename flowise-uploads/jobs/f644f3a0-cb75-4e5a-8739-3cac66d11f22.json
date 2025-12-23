@@ -1,0 +1,13 @@
+{
+  "jobId": "f644f3a0-cb75-4e5a-8739-3cac66d11f22",
+  "createdAt": "2025-12-21T09:57:32.448Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Pengajuan LAA",
+    "description": "Info terkait Pengajuan LAA",
+    "filename": "Pengajuan LAA.docx"
+  },
+  "updatedAt": "2025-12-21T09:57:32.448Z"
+}

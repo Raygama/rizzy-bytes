@@ -1,0 +1,13 @@
+{
+  "jobId": "637283ba-3d33-45dc-915f-9d9a23d33638",
+  "createdAt": "2025-12-21T10:15:42.746Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "ALUR UNGGAH TAK",
+    "description": "Info terkait ALUR UNGGAH TAK",
+    "filename": "ALUR UNGGAH TAK.docx"
+  },
+  "updatedAt": "2025-12-21T10:15:42.746Z"
+}

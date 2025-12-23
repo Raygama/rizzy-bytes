@@ -1,0 +1,2554 @@
+{
+  "nodes": [
+    {
+      "id": "startAgentflow_0",
+      "type": "agentFlow",
+      "position": {
+        "x": -232,
+        "y": -9.5
+      },
+      "data": {
+        "id": "startAgentflow_0",
+        "label": "Start",
+        "version": 1.1,
+        "name": "startAgentflow",
+        "type": "Start",
+        "color": "#7EE787",
+        "hideInput": true,
+        "baseClasses": [
+          "Start"
+        ],
+        "category": "Agent Flows",
+        "description": "Starting point of the agentflow",
+        "inputParams": [
+          {
+            "label": "Input Type",
+            "name": "startInputType",
+            "type": "options",
+            "options": [
+              {
+                "label": "Chat Input",
+                "name": "chatInput",
+                "description": "Start the conversation with chat input"
+              },
+              {
+                "label": "Form Input",
+                "name": "formInput",
+                "description": "Start the workflow with form inputs"
+              }
+            ],
+            "default": "chatInput",
+            "id": "startAgentflow_0-input-startInputType-options",
+            "display": true
+          },
+          {
+            "label": "Form Title",
+            "name": "formTitle",
+            "type": "string",
+            "placeholder": "Please Fill Out The Form",
+            "show": {
+              "startInputType": "formInput"
+            },
+            "id": "startAgentflow_0-input-formTitle-string",
+            "display": false
+          },
+          {
+            "label": "Form Description",
+            "name": "formDescription",
+            "type": "string",
+            "placeholder": "Complete all fields below to continue",
+            "show": {
+              "startInputType": "formInput"
+            },
+            "id": "startAgentflow_0-input-formDescription-string",
+            "display": false
+          },
+          {
+            "label": "Form Input Types",
+            "name": "formInputTypes",
+            "description": "Specify the type of form input",
+            "type": "array",
+            "show": {
+              "startInputType": "formInput"
+            },
+            "array": [
+              {
+                "label": "Type",
+                "name": "type",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "String",
+                    "name": "string"
+                  },
+                  {
+                    "label": "Number",
+                    "name": "number"
+                  },
+                  {
+                    "label": "Boolean",
+                    "name": "boolean"
+                  },
+                  {
+                    "label": "Options",
+                    "name": "options"
+                  }
+                ],
+                "default": "string"
+              },
+              {
+                "label": "Label",
+                "name": "label",
+                "type": "string",
+                "placeholder": "Label for the input"
+              },
+              {
+                "label": "Variable Name",
+                "name": "name",
+                "type": "string",
+                "placeholder": "Variable name for the input (must be camel case)",
+                "description": "Variable name must be camel case. For example: firstName, lastName, etc."
+              },
+              {
+                "label": "Add Options",
+                "name": "addOptions",
+                "type": "array",
+                "show": {
+                  "formInputTypes[$index].type": "options"
+                },
+                "array": [
+                  {
+                    "label": "Option",
+                    "name": "option",
+                    "type": "string"
+                  }
+                ]
+              }
+            ],
+            "id": "startAgentflow_0-input-formInputTypes-array",
+            "display": false
+          },
+          {
+            "label": "Ephemeral Memory",
+            "name": "startEphemeralMemory",
+            "type": "boolean",
+            "description": "Start fresh for every execution without past chat history",
+            "optional": true,
+            "id": "startAgentflow_0-input-startEphemeralMemory-boolean",
+            "display": true
+          },
+          {
+            "label": "Flow State",
+            "name": "startState",
+            "description": "Runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "string",
+                "placeholder": "Foo"
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "placeholder": "Bar",
+                "optional": true
+              }
+            ],
+            "id": "startAgentflow_0-input-startState-array",
+            "display": true
+          },
+          {
+            "label": "Persist State",
+            "name": "startPersistState",
+            "type": "boolean",
+            "description": "Persist the state in the same session",
+            "optional": true,
+            "id": "startAgentflow_0-input-startPersistState-boolean",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "startInputType": "chatInput",
+          "formTitle": "",
+          "formDescription": "",
+          "formInputTypes": "",
+          "startEphemeralMemory": "",
+          "startState": "",
+          "startPersistState": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "startAgentflow_0-output-startAgentflow",
+            "label": "Start",
+            "name": "startAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "width": 103,
+      "height": 65,
+      "selected": false,
+      "positionAbsolute": {
+        "x": -232,
+        "y": -9.5
+      },
+      "dragging": false
+    },
+    {
+      "id": "agentAgentflow_0",
+      "position": {
+        "x": 360.6731752253484,
+        "y": -145.01299408501376
+      },
+      "data": {
+        "id": "agentAgentflow_0",
+        "label": "TAK AI Agent",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": [
+          "Agent"
+        ],
+        "category": "Agent Flows",
+        "description": "Dynamically choose and utilize tools during runtime, enabling multi-step reasoning",
+        "inputParams": [
+          {
+            "label": "Model",
+            "name": "agentModel",
+            "type": "asyncOptions",
+            "loadMethod": "listModels",
+            "loadConfig": true,
+            "id": "agentAgentflow_0-input-agentModel-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Messages",
+            "name": "agentMessages",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Role",
+                "name": "role",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "System",
+                    "name": "system"
+                  },
+                  {
+                    "label": "Assistant",
+                    "name": "assistant"
+                  },
+                  {
+                    "label": "Developer",
+                    "name": "developer"
+                  },
+                  {
+                    "label": "User",
+                    "name": "user"
+                  }
+                ]
+              },
+              {
+                "label": "Content",
+                "name": "content",
+                "type": "string",
+                "acceptVariable": true,
+                "generateInstruction": true,
+                "rows": 4
+              }
+            ],
+            "id": "agentAgentflow_0-input-agentMessages-array",
+            "display": true
+          },
+          {
+            "label": "OpenAI Built-in Tools",
+            "name": "agentToolsBuiltInOpenAI",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "Web Search",
+                "name": "web_search_preview",
+                "description": "Search the web for the latest information"
+              },
+              {
+                "label": "Code Interpreter",
+                "name": "code_interpreter",
+                "description": "Write and run Python code in a sandboxed environment"
+              },
+              {
+                "label": "Image Generation",
+                "name": "image_generation",
+                "description": "Generate images based on a text prompt"
+              }
+            ],
+            "show": {
+              "agentModel": "chatOpenAI"
+            },
+            "id": "agentAgentflow_0-input-agentToolsBuiltInOpenAI-multiOptions",
+            "display": true
+          },
+          {
+            "label": "Gemini Built-in Tools",
+            "name": "agentToolsBuiltInGemini",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "URL Context",
+                "name": "urlContext",
+                "description": "Extract content from given URLs"
+              },
+              {
+                "label": "Google Search",
+                "name": "googleSearch",
+                "description": "Search real-time web content"
+              }
+            ],
+            "show": {
+              "agentModel": "chatGoogleGenerativeAI"
+            },
+            "id": "agentAgentflow_0-input-agentToolsBuiltInGemini-multiOptions",
+            "display": false
+          },
+          {
+            "label": "Anthropic Built-in Tools",
+            "name": "agentToolsBuiltInAnthropic",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "Web Search",
+                "name": "web_search_20250305",
+                "description": "Search the web for the latest information"
+              },
+              {
+                "label": "Web Fetch",
+                "name": "web_fetch_20250910",
+                "description": "Retrieve full content from specified web pages"
+              }
+            ],
+            "show": {
+              "agentModel": "chatAnthropic"
+            },
+            "id": "agentAgentflow_0-input-agentToolsBuiltInAnthropic-multiOptions",
+            "display": false
+          },
+          {
+            "label": "Tools",
+            "name": "agentTools",
+            "type": "array",
+            "optional": true,
+            "array": [
+              {
+                "label": "Tool",
+                "name": "agentSelectedTool",
+                "type": "asyncOptions",
+                "loadMethod": "listTools",
+                "loadConfig": true
+              },
+              {
+                "label": "Require Human Input",
+                "name": "agentSelectedToolRequiresHumanInput",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "id": "agentAgentflow_0-input-agentTools-array",
+            "display": true
+          },
+          {
+            "label": "Knowledge (Document Stores)",
+            "name": "agentKnowledgeDocumentStores",
+            "type": "array",
+            "description": "Give your agent context about different document sources. Document stores must be upserted in advance.",
+            "array": [
+              {
+                "label": "Document Store",
+                "name": "documentStore",
+                "type": "asyncOptions",
+                "loadMethod": "listStores"
+              },
+              {
+                "label": "Describe Knowledge",
+                "name": "docStoreDescription",
+                "type": "string",
+                "generateDocStoreDescription": true,
+                "placeholder": "Describe what the knowledge base is about, this is useful for the AI to know when and how to search for correct information",
+                "rows": 4
+              },
+              {
+                "label": "Return Source Documents",
+                "name": "returnSourceDocuments",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "optional": true,
+            "id": "agentAgentflow_0-input-agentKnowledgeDocumentStores-array",
+            "display": true
+          },
+          {
+            "label": "Knowledge (Vector Embeddings)",
+            "name": "agentKnowledgeVSEmbeddings",
+            "type": "array",
+            "description": "Give your agent context about different document sources from existing vector stores and embeddings",
+            "array": [
+              {
+                "label": "Vector Store",
+                "name": "vectorStore",
+                "type": "asyncOptions",
+                "loadMethod": "listVectorStores",
+                "loadConfig": true
+              },
+              {
+                "label": "Embedding Model",
+                "name": "embeddingModel",
+                "type": "asyncOptions",
+                "loadMethod": "listEmbeddings",
+                "loadConfig": true
+              },
+              {
+                "label": "Knowledge Name",
+                "name": "knowledgeName",
+                "type": "string",
+                "placeholder": "A short name for the knowledge base, this is useful for the AI to know when and how to search for correct information"
+              },
+              {
+                "label": "Describe Knowledge",
+                "name": "knowledgeDescription",
+                "type": "string",
+                "placeholder": "Describe what the knowledge base is about, this is useful for the AI to know when and how to search for correct information",
+                "rows": 4
+              },
+              {
+                "label": "Return Source Documents",
+                "name": "returnSourceDocuments",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "optional": true,
+            "id": "agentAgentflow_0-input-agentKnowledgeVSEmbeddings-array",
+            "display": true
+          },
+          {
+            "label": "Enable Memory",
+            "name": "agentEnableMemory",
+            "type": "boolean",
+            "description": "Enable memory for the conversation thread",
+            "default": true,
+            "optional": true,
+            "id": "agentAgentflow_0-input-agentEnableMemory-boolean",
+            "display": true
+          },
+          {
+            "label": "Memory Type",
+            "name": "agentMemoryType",
+            "type": "options",
+            "options": [
+              {
+                "label": "All Messages",
+                "name": "allMessages",
+                "description": "Retrieve all messages from the conversation"
+              },
+              {
+                "label": "Window Size",
+                "name": "windowSize",
+                "description": "Uses a fixed window size to surface the last N messages"
+              },
+              {
+                "label": "Conversation Summary",
+                "name": "conversationSummary",
+                "description": "Summarizes the whole conversation"
+              },
+              {
+                "label": "Conversation Summary Buffer",
+                "name": "conversationSummaryBuffer",
+                "description": "Summarize conversations once token limit is reached. Default to 2000"
+              }
+            ],
+            "optional": true,
+            "default": "allMessages",
+            "show": {
+              "agentEnableMemory": true
+            },
+            "id": "agentAgentflow_0-input-agentMemoryType-options",
+            "display": true
+          },
+          {
+            "label": "Window Size",
+            "name": "agentMemoryWindowSize",
+            "type": "number",
+            "default": "20",
+            "description": "Uses a fixed window size to surface the last N messages",
+            "show": {
+              "agentMemoryType": "windowSize"
+            },
+            "id": "agentAgentflow_0-input-agentMemoryWindowSize-number",
+            "display": false
+          },
+          {
+            "label": "Max Token Limit",
+            "name": "agentMemoryMaxTokenLimit",
+            "type": "number",
+            "default": "2000",
+            "description": "Summarize conversations once token limit is reached. Default to 2000",
+            "show": {
+              "agentMemoryType": "conversationSummaryBuffer"
+            },
+            "id": "agentAgentflow_0-input-agentMemoryMaxTokenLimit-number",
+            "display": false
+          },
+          {
+            "label": "Input Message",
+            "name": "agentUserMessage",
+            "type": "string",
+            "description": "Add an input message as user message at the end of the conversation",
+            "rows": 4,
+            "optional": true,
+            "acceptVariable": true,
+            "show": {
+              "agentEnableMemory": true
+            },
+            "id": "agentAgentflow_0-input-agentUserMessage-string",
+            "display": true
+          },
+          {
+            "label": "Return Response As",
+            "name": "agentReturnResponseAs",
+            "type": "options",
+            "options": [
+              {
+                "label": "User Message",
+                "name": "userMessage"
+              },
+              {
+                "label": "Assistant Message",
+                "name": "assistantMessage"
+              }
+            ],
+            "default": "userMessage",
+            "id": "agentAgentflow_0-input-agentReturnResponseAs-options",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "agentUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys",
+                "freeSolo": true
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "agentAgentflow_0-input-agentUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "agentModel": "chatOpenAI",
+          "agentMessages": [
+            {
+              "role": "system",
+              "content": "<p><strong>Overview</strong><br>Anda adalah \"Asisten AI Transkrip Aktivitas Kemahasiswaan (TAK)\" resmi dari Fakultas Informatika Telkom University. Tugas utama Anda adalah membantu mahasiswa dalam memberikan informasi terkait <strong>Transkrip Aktivitas Kemahasiswaan (TAK)</strong>, yang mencakup prosedur pengajuan, pengambilan, dan informasi lainnya terkait aktivitas kemahasiswaan yang tercatat dalam transkrip mereka. Jika memang bingung maka dapat menyarankan Mahasiswa / User untuk datang ke Kemahasiswaan atau Student Center di Telkom University.</p><p><strong>Audience:</strong><br>Mahasiswa Fakultas Informatika Telkom University yang mencari informasi tentang <strong>TAK</strong>.</p><p><strong>Behavior Guidelines:</strong></p><ul><li><p><strong>Gunakan bahasa Indonesia formal dan sopan.</strong></p></li><li><p><strong>Respons yang Anda berikan harus jelas, terstruktur, dan memberikan nilai tambah bagi mahasiswa.</strong></p></li><li><p>Jika pertanyaan mahasiswa termasuk pertanyaan trivial terkait TAK, berikan jawaban singkat dan langsung.</p></li><li><p>Untuk pertanyaan yang lebih kompleks atau non-trivial terkait TAK, lakukan pencarian di Knowledge Base (KB) atau eskalasi ke staf administrasi jika diperlukan.</p></li></ul><p><strong>Trivial Questions:</strong><br>Untuk pertanyaan yang dapat dijawab dengan cepat dan sudah jelas dari pedoman yang ada, seperti informasi dasar tentang TAK, berikan jawaban singkat dalam satu kalimat.</p><p><strong>Non-Trivial Questions:</strong><br>Jika pertanyaan membutuhkan pencarian lebih dalam di Knowledge Base (KB), ikuti langkah-langkah berikut:</p><ol><li><p>Cari jawaban dalam KB yang relevan mengenai TAK.</p></li><li><p>Jika tidak ditemukan, beri tahu mahasiswa secara jujur bahwa informasi tersebut tidak ditemukan dalam KB.</p></li><li><p>Jika Anda masih tidak yakin atau tidak dapat memberikan jawaban yang relevan, arahkan mahasiswa ke tautan <strong>https://linktr.ee/laaksoc</strong>, yang menyediakan informasi lebih lanjut terkait berbagai topik umum di Fakultas Informatika Telkom University.</p></li></ol><hr><p><strong>Data Sources &amp; Scope</strong><br>Anda hanya boleh merujuk pada data yang terdapat dalam KB yang telah disediakan, yang mencakup informasi spesifik mengenai:</p><ul><li><p><strong>Prosedur Pengajuan TAK</strong> (misalnya, cara mengajukan permohonan TAK, batas waktu, dokumen yang diperlukan, dll).</p></li><li><p><strong>Pengambilan TAK</strong> (misalnya, bagaimana cara mengambil transkrip, biaya yang dikenakan, dll).</p></li><li><p><strong>Persyaratan untuk Mendapatkan TAK</strong> (misalnya, kegiatan yang harus dicatat, aktivitas kemahasiswaan yang relevan, dll).</p></li><li><p>Anda tidak boleh memberikan informasi terkait hal lain di luar ruang lingkup TAK.</p></li></ul><hr><p><strong>Safeguards:</strong></p><ul><li><p><strong>Chain of Thought:</strong> Pastikan untuk memecah informasi yang kompleks menjadi langkah-langkah yang mudah dipahami. Jika pertanyaan membutuhkan informasi lebih lanjut tentang pengajuan TAK atau prosedur pengambilan, berikan jawaban yang jelas.</p></li><li><p><strong>Context Maintenance:</strong> Jika mahasiswa mengajukan pertanyaan lanjutan terkait TAK, pastikan untuk merujuk kembali ke percakapan sebelumnya dan menjaga alur informasi.</p></li><li><p><strong>Fallback Process:</strong> Jika informasi tidak ditemukan atau jika terjadi kesalahan dalam pencarian, beri tahu mahasiswa secara terbuka bahwa Anda tidak dapat memberikan jawaban yang spesifik mengenai TAK dan tawarkan eskalasi ke staf manusia.</p></li><li><p><strong>Accuracy:</strong> Pastikan untuk selalu menyampaikan jawaban yang sesuai dengan KB dan peraturan yang berlaku, serta gunakan sitasi yang tepat jika diperlukan.</p></li><li><p><strong>Bias &amp; Privacy Compliance:</strong> Jangan pernah meminta atau menyimpan informasi pribadi mahasiswa yang tidak relevan untuk layanan yang diminta terkait TAK.</p></li></ul><hr><p><strong>Example Workflow for Non-Trivial Questions</strong></p><ol><li><p>Terima pertanyaan dari mahasiswa mengenai TAK.</p></li><li><p>Tentukan apakah pertanyaan tersebut trivial atau non-trivial.</p></li><li><p>Jika trivial, berikan jawaban singkat sesuai pedoman.</p></li><li><p>Jika non-trivial, lakukan pencarian di KB mengenai TAK:</p><ul><li><p>Jika ada jawaban yang relevan, berikan dengan mencantumkan sumber (sitasi).</p></li><li><p>Jika tidak ada jawaban, beri tahu mahasiswa bahwa informasi tersebut tidak ditemukan dan tawarkan eskalasi ke staf administrasi atau Dosen Pembimbing.</p></li></ul></li></ol><hr><p><strong>For Fallbacks:</strong><br>Jika sistem tidak dapat memproses pertanyaan dengan akurat terkait TAK, arahkan mahasiswa ke opsi fallback dengan langkah-langkah berikut:</p><ul><li><p><strong>Fallback ke Tautan Informasi Umum:</strong> Jika sistem tidak menemukan informasi atau tidak dapat memberikan jawaban yang relevan, beri tahu mahasiswa untuk mengunjungi <strong>https://linktr.ee/laaksoc</strong>, yang menyediakan berbagai informasi tambahan tentang Fakultas Informatika Telkom University.</p></li></ul><hr><p><strong>Non-Allowed Topics</strong><br>Jika mahasiswa bertanya di luar ruang lingkup TAK (misalnya: cuaca, berita umum, atau opini pribadi), tolak dengan sopan:</p><ul><li><p>\"Mohon maaf, saya hanya dapat membantu dengan pertanyaan terkait <strong>Transkrip Aktivitas Kemahasiswaan (TAK)</strong> di Fakultas Informatika.\"</p></li></ul><hr><p><strong>Example Input and Output</strong></p><ul><li><p><strong>Input:</strong><br>\"Apa saja syarat yang dibutuhkan untuk mengajukan permohonan TAK?\"</p></li><li><p><strong>Output:</strong><br>\"Untuk mengajukan permohonan TAK, mahasiswa harus mengisi formulir pengajuan, melampirkan bukti kegiatan kemahasiswaan yang relevan, dan memenuhi syarat minimal kegiatan yang tercatat. Untuk informasi lebih lanjut, Anda dapat merujuk ke <strong>Panduan Pengajuan TAK</strong> di KB kami atau mengunjungi <strong>tautan informasi umum Fakultas Informatika</strong>.\"</p></li></ul><hr><p><strong>Compliance:</strong><br>Pastikan untuk selalu mengikuti kebijakan data dan privasi universitas. Jangan meminta informasi pribadi sensitif mahasiswa di luar konteks yang diperlukan untuk layanan.</p>"
+            }
+          ],
+          "agentTools": "",
+          "agentKnowledgeDocumentStores": [
+            {
+              "documentStore": "0b77caad-ec5d-4be0-81b4-63ce72af9a5e:Transkrip Aktivitas Kemahasiswaan (TAK)",
+              "docStoreDescription": "Knowledge base berisi informasi sepertu alur pengajuan TAK dan informasi lainnya terkait TAK.",
+              "returnSourceDocuments": true
+            }
+          ],
+          "agentKnowledgeVSEmbeddings": "",
+          "agentEnableMemory": true,
+          "agentMemoryType": "allMessages",
+          "agentUserMessage": "",
+          "agentReturnResponseAs": "userMessage",
+          "agentUpdateState": "",
+          "undefined": "",
+          "agentModelConfig": {
+            "credential": "",
+            "modelName": "gpt-4o-mini",
+            "temperature": "0.6",
+            "streaming": true,
+            "maxTokens": "",
+            "topP": "",
+            "frequencyPenalty": "",
+            "presencePenalty": "",
+            "timeout": "",
+            "strictToolCalling": "",
+            "stopSequence": "",
+            "basepath": "",
+            "proxyUrl": "",
+            "baseOptions": "",
+            "allowImageUploads": "",
+            "imageResolution": "low",
+            "reasoning": "",
+            "reasoningEffort": "",
+            "reasoningSummary": "",
+            "agentModel": "chatOpenAI"
+          },
+          "agentToolsBuiltInOpenAI": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "agentAgentflow_0-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 175,
+      "height": 72,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 360.6731752253484,
+        "y": -145.01299408501376
+      },
+      "dragging": false
+    },
+    {
+      "id": "conditionAgentAgentflow_0",
+      "position": {
+        "x": -21,
+        "y": -46.86921310424805
+      },
+      "data": {
+        "id": "conditionAgentAgentflow_0",
+        "label": "Intention Detector",
+        "version": 1.1,
+        "name": "conditionAgentAgentflow",
+        "type": "ConditionAgent",
+        "color": "#ff8fab",
+        "baseClasses": [
+          "ConditionAgent"
+        ],
+        "category": "Agent Flows",
+        "description": "Utilize an agent to split flows based on dynamic conditions",
+        "inputParams": [
+          {
+            "label": "Model",
+            "name": "conditionAgentModel",
+            "type": "asyncOptions",
+            "loadMethod": "listModels",
+            "loadConfig": true,
+            "id": "conditionAgentAgentflow_0-input-conditionAgentModel-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Instructions",
+            "name": "conditionAgentInstructions",
+            "type": "string",
+            "description": "A general instructions of what the condition agent should do",
+            "rows": 4,
+            "acceptVariable": true,
+            "placeholder": "Determine if the user is interested in learning about AI",
+            "id": "conditionAgentAgentflow_0-input-conditionAgentInstructions-string",
+            "display": true
+          },
+          {
+            "label": "Input",
+            "name": "conditionAgentInput",
+            "type": "string",
+            "description": "Input to be used for the condition agent",
+            "rows": 4,
+            "acceptVariable": true,
+            "default": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"question\" data-label=\"question\">{{ question }}</span> </p>",
+            "id": "conditionAgentAgentflow_0-input-conditionAgentInput-string",
+            "display": true
+          },
+          {
+            "label": "Scenarios",
+            "name": "conditionAgentScenarios",
+            "description": "Define the scenarios that will be used as the conditions to split the flow",
+            "type": "array",
+            "array": [
+              {
+                "label": "Scenario",
+                "name": "scenario",
+                "type": "string",
+                "placeholder": "User is asking for a pizza"
+              }
+            ],
+            "default": [
+              {
+                "scenario": "Kerja Praktik"
+              },
+              {
+                "scenario": "Transkrip Aktivitas Kemahasiswaan (TAK)"
+              }
+            ],
+            "id": "conditionAgentAgentflow_0-input-conditionAgentScenarios-array",
+            "display": true
+          },
+          {
+            "label": "Override System Prompt",
+            "name": "conditionAgentOverrideSystemPrompt",
+            "type": "boolean",
+            "description": "Override initial system prompt for Condition Agent",
+            "optional": true,
+            "id": "conditionAgentAgentflow_0-input-conditionAgentOverrideSystemPrompt-boolean",
+            "display": true
+          },
+          {
+            "label": "Node System Prompt",
+            "name": "conditionAgentSystemPrompt",
+            "type": "string",
+            "rows": 4,
+            "optional": true,
+            "acceptVariable": true,
+            "default": "<p>You are part of a multi-agent system designed to make agent coordination and execution easy. Your task is to analyze the given input and select one matching scenario from a provided set of scenarios.</p>\n    <ul>\n        <li><strong>Input</strong>: A string representing the user's query, message or data.</li>\n        <li><strong>Scenarios</strong>: A list of predefined scenarios that relate to the input.</li>\n        <li><strong>Instruction</strong>: Determine which of the provided scenarios is the best fit for the input.</li>\n    </ul>\n    <h2>Steps</h2>\n    <ol>\n        <li><strong>Read the input string</strong> and the list of scenarios.</li>\n        <li><strong>Analyze the content of the input</strong> to identify its main topic or intention.</li>\n        <li><strong>Compare the input with each scenario</strong>: Evaluate how well the input's topic or intention aligns with each of the provided scenarios and select the one that is the best fit.</li>\n        <li><strong>Output the result</strong>: Return the selected scenario in the specified JSON format.</li>\n    </ol>\n    <h2>Output Format</h2>\n    <p>Output should be a JSON object that names the selected scenario, like this: <code>{\"output\": \"<selected_scenario_name>\"}</code>. No explanation is needed.</p>\n    <h2>Examples</h2>\n    <ol>\n       <li>\n            <p><strong>Input</strong>: <code>{\"input\": \"Hello\", \"scenarios\": [\"user is asking about AI\", \"user is not asking about AI\"], \"instruction\": \"Your task is to check if the user is asking about AI.\"}</code></p>\n            <p><strong>Output</strong>: <code>{\"output\": \"user is not asking about AI\"}</code></p>\n        </li>\n        <li>\n            <p><strong>Input</strong>: <code>{\"input\": \"What is AIGC?\", \"scenarios\": [\"user is asking about AI\", \"user is asking about the weather\"], \"instruction\": \"Your task is to check and see if the user is asking a topic about AI.\"}</code></p>\n            <p><strong>Output</strong>: <code>{\"output\": \"user is asking about AI\"}</code></p>\n        </li>\n        <li>\n            <p><strong>Input</strong>: <code>{\"input\": \"Can you explain deep learning?\", \"scenarios\": [\"user is interested in AI topics\", \"user wants to order food\"], \"instruction\": \"Determine if the user is interested in learning about AI.\"}</code></p>\n            <p><strong>Output</strong>: <code>{\"output\": \"user is interested in AI topics\"}</code></p>\n        </li>\n    </ol>\n    <h2>Note</h2>\n    <ul>\n        <li>Ensure that the input scenarios align well with potential user queries for accurate matching.</li>\n        <li>DO NOT include anything other than the JSON in your response.</li>\n    </ul>",
+            "description": "Expert use only. Modifying this can significantly alter agent behavior. Leave default if unsure",
+            "show": {
+              "conditionAgentOverrideSystemPrompt": true
+            },
+            "id": "conditionAgentAgentflow_0-input-conditionAgentSystemPrompt-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "conditionAgentModel": "chatOpenAI",
+          "conditionAgentInstructions": "<p><strong>Tugas:</strong><br>Mendeteksi maksud pertanyaan pengguna dan mengkategorikannya ke dalam salah satu dari lima skenario berikut:</p><ol><li><p><strong>Kerja Praktik (KP)</strong></p></li><li><p><strong>Transkrip Aktivitas Kemahasiswaan (TAK)</strong></p></li><li><p><strong>Tugas Akhir &amp; Proposal</strong></p></li><li><p><strong>Informasi Umum</strong></p></li><li><p><strong>Pertanyaan Trivial</strong></p></li></ol><p><strong>Contoh Prompts:</strong></p><ol><li><p><strong>Contoh 1 (Kerja Praktik)</strong></p><ul><li><p><strong>Pertanyaan:</strong> \"Bagaimana cara mengajukan Kerja Praktik di Fakultas Informatika?\"</p></li><li><p><strong>Kategori yang Diharapkan:</strong> Kerja Praktik (KP)</p></li></ul></li><li><p><strong>Contoh 2 (Tugas Akhir - TAK)</strong></p><ul><li><p><strong>Pertanyaan:</strong> \"Apakah ada deadline untuk pengajuan TAK Akhir tahun ini?\"</p></li><li><p><strong>Kategori yang Diharapkan:</strong> TAK</p></li></ul></li><li><p><strong>Contoh 3 (Tugas Akhir &amp; Proposal)</strong></p><ul><li><p><strong>Pertanyaan:</strong> \"Apa saja syarat untuk mengajukan proposal Tugas Akhir di Fakultas Informatika?\"</p></li><li><p><strong>Kategori yang Diharapkan:</strong> Tugas Akhir &amp; Proposal</p></li></ul></li><li><p><strong>Contoh 4 (Informasi Umum)</strong></p><ul><li><p><strong>Pertanyaan:</strong> \"Di mana saya bisa melihat pengumuman mengenai jadwal ujian semester ini?\"</p></li><li><p><strong>Kategori yang Diharapkan:</strong> Informasi Umum</p></li></ul></li><li><p><strong>Contoh 5 (Trivial)</strong></p><ul><li><p><strong>Pertanyaan:</strong> \"Apakah perkuliahan di semester genap dimulai pada bulan Februari?\"</p></li><li><p><strong>Kategori yang Diharapkan:</strong> Trivial</p></li></ul></li></ol><p><strong>Penjelasan:</strong></p><ul><li><p><strong>Kerja Praktik (KP)</strong> mencakup pertanyaan yang berhubungan dengan prosedur, jadwal, dan syarat-syarat untuk melakukan Kerja Praktik di Fakultas Informatika.</p></li><li><p><strong>Tugas Akhir (TAK)</strong> berfokus pada pertanyaan terkait deadline, persyaratan, dan prosedur pengajuan serta pelaksanaan Tugas Akhir.</p></li><li><p><strong>Tugas Akhir &amp; Proposal</strong> mencakup pertanyaan yang berkaitan dengan penyusunan dan pengajuan proposal Tugas Akhir.</p></li><li><p><strong>Informasi Umum</strong> mencakup pengumuman dan informasi administrasi yang lebih umum seperti jadwal ujian, pengumuman kegiatan kampus, dll.</p></li><li><p><strong>Trivial</strong> merujuk pada pertanyaan yang bersifat umum dan mudah dijawab, seperti jadwal perkuliahan atau informasi yang sudah tersedia dan jelas.</p></li></ul>",
+          "conditionAgentInput": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"question\" data-label=\"question\">{{ question }}</span> </p>",
+          "conditionAgentScenarios": [
+            {
+              "scenario": "Kerja Praktik"
+            },
+            {
+              "scenario": "Transkrip Aktivitas Kemahasiswaan (TAK)"
+            },
+            {
+              "scenario": "Tugas Akhir & Proposal"
+            },
+            {
+              "scenario": "Informasi Umum"
+            },
+            {
+              "scenario": "Trivial"
+            }
+          ],
+          "conditionAgentOverrideSystemPrompt": true,
+          "conditionAgentModelConfig": {
+            "cache": "",
+            "modelName": "gpt-4o-mini",
+            "temperature": 0.9,
+            "streaming": true,
+            "maxTokens": "",
+            "topP": "",
+            "frequencyPenalty": "",
+            "presencePenalty": "",
+            "timeout": "",
+            "strictToolCalling": "",
+            "stopSequence": "",
+            "basepath": "",
+            "proxyUrl": "",
+            "baseOptions": "",
+            "allowImageUploads": "",
+            "imageResolution": "low",
+            "reasoning": "",
+            "reasoningEffort": "",
+            "reasoningSummary": "",
+            "conditionAgentModel": "chatOpenAI"
+          },
+          "conditionAgentSystemPrompt": "<p>You are part of a multi-agent system designed to help in coordinating different AI agents. Your task is to analyze the given input and select one matching scenario from the following predefined set of scenarios related to <strong>Kerja Praktik (KP)</strong>, <strong>Transkrip Aktivitas Kemahasiswaan (TAK)</strong>, <strong>Tugas Akhir &amp; Proposal</strong>, <strong>Informasi Umum</strong>, or <strong>Trivial</strong> questions.</p><h3><strong>Scenarios:</strong></h3><ol><li><p><strong>Kerja Praktik</strong>: Queries related to <strong>Kerja Praktik</strong>, such as application procedures, requirements, deadlines, and details.</p></li><li><p><strong>Transkrip Aktivitas Kemahasiswaan (TAK)</strong>: Queries related to <strong>TAK</strong>, such as how to request it, the process for obtaining it, and its contents.</p></li><li><p><strong>Tugas Akhir &amp; Proposal</strong>: Queries related to <strong>Tugas Akhir</strong> (TA) and <strong>Proposal TA</strong>, such as submission procedures, proposal requirements, and deadlines.</p></li><li><p><strong>Informasi Umum</strong>: Queries related to <strong>general information</strong> that do not belong to KP, TAK, or TA topics, such as campus events, faculty announcements, or schedules.</p></li><li><p><strong>Trivial</strong>: Queries that are basic or straightforward, like schedule timings, simple FAQs, and general operational information.</p></li></ol><h3><strong>Instruction:</strong></h3><p>Determine which of the provided scenarios is the best fit for the input.</p><hr><h3><strong>Steps:</strong></h3><ol><li><p><strong>Read the input string</strong> and the list of scenarios.</p></li><li><p><strong>Analyze the content of the input</strong> to identify its main topic or intention.</p></li><li><p><strong>Compare the input with each scenario:</strong> Evaluate how well the input's topic or intention aligns with each of the provided scenarios and select the one that is the best fit.</p></li><li><p><strong>Output the result:</strong> Return the selected scenario in the specified JSON format.</p></li></ol><hr><h3><strong>Output Format:</strong></h3><p>The output should be a JSON object that names the selected scenario, like this:</p><pre><code>{\"output\": \"selected scenario\"}\n</code></pre><hr><h3><strong>Examples</strong></h3><h4>Example 1:</h4><p><strong>Input:</strong></p><pre><code>{\n  \"input\": \"Bagaimana cara mendaftar Kerja Praktik?\",\n  \"scenarios\": [\"Kerja Praktik\", \"Transkrip Aktivitas Kemahasiswaan (TAK)\", \"Tugas Akhir &amp; Proposal\", \"Informasi Umum\", \"Trivial\"],\n  \"instruction\": \"Your task is to detect if the user is asking about Kerja Praktik, Transkrip Aktivitas Kemahasiswaan, Tugas Akhir &amp; Proposal, Informasi Umum, or a trivial question.\"\n}\n</code></pre><p><strong>Output:</strong></p><pre><code>{\"output\": \"Kerja Praktik\"}\n</code></pre><h4>Example 2:</h4><p><strong>Input:</strong></p><pre><code>{\n  \"input\": \"Apa itu Transkrip Aktivitas Kemahasiswaan?\",\n  \"scenarios\": [\"Kerja Praktik\", \"Transkrip Aktivitas Kemahasiswaan (TAK)\", \"Tugas Akhir &amp; Proposal\", \"Informasi Umum\", \"Trivial\"],\n  \"instruction\": \"Your task is to detect if the user is asking about Kerja Praktik, Transkrip Aktivitas Kemahasiswaan, Tugas Akhir &amp; Proposal, Informasi Umum, or a trivial question.\"\n}\n</code></pre><p><strong>Output:</strong></p><pre><code>{\"output\": \"Transkrip Aktivitas Kemahasiswaan (TAK)\"}\n</code></pre><h4>Example 3:</h4><p><strong>Input:</strong></p><pre><code>{\n  \"input\": \"Kapan deadline pengajuan proposal Tugas Akhir?\",\n  \"scenarios\": [\"Kerja Praktik\", \"Transkrip Aktivitas Kemahasiswaan (TAK)\", \"Tugas Akhir &amp; Proposal\", \"Informasi Umum\", \"Trivial\"],\n  \"instruction\": \"Your task is to detect if the user is asking about Kerja Praktik, Transkrip Aktivitas Kemahasiswaan, Tugas Akhir &amp; Proposal, Informasi Umum, or a trivial question.\"\n}\n</code></pre><p><strong>Output:</strong></p><pre><code>{\"output\": \"Tugas Akhir &amp; Proposal\"}\n</code></pre><h4>Example 4:</h4><p><strong>Input:</strong></p><pre><code>{\n  \"input\": \"Di mana saya bisa melihat jadwal ujian?\",\n  \"scenarios\": [\"Kerja Praktik\", \"Transkrip Aktivitas Kemahasiswaan (TAK)\", \"Tugas Akhir &amp; Proposal\", \"Informasi Umum\", \"Trivial\"],\n  \"instruction\": \"Your task is to detect if the user is asking about Kerja Praktik, Transkrip Aktivitas Kemahasiswaan, Tugas Akhir &amp; Proposal, Informasi Umum, or a trivial question.\"\n}\n</code></pre><p><strong>Output:</strong></p><pre><code>{\"output\": \"Informasi Umum\"}\n</code></pre><h4>Example 5:</h4><p><strong>Input:</strong></p><pre><code>{\n  \"input\": \"Jam berapa kuliah dimulai?\",\n  \"scenarios\": [\"Kerja Praktik\", \"Transkrip Aktivitas Kemahasiswaan (TAK)\", \"Tugas Akhir &amp; Proposal\", \"Informasi Umum\", \"Trivial\"],\n  \"instruction\": \"Your task is to detect if the user is asking about Kerja Praktik, Transkrip Aktivitas Kemahasiswaan, Tugas Akhir &amp; Proposal, Informasi Umum, or a trivial question.\"\n}\n</code></pre><p><strong>Output:</strong></p><pre><code>{\"output\": \"Trivial\"}\n</code></pre><hr><h3><strong>Note:</strong></h3><ul><li><p>Ensure that the input scenarios align well with potential user queries for accurate matching.</p></li><li><p>DO NOT include anything other than the JSON in your response.</p></li></ul>"
+        },
+        "outputAnchors": [
+          {
+            "id": "conditionAgentAgentflow_0-output-0",
+            "label": 0,
+            "name": 0,
+            "description": "Condition 0"
+          },
+          {
+            "id": "conditionAgentAgentflow_0-output-1",
+            "label": 1,
+            "name": 1,
+            "description": "Condition 1"
+          },
+          {
+            "id": "conditionAgentAgentflow_0-output-2",
+            "label": 2,
+            "name": 2,
+            "description": "Condition 2"
+          },
+          {
+            "id": "conditionAgentAgentflow_0-output-3",
+            "label": 3,
+            "name": 3,
+            "description": "Condition 3"
+          },
+          {
+            "id": "conditionAgentAgentflow_0-output-4",
+            "label": 4,
+            "name": 4,
+            "description": "Condition 4"
+          }
+        ],
+        "outputs": {
+          "conditionAgentAgentflow": ""
+        },
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 188,
+      "height": 140,
+      "selected": false,
+      "positionAbsolute": {
+        "x": -21,
+        "y": -46.86921310424805
+      },
+      "dragging": false
+    },
+    {
+      "id": "agentAgentflow_1",
+      "position": {
+        "x": 351.7409314579291,
+        "y": -28.978544245882503
+      },
+      "data": {
+        "id": "agentAgentflow_1",
+        "label": "Tugas Akhir (TA) & Proposal AI Agent",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": [
+          "Agent"
+        ],
+        "category": "Agent Flows",
+        "description": "Dynamically choose and utilize tools during runtime, enabling multi-step reasoning",
+        "inputParams": [
+          {
+            "label": "Model",
+            "name": "agentModel",
+            "type": "asyncOptions",
+            "loadMethod": "listModels",
+            "loadConfig": true,
+            "id": "agentAgentflow_1-input-agentModel-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Messages",
+            "name": "agentMessages",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Role",
+                "name": "role",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "System",
+                    "name": "system"
+                  },
+                  {
+                    "label": "Assistant",
+                    "name": "assistant"
+                  },
+                  {
+                    "label": "Developer",
+                    "name": "developer"
+                  },
+                  {
+                    "label": "User",
+                    "name": "user"
+                  }
+                ]
+              },
+              {
+                "label": "Content",
+                "name": "content",
+                "type": "string",
+                "acceptVariable": true,
+                "generateInstruction": true,
+                "rows": 4
+              }
+            ],
+            "id": "agentAgentflow_1-input-agentMessages-array",
+            "display": true
+          },
+          {
+            "label": "OpenAI Built-in Tools",
+            "name": "agentToolsBuiltInOpenAI",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "Web Search",
+                "name": "web_search_preview",
+                "description": "Search the web for the latest information"
+              },
+              {
+                "label": "Code Interpreter",
+                "name": "code_interpreter",
+                "description": "Write and run Python code in a sandboxed environment"
+              },
+              {
+                "label": "Image Generation",
+                "name": "image_generation",
+                "description": "Generate images based on a text prompt"
+              }
+            ],
+            "show": {
+              "agentModel": "chatOpenAI"
+            },
+            "id": "agentAgentflow_1-input-agentToolsBuiltInOpenAI-multiOptions",
+            "display": true
+          },
+          {
+            "label": "Gemini Built-in Tools",
+            "name": "agentToolsBuiltInGemini",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "URL Context",
+                "name": "urlContext",
+                "description": "Extract content from given URLs"
+              },
+              {
+                "label": "Google Search",
+                "name": "googleSearch",
+                "description": "Search real-time web content"
+              }
+            ],
+            "show": {
+              "agentModel": "chatGoogleGenerativeAI"
+            },
+            "id": "agentAgentflow_1-input-agentToolsBuiltInGemini-multiOptions",
+            "display": false
+          },
+          {
+            "label": "Anthropic Built-in Tools",
+            "name": "agentToolsBuiltInAnthropic",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "Web Search",
+                "name": "web_search_20250305",
+                "description": "Search the web for the latest information"
+              },
+              {
+                "label": "Web Fetch",
+                "name": "web_fetch_20250910",
+                "description": "Retrieve full content from specified web pages"
+              }
+            ],
+            "show": {
+              "agentModel": "chatAnthropic"
+            },
+            "id": "agentAgentflow_1-input-agentToolsBuiltInAnthropic-multiOptions",
+            "display": false
+          },
+          {
+            "label": "Tools",
+            "name": "agentTools",
+            "type": "array",
+            "optional": true,
+            "array": [
+              {
+                "label": "Tool",
+                "name": "agentSelectedTool",
+                "type": "asyncOptions",
+                "loadMethod": "listTools",
+                "loadConfig": true
+              },
+              {
+                "label": "Require Human Input",
+                "name": "agentSelectedToolRequiresHumanInput",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "id": "agentAgentflow_1-input-agentTools-array",
+            "display": true
+          },
+          {
+            "label": "Knowledge (Document Stores)",
+            "name": "agentKnowledgeDocumentStores",
+            "type": "array",
+            "description": "Give your agent context about different document sources. Document stores must be upserted in advance.",
+            "array": [
+              {
+                "label": "Document Store",
+                "name": "documentStore",
+                "type": "asyncOptions",
+                "loadMethod": "listStores"
+              },
+              {
+                "label": "Describe Knowledge",
+                "name": "docStoreDescription",
+                "type": "string",
+                "generateDocStoreDescription": true,
+                "placeholder": "Describe what the knowledge base is about, this is useful for the AI to know when and how to search for correct information",
+                "rows": 4
+              },
+              {
+                "label": "Return Source Documents",
+                "name": "returnSourceDocuments",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "optional": true,
+            "id": "agentAgentflow_1-input-agentKnowledgeDocumentStores-array",
+            "display": true
+          },
+          {
+            "label": "Knowledge (Vector Embeddings)",
+            "name": "agentKnowledgeVSEmbeddings",
+            "type": "array",
+            "description": "Give your agent context about different document sources from existing vector stores and embeddings",
+            "array": [
+              {
+                "label": "Vector Store",
+                "name": "vectorStore",
+                "type": "asyncOptions",
+                "loadMethod": "listVectorStores",
+                "loadConfig": true
+              },
+              {
+                "label": "Embedding Model",
+                "name": "embeddingModel",
+                "type": "asyncOptions",
+                "loadMethod": "listEmbeddings",
+                "loadConfig": true
+              },
+              {
+                "label": "Knowledge Name",
+                "name": "knowledgeName",
+                "type": "string",
+                "placeholder": "A short name for the knowledge base, this is useful for the AI to know when and how to search for correct information"
+              },
+              {
+                "label": "Describe Knowledge",
+                "name": "knowledgeDescription",
+                "type": "string",
+                "placeholder": "Describe what the knowledge base is about, this is useful for the AI to know when and how to search for correct information",
+                "rows": 4
+              },
+              {
+                "label": "Return Source Documents",
+                "name": "returnSourceDocuments",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "optional": true,
+            "id": "agentAgentflow_1-input-agentKnowledgeVSEmbeddings-array",
+            "display": true
+          },
+          {
+            "label": "Enable Memory",
+            "name": "agentEnableMemory",
+            "type": "boolean",
+            "description": "Enable memory for the conversation thread",
+            "default": true,
+            "optional": true,
+            "id": "agentAgentflow_1-input-agentEnableMemory-boolean",
+            "display": true
+          },
+          {
+            "label": "Memory Type",
+            "name": "agentMemoryType",
+            "type": "options",
+            "options": [
+              {
+                "label": "All Messages",
+                "name": "allMessages",
+                "description": "Retrieve all messages from the conversation"
+              },
+              {
+                "label": "Window Size",
+                "name": "windowSize",
+                "description": "Uses a fixed window size to surface the last N messages"
+              },
+              {
+                "label": "Conversation Summary",
+                "name": "conversationSummary",
+                "description": "Summarizes the whole conversation"
+              },
+              {
+                "label": "Conversation Summary Buffer",
+                "name": "conversationSummaryBuffer",
+                "description": "Summarize conversations once token limit is reached. Default to 2000"
+              }
+            ],
+            "optional": true,
+            "default": "allMessages",
+            "show": {
+              "agentEnableMemory": true
+            },
+            "id": "agentAgentflow_1-input-agentMemoryType-options",
+            "display": true
+          },
+          {
+            "label": "Window Size",
+            "name": "agentMemoryWindowSize",
+            "type": "number",
+            "default": "20",
+            "description": "Uses a fixed window size to surface the last N messages",
+            "show": {
+              "agentMemoryType": "windowSize"
+            },
+            "id": "agentAgentflow_1-input-agentMemoryWindowSize-number",
+            "display": false
+          },
+          {
+            "label": "Max Token Limit",
+            "name": "agentMemoryMaxTokenLimit",
+            "type": "number",
+            "default": "2000",
+            "description": "Summarize conversations once token limit is reached. Default to 2000",
+            "show": {
+              "agentMemoryType": "conversationSummaryBuffer"
+            },
+            "id": "agentAgentflow_1-input-agentMemoryMaxTokenLimit-number",
+            "display": false
+          },
+          {
+            "label": "Input Message",
+            "name": "agentUserMessage",
+            "type": "string",
+            "description": "Add an input message as user message at the end of the conversation",
+            "rows": 4,
+            "optional": true,
+            "acceptVariable": true,
+            "show": {
+              "agentEnableMemory": true
+            },
+            "id": "agentAgentflow_1-input-agentUserMessage-string",
+            "display": true
+          },
+          {
+            "label": "Return Response As",
+            "name": "agentReturnResponseAs",
+            "type": "options",
+            "options": [
+              {
+                "label": "User Message",
+                "name": "userMessage"
+              },
+              {
+                "label": "Assistant Message",
+                "name": "assistantMessage"
+              }
+            ],
+            "default": "userMessage",
+            "id": "agentAgentflow_1-input-agentReturnResponseAs-options",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "agentUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys",
+                "freeSolo": true
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "agentAgentflow_1-input-agentUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "agentModel": "chatOpenAI",
+          "agentMessages": [
+            {
+              "role": "system",
+              "content": "<p><strong>Overview</strong><br>Anda adalah \"Asisten AI Tugas Akhir (TA) &amp; Proposal\" resmi dari Fakultas Informatika Telkom University. Tugas utama Anda adalah membantu mahasiswa dengan memberikan informasi terkait <strong>Tugas Akhir (TA)</strong>, termasuk prosedur pengajuan, persyaratan, dan panduan penulisan proposal serta hal-hal lainnya yang terkait dengan penyusunan dan pengajuan Tugas Akhir di fakultas.</p><p><strong>Penting Terkait Tugas Akhir (TA) &amp; Proposal AI Agent</strong></p><p>Interaksi terkait tugas akhir seperti upload dokumen dan proses lainnya terdapat di: https://apps-soc.telkomuniversity.ac.id/sipeta</p><p>Namun, beberapa bagian pada website https://igracias.telkomuniversity.ac.id/ harus di isi, khususnya pada bagian TA</p><p>Informasi terkait TA ada di KB ini atau di: https://telkomuniversityofficial-my.sharepoint.com/:w:/g/personal/laaksoc_365_telkomuniversity_ac_id/ESyaRVJjsJNIrZka68QLNdoBP6djA-H6vXvN_RZl71LRjA?e=YNPvdn</p><p><strong>Audience:</strong><br>Mahasiswa Fakultas Informatika Telkom University yang mencari informasi terkait <strong>Tugas Akhir (TA)</strong> dan <strong>Proposal TA</strong>.</p><p><strong>Behavior Guidelines:</strong></p><ul><li><p><strong>Gunakan bahasa Indonesia formal dan sopan.</strong></p></li><li><p><strong>Respons yang Anda berikan harus jelas, terstruktur, dan memberikan nilai tambah bagi mahasiswa.</strong></p></li><li><p>Jika pertanyaan mahasiswa termasuk pertanyaan trivial terkait TA dan proposalnya, berikan jawaban singkat dan langsung.</p></li><li><p>Untuk pertanyaan yang lebih kompleks atau non-trivial terkait TA dan proposal, lakukan pencarian di Knowledge Base (KB) atau eskalasi ke staf administrasi jika diperlukan.</p></li></ul><p><strong>Trivial Questions:</strong><br>Untuk pertanyaan yang dapat dijawab dengan cepat dan sudah jelas dari pedoman yang ada, seperti informasi dasar tentang TA atau pengajuan proposal, berikan jawaban singkat dalam satu kalimat.</p><p><strong>Non-Trivial Questions:</strong><br>Jika pertanyaan membutuhkan pencarian lebih dalam di Knowledge Base (KB), ikuti langkah-langkah berikut:</p><ol><li><p>Cari jawaban dalam KB yang relevan mengenai Tugas Akhir dan proposalnya.</p></li><li><p>Jika tidak ditemukan, beri tahu mahasiswa secara jujur bahwa informasi tersebut tidak ditemukan dalam KB.</p></li><li><p>Jika Anda masih tidak yakin atau tidak dapat memberikan jawaban yang relevan, arahkan mahasiswa ke tautan <strong>https://linktr.ee/laaksoc</strong>, yang menyediakan informasi lebih lanjut terkait berbagai topik umum di Fakultas Informatika Telkom University.</p></li></ol><hr><p><strong>Data Sources &amp; Scope</strong><br>Anda hanya boleh merujuk pada data yang terdapat dalam KB yang telah disediakan, yang mencakup informasi spesifik mengenai:</p><ul><li><p><strong>Prosedur Pengajuan Tugas Akhir</strong> (misalnya, tahapan pengajuan, dokumen yang diperlukan, dll).</p></li><li><p><strong>Panduan Penulisan Proposal Tugas Akhir</strong> (misalnya, struktur proposal, persyaratan penulisan, dll).</p></li><li><p><strong>Persyaratan untuk Mendapatkan Persetujuan Proposal TA</strong> (misalnya, topik yang harus disetujui, bimbingan yang diperlukan, dll).</p></li><li><p><strong>Timeline Tugas Akhir</strong> (misalnya, batas waktu pengajuan, jadwal ujian proposal dan sidang, dll).</p></li><li><p>Anda tidak boleh memberikan informasi terkait hal lain di luar ruang lingkup Tugas Akhir dan Proposal TA.</p></li></ul><hr><p><strong>Safeguards:</strong></p><ul><li><p><strong>Chain of Thought:</strong> Pastikan untuk memecah informasi yang kompleks tentang TA dan proposal menjadi langkah-langkah yang mudah dipahami. Jika pertanyaan membutuhkan informasi lebih lanjut tentang pengajuan TA atau persyaratan proposal, berikan jawaban yang jelas.</p></li><li><p><strong>Context Maintenance:</strong> Jika mahasiswa mengajukan pertanyaan lanjutan terkait TA dan proposal, pastikan untuk merujuk kembali ke percakapan sebelumnya dan menjaga alur informasi yang konsisten.</p></li><li><p><strong>Fallback Process:</strong> Jika informasi tidak ditemukan atau jika terjadi kesalahan dalam pencarian, beri tahu mahasiswa secara terbuka bahwa Anda tidak dapat memberikan jawaban yang spesifik mengenai TA atau proposalnya dan tawarkan eskalasi ke staf manusia.</p></li><li><p><strong>Accuracy:</strong> Pastikan untuk selalu menyampaikan jawaban yang sesuai dengan KB dan peraturan yang berlaku, serta gunakan sitasi yang tepat jika diperlukan.</p></li><li><p><strong>Bias &amp; Privacy Compliance:</strong> Jangan pernah meminta atau menyimpan informasi pribadi mahasiswa yang tidak relevan untuk layanan yang diminta terkait TA dan proposalnya.</p></li></ul><hr><p><strong>Example Workflow for Non-Trivial Questions</strong></p><ol><li><p>Terima pertanyaan dari mahasiswa mengenai TA atau proposal.</p></li><li><p>Tentukan apakah pertanyaan tersebut trivial atau non-trivial.</p></li><li><p>Jika trivial, berikan jawaban singkat sesuai pedoman.</p></li><li><p>Jika non-trivial, lakukan pencarian di KB mengenai TA atau proposal:</p><ul><li><p>Jika ada jawaban yang relevan, berikan dengan mencantumkan sumber (sitasi).</p></li><li><p>Jika tidak ada jawaban, beri tahu mahasiswa bahwa informasi tersebut tidak ditemukan dan tawarkan eskalasi ke staf administrasi atau Dosen Pembimbing.</p></li></ul></li></ol><hr><p><strong>For Fallbacks:</strong><br>Jika sistem tidak dapat memproses pertanyaan dengan akurat terkait TA atau proposal, arahkan mahasiswa ke opsi fallback dengan langkah-langkah berikut:</p><ul><li><p><strong>Fallback ke Tautan Informasi Umum:</strong> Jika sistem tidak menemukan informasi atau tidak dapat memberikan jawaban yang relevan, beri tahu mahasiswa untuk mengunjungi <strong>https://linktr.ee/laaksoc</strong>, yang menyediakan berbagai informasi tambahan tentang Fakultas Informatika Telkom University.</p></li></ul><hr><p><strong>Non-Allowed Topics</strong><br>Jika mahasiswa bertanya di luar ruang lingkup TA atau Proposal TA (misalnya: cuaca, berita umum, atau opini pribadi), tolak dengan sopan:</p><ul><li><p>\"Mohon maaf, saya hanya dapat membantu dengan pertanyaan terkait <strong>Tugas Akhir (TA)</strong> dan <strong>Proposal TA</strong> di Fakultas Informatika.\"</p></li></ul><hr><p><strong>Example Input and Output</strong></p><ul><li><p><strong>Input:</strong><br>\"Apa saja syarat untuk mengajukan proposal Tugas Akhir?\"</p></li><li><p><strong>Output:</strong><br>\"Untuk mengajukan proposal Tugas Akhir, mahasiswa harus mengisi formulir pengajuan, melampirkan topik yang disetujui oleh pembimbing, serta mengikuti prosedur bimbingan yang berlaku. Untuk informasi lebih lanjut, Anda dapat merujuk ke <strong>Panduan Pengajuan Proposal Tugas Akhir</strong> di KB kami atau mengunjungi <strong>tautan informasi umum Fakultas Informatika</strong>.\"</p></li></ul><hr><p><strong>Compliance:</strong><br>Pastikan untuk selalu mengikuti kebijakan data dan privasi universitas. Jangan meminta informasi pribadi sensitif mahasiswa di luar konteks yang diperlukan untuk layanan.</p>"
+            }
+          ],
+          "agentTools": "",
+          "agentKnowledgeDocumentStores": [
+            {
+              "documentStore": "09fadd22-0448-4e31-854d-6080ac8f9864:Tugas Akhir dan Proposal",
+              "docStoreDescription": "Tugas Akhir (TA):\n\nPanduan Tugas Akhir: Guidelines for the proposal and completion of Tugas Akhir, including requirements for submission, defense, and graduation readiness.\n\nAlur Pengajuan TA: Step-by-step procedures for submitting and managing Tugas Akhir, including the socialization process and approval timeline.\n",
+              "returnSourceDocuments": true
+            }
+          ],
+          "agentKnowledgeVSEmbeddings": "",
+          "agentEnableMemory": true,
+          "agentMemoryType": "allMessages",
+          "agentUserMessage": "",
+          "agentReturnResponseAs": "userMessage",
+          "agentUpdateState": "",
+          "undefined": "",
+          "agentModelConfig": {
+            "credential": "",
+            "modelName": "gpt-4o-mini",
+            "temperature": "0.6",
+            "streaming": true,
+            "maxTokens": "",
+            "topP": "",
+            "frequencyPenalty": "",
+            "presencePenalty": "",
+            "timeout": "",
+            "strictToolCalling": "",
+            "stopSequence": "",
+            "basepath": "",
+            "proxyUrl": "",
+            "baseOptions": "",
+            "allowImageUploads": "",
+            "imageResolution": "low",
+            "reasoning": "",
+            "reasoningEffort": "",
+            "reasoningSummary": "",
+            "agentModel": "chatOpenAI"
+          },
+          "agentToolsBuiltInOpenAI": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "agentAgentflow_1-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 312,
+      "height": 72,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 351.7409314579291,
+        "y": -28.978544245882503
+      },
+      "dragging": false
+    },
+    {
+      "id": "agentAgentflow_2",
+      "position": {
+        "x": 350.1827871827737,
+        "y": -271.84230947780554
+      },
+      "data": {
+        "id": "agentAgentflow_2",
+        "label": "KP AI Agent",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": [
+          "Agent"
+        ],
+        "category": "Agent Flows",
+        "description": "Dynamically choose and utilize tools during runtime, enabling multi-step reasoning",
+        "inputParams": [
+          {
+            "label": "Model",
+            "name": "agentModel",
+            "type": "asyncOptions",
+            "loadMethod": "listModels",
+            "loadConfig": true,
+            "id": "agentAgentflow_2-input-agentModel-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Messages",
+            "name": "agentMessages",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Role",
+                "name": "role",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "System",
+                    "name": "system"
+                  },
+                  {
+                    "label": "Assistant",
+                    "name": "assistant"
+                  },
+                  {
+                    "label": "Developer",
+                    "name": "developer"
+                  },
+                  {
+                    "label": "User",
+                    "name": "user"
+                  }
+                ]
+              },
+              {
+                "label": "Content",
+                "name": "content",
+                "type": "string",
+                "acceptVariable": true,
+                "generateInstruction": true,
+                "rows": 4
+              }
+            ],
+            "id": "agentAgentflow_2-input-agentMessages-array",
+            "display": true
+          },
+          {
+            "label": "OpenAI Built-in Tools",
+            "name": "agentToolsBuiltInOpenAI",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "Web Search",
+                "name": "web_search_preview",
+                "description": "Search the web for the latest information"
+              },
+              {
+                "label": "Code Interpreter",
+                "name": "code_interpreter",
+                "description": "Write and run Python code in a sandboxed environment"
+              },
+              {
+                "label": "Image Generation",
+                "name": "image_generation",
+                "description": "Generate images based on a text prompt"
+              }
+            ],
+            "show": {
+              "agentModel": "chatOpenAI"
+            },
+            "id": "agentAgentflow_2-input-agentToolsBuiltInOpenAI-multiOptions",
+            "display": true
+          },
+          {
+            "label": "Gemini Built-in Tools",
+            "name": "agentToolsBuiltInGemini",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "URL Context",
+                "name": "urlContext",
+                "description": "Extract content from given URLs"
+              },
+              {
+                "label": "Google Search",
+                "name": "googleSearch",
+                "description": "Search real-time web content"
+              }
+            ],
+            "show": {
+              "agentModel": "chatGoogleGenerativeAI"
+            },
+            "id": "agentAgentflow_2-input-agentToolsBuiltInGemini-multiOptions",
+            "display": false
+          },
+          {
+            "label": "Anthropic Built-in Tools",
+            "name": "agentToolsBuiltInAnthropic",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "Web Search",
+                "name": "web_search_20250305",
+                "description": "Search the web for the latest information"
+              },
+              {
+                "label": "Web Fetch",
+                "name": "web_fetch_20250910",
+                "description": "Retrieve full content from specified web pages"
+              }
+            ],
+            "show": {
+              "agentModel": "chatAnthropic"
+            },
+            "id": "agentAgentflow_2-input-agentToolsBuiltInAnthropic-multiOptions",
+            "display": false
+          },
+          {
+            "label": "Tools",
+            "name": "agentTools",
+            "type": "array",
+            "optional": true,
+            "array": [
+              {
+                "label": "Tool",
+                "name": "agentSelectedTool",
+                "type": "asyncOptions",
+                "loadMethod": "listTools",
+                "loadConfig": true
+              },
+              {
+                "label": "Require Human Input",
+                "name": "agentSelectedToolRequiresHumanInput",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "id": "agentAgentflow_2-input-agentTools-array",
+            "display": true
+          },
+          {
+            "label": "Knowledge (Document Stores)",
+            "name": "agentKnowledgeDocumentStores",
+            "type": "array",
+            "description": "Give your agent context about different document sources. Document stores must be upserted in advance.",
+            "array": [
+              {
+                "label": "Document Store",
+                "name": "documentStore",
+                "type": "asyncOptions",
+                "loadMethod": "listStores"
+              },
+              {
+                "label": "Describe Knowledge",
+                "name": "docStoreDescription",
+                "type": "string",
+                "generateDocStoreDescription": true,
+                "placeholder": "Describe what the knowledge base is about, this is useful for the AI to know when and how to search for correct information",
+                "rows": 4
+              },
+              {
+                "label": "Return Source Documents",
+                "name": "returnSourceDocuments",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "optional": true,
+            "id": "agentAgentflow_2-input-agentKnowledgeDocumentStores-array",
+            "display": true
+          },
+          {
+            "label": "Knowledge (Vector Embeddings)",
+            "name": "agentKnowledgeVSEmbeddings",
+            "type": "array",
+            "description": "Give your agent context about different document sources from existing vector stores and embeddings",
+            "array": [
+              {
+                "label": "Vector Store",
+                "name": "vectorStore",
+                "type": "asyncOptions",
+                "loadMethod": "listVectorStores",
+                "loadConfig": true
+              },
+              {
+                "label": "Embedding Model",
+                "name": "embeddingModel",
+                "type": "asyncOptions",
+                "loadMethod": "listEmbeddings",
+                "loadConfig": true
+              },
+              {
+                "label": "Knowledge Name",
+                "name": "knowledgeName",
+                "type": "string",
+                "placeholder": "A short name for the knowledge base, this is useful for the AI to know when and how to search for correct information"
+              },
+              {
+                "label": "Describe Knowledge",
+                "name": "knowledgeDescription",
+                "type": "string",
+                "placeholder": "Describe what the knowledge base is about, this is useful for the AI to know when and how to search for correct information",
+                "rows": 4
+              },
+              {
+                "label": "Return Source Documents",
+                "name": "returnSourceDocuments",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "optional": true,
+            "id": "agentAgentflow_2-input-agentKnowledgeVSEmbeddings-array",
+            "display": true
+          },
+          {
+            "label": "Enable Memory",
+            "name": "agentEnableMemory",
+            "type": "boolean",
+            "description": "Enable memory for the conversation thread",
+            "default": true,
+            "optional": true,
+            "id": "agentAgentflow_2-input-agentEnableMemory-boolean",
+            "display": true
+          },
+          {
+            "label": "Memory Type",
+            "name": "agentMemoryType",
+            "type": "options",
+            "options": [
+              {
+                "label": "All Messages",
+                "name": "allMessages",
+                "description": "Retrieve all messages from the conversation"
+              },
+              {
+                "label": "Window Size",
+                "name": "windowSize",
+                "description": "Uses a fixed window size to surface the last N messages"
+              },
+              {
+                "label": "Conversation Summary",
+                "name": "conversationSummary",
+                "description": "Summarizes the whole conversation"
+              },
+              {
+                "label": "Conversation Summary Buffer",
+                "name": "conversationSummaryBuffer",
+                "description": "Summarize conversations once token limit is reached. Default to 2000"
+              }
+            ],
+            "optional": true,
+            "default": "allMessages",
+            "show": {
+              "agentEnableMemory": true
+            },
+            "id": "agentAgentflow_2-input-agentMemoryType-options",
+            "display": true
+          },
+          {
+            "label": "Window Size",
+            "name": "agentMemoryWindowSize",
+            "type": "number",
+            "default": "20",
+            "description": "Uses a fixed window size to surface the last N messages",
+            "show": {
+              "agentMemoryType": "windowSize"
+            },
+            "id": "agentAgentflow_2-input-agentMemoryWindowSize-number",
+            "display": false
+          },
+          {
+            "label": "Max Token Limit",
+            "name": "agentMemoryMaxTokenLimit",
+            "type": "number",
+            "default": "2000",
+            "description": "Summarize conversations once token limit is reached. Default to 2000",
+            "show": {
+              "agentMemoryType": "conversationSummaryBuffer"
+            },
+            "id": "agentAgentflow_2-input-agentMemoryMaxTokenLimit-number",
+            "display": false
+          },
+          {
+            "label": "Input Message",
+            "name": "agentUserMessage",
+            "type": "string",
+            "description": "Add an input message as user message at the end of the conversation",
+            "rows": 4,
+            "optional": true,
+            "acceptVariable": true,
+            "show": {
+              "agentEnableMemory": true
+            },
+            "id": "agentAgentflow_2-input-agentUserMessage-string",
+            "display": true
+          },
+          {
+            "label": "Return Response As",
+            "name": "agentReturnResponseAs",
+            "type": "options",
+            "options": [
+              {
+                "label": "User Message",
+                "name": "userMessage"
+              },
+              {
+                "label": "Assistant Message",
+                "name": "assistantMessage"
+              }
+            ],
+            "default": "userMessage",
+            "id": "agentAgentflow_2-input-agentReturnResponseAs-options",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "agentUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys",
+                "freeSolo": true
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "agentAgentflow_2-input-agentUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "agentModel": "chatOpenAI",
+          "agentMessages": [
+            {
+              "role": "system",
+              "content": "<p><strong>AI Helpdesk Chatbot Prompt - Fakultas Informatika Telkom University</strong></p><hr><p><strong>Overview</strong><br>Anda adalah \"Asisten AI Helpdesk\" resmi dari Fakultas Informatika Telkom University. Tugas utama Anda adalah membantu mahasiswa dalam menyediakan informasi yang cepat dan akurat mengenai layanan akademik dan administrasi fakultas, khususnya untuk Kerja praktek (KP)</p><p><strong>Penting Khusus KP</strong></p><p>Informasi terkait kp ada di link: https://linktr.ee/laaksoc</p><p>Semua proses KP mulai dari pendaftaran, pelaksanaan, submit dokumen, dan penilaian KP ada di aplikasi: https://apps-soc.telkomuniversity.ac.id/sikape<br>Pilih bagian Aplikasi Sikape untuk kerja praktek</p><p><strong>Audience</strong>:<br>Mahasiswa Fakultas Informatika Telkom University.</p><p><strong>Behavior Guidelines</strong>:</p><ul><li><p>Gunakan bahasa Indonesia formal dan sopan.</p></li><li><p>Respons yang Anda berikan harus jelas, terstruktur, dan memberikan nilai tambah bagi mahasiswa.</p></li><li><p>Jika pertanyaan mahasiswa termasuk pertanyaan trivial, berikan jawaban singkat dan langsung.</p></li><li><p>Untuk pertanyaan yang lebih kompleks atau non-trivial, lakukan pencarian di Knowledge Base (KB) atau eskalasi ke staf manusia jika diperlukan.</p></li></ul><p><strong>Trivial Questions</strong>:<br>Untuk pertanyaan yang dapat dijawab dengan cepat, seperti sapaan, informasi jadwal atau prosedur yang sudah jelas, berikan jawaban singkat dalam satu kalimat.</p><p><strong>Non-Trivial Questions</strong>:<br>Jika pertanyaan membutuhkan pencarian di Knowledge Base (KB) atau klarifikasi lebih lanjut, ikuti langkah-langkah berikut:</p><ol><li><p>Cari jawaban dalam KB yang tersedia.</p></li><li><p>Jika tidak ditemukan, beri tahu mahasiswa secara jujur bahwa Anda tidak menemukan informasi yang relevan dalam KB.</p></li><li><p>Jika memungkinkan, tawarkan untuk menghubungkan mahasiswa dengan staf administrasi atau Dosen Pembimbing untuk pertanyaan lebih lanjut.</p></li></ol><p><strong>Data Sources &amp; Scope</strong><br>Anda hanya boleh merujuk pada data yang terdapat dalam KB yang telah disediakan, yang mencakup:</p><ul><li><p>Informasi akademik (jadwal perkuliahan, prosedur tugas akhir, SKS, peraturan akademik, dll).</p></li><li><p>Layanan administrasi (layanan LAAK, prosedur pembayaran, pembuatan surat keterangan, dll).</p></li><li><p>Anda tidak boleh memberikan informasi terkait hal lain di luar ruang lingkup akademik atau administrasi fakultas.</p></li></ul><p><strong>Safeguards</strong>:</p><ol><li><p><strong>Chain of Thought</strong>: Untuk setiap jawaban yang diberikan, pastikan untuk memecah informasi dengan jelas dan terstruktur. Jika pertanyaan membutuhkan penjelasan lebih lanjut, ikuti langkah-langkah satu per satu untuk memberikan konteks yang lebih dalam.</p></li><li><p><strong>Context Maintenance</strong>: Anda harus mampu menjaga konteks percakapan multi-turn. Jika mahasiswa mengajukan pertanyaan lanjutan, rujuk kembali ke informasi sebelumnya.</p></li><li><p><strong>Fallback Process</strong>: Jika informasi tidak ditemukan atau jika terjadi kesalahan dalam pencarian, beri tahu mahasiswa secara terbuka bahwa Anda tidak dapat memberikan jawaban yang spesifik dan tawarkan eskalasi ke staf manusia.</p></li><li><p><strong>Accuracy</strong>: Jika Anda menggunakan KB, pastikan untuk menyertakan sitasi sumber informasi dengan benar. Jika ada link terkait di metadata, sertakan link tersebut dalam jawaban.</p></li><li><p><strong>Bias &amp; Privacy Compliance</strong>: Jangan pernah meminta atau menyimpan informasi pribadi mahasiswa yang tidak relevan untuk layanan yang diminta.</p></li></ol><p><strong>Example Workflow for Non-Trivial Questions</strong></p><ol><li><p>Terima pertanyaan dari mahasiswa.</p></li><li><p>Tentukan apakah pertanyaan trivial atau tidak.</p></li><li><p>Jika trivial, berikan jawaban singkat.</p></li><li><p>Jika non-trivial, lakukan pencarian di KB:</p><ul><li><p>Jika ada jawaban yang relevan, berikan dengan mencantumkan sumber (sitasi).</p></li><li><p>Jika tidak ada jawaban, beri tahu mahasiswa bahwa informasi tersebut tidak ditemukan dan tawarkan eskalasi ke staf administrasi atau Dosen Pembimbing.</p></li></ul></li></ol><p><strong>For Fallbacks</strong>:<br>Jika sistem tidak dapat memproses pertanyaan dengan akurat, arahkan mahasiswa ke opsi fallback dengan langkah-langkah berikut:</p><ol><li><p><strong>Fallback ke Staf Manusia</strong>: Jika sistem memiliki keraguan tentang akurasi jawaban, arahkan mahasiswa untuk mendapatkan bantuan dari staf administrasi atau Dosen Pembimbing.</p></li></ol><p><strong>Non-Allowed Topics</strong><br>Jika mahasiswa bertanya di luar ruang lingkup layanan akademik atau administrasi fakultas (seperti cuaca, berita umum, atau opini pribadi), tolak dengan sopan:</p><ul><li><p>\"Mohon maaf, saya hanya dapat membantu dengan pertanyaan terkait layanan akademik dan administrasi.\"</p></li></ul><h3><strong>Example Input and Output</strong></h3><p><strong>Input</strong>:<br>\"Apakah saya bisa mengajukan permohonan Kerja Praktik jika saya belum menyelesaikan 100 SKS?\"</p><p><strong>Output</strong>:<br>\"Menurut <strong>Panduan Kerja Praktik 2025</strong>, syarat untuk mengikuti Kerja Praktik adalah mahasiswa harus telah menyelesaikan minimal 100 SKS sebelum mendaftar. Jika Anda belum memenuhi syarat tersebut, Anda tidak dapat mengajukan permohonan Kerja Praktik pada periode ini (<strong>Panduan Kerja Praktik 2025</strong>).\"</p><p><strong>Compliance</strong><br>Pastikan untuk selalu mengikuti kebijakan data dan privasi universitas. Jangan meminta informasi pribadi sensitif mahasiswa di luar konteks yang diperlukan untuk layanan.</p>"
+            }
+          ],
+          "agentTools": "",
+          "agentKnowledgeDocumentStores": [
+            {
+              "documentStore": "c9b03bfa-f4ac-430d-a20d-81dade61a626:Kerja Praktik (KP)",
+              "docStoreDescription": "Kerja Praktik (KP):\n\nPanduan Kerja Praktik: Information about the required steps, prerequisites, and procedures for applying for Kerja Praktik, including necessary approvals and documentation.\n\nDaftar Pembimbing KP: List of available supervisors for KP, including their contact information and areas of expertise.\n\nInformasi Tambahan KP: Additional details related to the KP process, including deadlines and special requirements.\n\nTimeline KP: A detailed timeline for Kerja Praktik, outlining important milestones, deadlines, and submission dates.",
+              "returnSourceDocuments": true
+            }
+          ],
+          "agentKnowledgeVSEmbeddings": "",
+          "agentEnableMemory": true,
+          "agentMemoryType": "allMessages",
+          "agentUserMessage": "",
+          "agentReturnResponseAs": "userMessage",
+          "agentUpdateState": "",
+          "undefined": "",
+          "agentModelConfig": {
+            "credential": "",
+            "modelName": "gpt-4o-mini",
+            "temperature": "0.6",
+            "streaming": true,
+            "maxTokens": "",
+            "topP": "",
+            "frequencyPenalty": "",
+            "presencePenalty": "",
+            "timeout": "",
+            "strictToolCalling": "",
+            "stopSequence": "",
+            "basepath": "",
+            "proxyUrl": "",
+            "baseOptions": "",
+            "allowImageUploads": "",
+            "imageResolution": "low",
+            "reasoning": "",
+            "reasoningEffort": "",
+            "reasoningSummary": "",
+            "agentModel": "chatOpenAI"
+          },
+          "agentToolsBuiltInOpenAI": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "agentAgentflow_2-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 175,
+      "height": 72,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 350.1827871827737,
+        "y": -271.84230947780554
+      },
+      "dragging": false
+    },
+    {
+      "id": "agentAgentflow_3",
+      "position": {
+        "x": 351.543213065869,
+        "y": 89.61886630874739
+      },
+      "data": {
+        "id": "agentAgentflow_3",
+        "label": "General Info AI Agent",
+        "version": 2.2,
+        "name": "agentAgentflow",
+        "type": "Agent",
+        "color": "#4DD0E1",
+        "baseClasses": [
+          "Agent"
+        ],
+        "category": "Agent Flows",
+        "description": "Dynamically choose and utilize tools during runtime, enabling multi-step reasoning",
+        "inputParams": [
+          {
+            "label": "Model",
+            "name": "agentModel",
+            "type": "asyncOptions",
+            "loadMethod": "listModels",
+            "loadConfig": true,
+            "id": "agentAgentflow_3-input-agentModel-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Messages",
+            "name": "agentMessages",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Role",
+                "name": "role",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "System",
+                    "name": "system"
+                  },
+                  {
+                    "label": "Assistant",
+                    "name": "assistant"
+                  },
+                  {
+                    "label": "Developer",
+                    "name": "developer"
+                  },
+                  {
+                    "label": "User",
+                    "name": "user"
+                  }
+                ]
+              },
+              {
+                "label": "Content",
+                "name": "content",
+                "type": "string",
+                "acceptVariable": true,
+                "generateInstruction": true,
+                "rows": 4
+              }
+            ],
+            "id": "agentAgentflow_3-input-agentMessages-array",
+            "display": true
+          },
+          {
+            "label": "OpenAI Built-in Tools",
+            "name": "agentToolsBuiltInOpenAI",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "Web Search",
+                "name": "web_search_preview",
+                "description": "Search the web for the latest information"
+              },
+              {
+                "label": "Code Interpreter",
+                "name": "code_interpreter",
+                "description": "Write and run Python code in a sandboxed environment"
+              },
+              {
+                "label": "Image Generation",
+                "name": "image_generation",
+                "description": "Generate images based on a text prompt"
+              }
+            ],
+            "show": {
+              "agentModel": "chatOpenAI"
+            },
+            "id": "agentAgentflow_3-input-agentToolsBuiltInOpenAI-multiOptions",
+            "display": true
+          },
+          {
+            "label": "Gemini Built-in Tools",
+            "name": "agentToolsBuiltInGemini",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "URL Context",
+                "name": "urlContext",
+                "description": "Extract content from given URLs"
+              },
+              {
+                "label": "Google Search",
+                "name": "googleSearch",
+                "description": "Search real-time web content"
+              }
+            ],
+            "show": {
+              "agentModel": "chatGoogleGenerativeAI"
+            },
+            "id": "agentAgentflow_3-input-agentToolsBuiltInGemini-multiOptions",
+            "display": false
+          },
+          {
+            "label": "Anthropic Built-in Tools",
+            "name": "agentToolsBuiltInAnthropic",
+            "type": "multiOptions",
+            "optional": true,
+            "options": [
+              {
+                "label": "Web Search",
+                "name": "web_search_20250305",
+                "description": "Search the web for the latest information"
+              },
+              {
+                "label": "Web Fetch",
+                "name": "web_fetch_20250910",
+                "description": "Retrieve full content from specified web pages"
+              }
+            ],
+            "show": {
+              "agentModel": "chatAnthropic"
+            },
+            "id": "agentAgentflow_3-input-agentToolsBuiltInAnthropic-multiOptions",
+            "display": false
+          },
+          {
+            "label": "Tools",
+            "name": "agentTools",
+            "type": "array",
+            "optional": true,
+            "array": [
+              {
+                "label": "Tool",
+                "name": "agentSelectedTool",
+                "type": "asyncOptions",
+                "loadMethod": "listTools",
+                "loadConfig": true
+              },
+              {
+                "label": "Require Human Input",
+                "name": "agentSelectedToolRequiresHumanInput",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "id": "agentAgentflow_3-input-agentTools-array",
+            "display": true
+          },
+          {
+            "label": "Knowledge (Document Stores)",
+            "name": "agentKnowledgeDocumentStores",
+            "type": "array",
+            "description": "Give your agent context about different document sources. Document stores must be upserted in advance.",
+            "array": [
+              {
+                "label": "Document Store",
+                "name": "documentStore",
+                "type": "asyncOptions",
+                "loadMethod": "listStores"
+              },
+              {
+                "label": "Describe Knowledge",
+                "name": "docStoreDescription",
+                "type": "string",
+                "generateDocStoreDescription": true,
+                "placeholder": "Describe what the knowledge base is about, this is useful for the AI to know when and how to search for correct information",
+                "rows": 4
+              },
+              {
+                "label": "Return Source Documents",
+                "name": "returnSourceDocuments",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "optional": true,
+            "id": "agentAgentflow_3-input-agentKnowledgeDocumentStores-array",
+            "display": true
+          },
+          {
+            "label": "Knowledge (Vector Embeddings)",
+            "name": "agentKnowledgeVSEmbeddings",
+            "type": "array",
+            "description": "Give your agent context about different document sources from existing vector stores and embeddings",
+            "array": [
+              {
+                "label": "Vector Store",
+                "name": "vectorStore",
+                "type": "asyncOptions",
+                "loadMethod": "listVectorStores",
+                "loadConfig": true
+              },
+              {
+                "label": "Embedding Model",
+                "name": "embeddingModel",
+                "type": "asyncOptions",
+                "loadMethod": "listEmbeddings",
+                "loadConfig": true
+              },
+              {
+                "label": "Knowledge Name",
+                "name": "knowledgeName",
+                "type": "string",
+                "placeholder": "A short name for the knowledge base, this is useful for the AI to know when and how to search for correct information"
+              },
+              {
+                "label": "Describe Knowledge",
+                "name": "knowledgeDescription",
+                "type": "string",
+                "placeholder": "Describe what the knowledge base is about, this is useful for the AI to know when and how to search for correct information",
+                "rows": 4
+              },
+              {
+                "label": "Return Source Documents",
+                "name": "returnSourceDocuments",
+                "type": "boolean",
+                "optional": true
+              }
+            ],
+            "optional": true,
+            "id": "agentAgentflow_3-input-agentKnowledgeVSEmbeddings-array",
+            "display": true
+          },
+          {
+            "label": "Enable Memory",
+            "name": "agentEnableMemory",
+            "type": "boolean",
+            "description": "Enable memory for the conversation thread",
+            "default": true,
+            "optional": true,
+            "id": "agentAgentflow_3-input-agentEnableMemory-boolean",
+            "display": true
+          },
+          {
+            "label": "Memory Type",
+            "name": "agentMemoryType",
+            "type": "options",
+            "options": [
+              {
+                "label": "All Messages",
+                "name": "allMessages",
+                "description": "Retrieve all messages from the conversation"
+              },
+              {
+                "label": "Window Size",
+                "name": "windowSize",
+                "description": "Uses a fixed window size to surface the last N messages"
+              },
+              {
+                "label": "Conversation Summary",
+                "name": "conversationSummary",
+                "description": "Summarizes the whole conversation"
+              },
+              {
+                "label": "Conversation Summary Buffer",
+                "name": "conversationSummaryBuffer",
+                "description": "Summarize conversations once token limit is reached. Default to 2000"
+              }
+            ],
+            "optional": true,
+            "default": "allMessages",
+            "show": {
+              "agentEnableMemory": true
+            },
+            "id": "agentAgentflow_3-input-agentMemoryType-options",
+            "display": true
+          },
+          {
+            "label": "Window Size",
+            "name": "agentMemoryWindowSize",
+            "type": "number",
+            "default": "20",
+            "description": "Uses a fixed window size to surface the last N messages",
+            "show": {
+              "agentMemoryType": "windowSize"
+            },
+            "id": "agentAgentflow_3-input-agentMemoryWindowSize-number",
+            "display": false
+          },
+          {
+            "label": "Max Token Limit",
+            "name": "agentMemoryMaxTokenLimit",
+            "type": "number",
+            "default": "2000",
+            "description": "Summarize conversations once token limit is reached. Default to 2000",
+            "show": {
+              "agentMemoryType": "conversationSummaryBuffer"
+            },
+            "id": "agentAgentflow_3-input-agentMemoryMaxTokenLimit-number",
+            "display": false
+          },
+          {
+            "label": "Input Message",
+            "name": "agentUserMessage",
+            "type": "string",
+            "description": "Add an input message as user message at the end of the conversation",
+            "rows": 4,
+            "optional": true,
+            "acceptVariable": true,
+            "show": {
+              "agentEnableMemory": true
+            },
+            "id": "agentAgentflow_3-input-agentUserMessage-string",
+            "display": true
+          },
+          {
+            "label": "Return Response As",
+            "name": "agentReturnResponseAs",
+            "type": "options",
+            "options": [
+              {
+                "label": "User Message",
+                "name": "userMessage"
+              },
+              {
+                "label": "Assistant Message",
+                "name": "assistantMessage"
+              }
+            ],
+            "default": "userMessage",
+            "id": "agentAgentflow_3-input-agentReturnResponseAs-options",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "agentUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys",
+                "freeSolo": true
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "agentAgentflow_3-input-agentUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "agentModel": "chatOpenAI",
+          "agentMessages": [
+            {
+              "role": "system",
+              "content": "<p><strong>Overview</strong><br>Anda adalah \"Asisten AI Informasi Umum\" resmi dari Fakultas Informatika Telkom University. Tugas utama Anda adalah membantu mahasiswa dengan memberikan informasi terkait berbagai aspek umum di fakultas, seperti pengumuman, jadwal perkuliahan, dan prosedur administratif yang lebih umum.</p><p><strong>Audience:</strong><br>Mahasiswa Fakultas Informatika Telkom University yang mencari informasi umum terkait kampus.</p><p><strong>Behavior Guidelines:</strong></p><ul><li><p><strong>Gunakan bahasa Indonesia formal dan sopan.</strong></p></li><li><p><strong>Respons yang Anda berikan harus jelas, terstruktur, dan memberikan nilai tambah bagi mahasiswa.</strong></p></li><li><p>Jika pertanyaan mahasiswa termasuk pertanyaan trivial terkait informasi umum, berikan jawaban singkat dan langsung.</p></li><li><p>Untuk pertanyaan yang lebih kompleks atau non-trivial terkait informasi umum, lakukan pencarian di Knowledge Base (KB) atau eskalasi ke staf administrasi jika diperlukan.</p></li></ul><p><strong>Trivial Questions:</strong><br>Untuk pertanyaan yang dapat dijawab dengan cepat, seperti jadwal perkuliahan atau pengumuman yang sudah jelas, berikan jawaban singkat dalam satu kalimat.</p><p><strong>Non-Trivial Questions:</strong><br>Jika pertanyaan membutuhkan pencarian lebih dalam di Knowledge Base (KB), ikuti langkah-langkah berikut:</p><ol><li><p>Cari jawaban dalam KB yang relevan mengenai informasi umum yang diminta.</p></li><li><p>Jika tidak ditemukan, beri tahu mahasiswa secara jujur bahwa informasi tersebut tidak ditemukan dalam KB.</p></li><li><p>Jika Anda masih tidak yakin atau tidak dapat memberikan jawaban yang relevan, arahkan mahasiswa ke tautan <strong>https://linktr.ee/laaksoc</strong>, yang menyediakan informasi lebih lanjut terkait berbagai topik umum di Fakultas Informatika Telkom University.</p></li></ol><hr><p><strong>Data Sources &amp; Scope</strong><br>Anda hanya boleh merujuk pada data yang terdapat dalam KB yang telah disediakan, yang mencakup informasi umum seperti:</p><ul><li><p><strong>Pengumuman Kampus</strong> (misalnya jadwal ujian, acara kampus, dll).</p></li><li><p><strong>Prosedur Administratif Umum</strong> (misalnya prosedur untuk mengajukan surat keterangan, cuti akademik, dll).</p></li><li><p><strong>Informasi Akademik Umum</strong> (misalnya pedoman akademik, SKS, dll).</p></li></ul><p>Jika tidak ada informasi yang relevan di KB, Anda dapat merujuk mahasiswa ke tautan yang telah disediakan.</p><hr><p><strong>Safeguards:</strong></p><ul><li><p><strong>Chain of Thought:</strong> Pastikan untuk memecah informasi yang kompleks menjadi langkah-langkah yang mudah dipahami. Jika pertanyaan membutuhkan informasi lebih lanjut atau referensi ke situs lain, arahkan mahasiswa dengan jelas.</p></li><li><p><strong>Context Maintenance:</strong> Jika mahasiswa mengajukan pertanyaan lanjutan terkait informasi umum, pastikan untuk merujuk kembali ke percakapan sebelumnya dan menjaga alur informasi.</p></li><li><p><strong>Fallback Process:</strong> Jika informasi tidak ditemukan atau jika terjadi kesalahan dalam pencarian, beri tahu mahasiswa secara terbuka bahwa Anda tidak dapat memberikan jawaban yang spesifik, dan arahkan mereka ke <strong>tautan informasi lebih lanjut</strong>.</p></li><li><p><strong>Accuracy:</strong> Pastikan untuk selalu menyampaikan jawaban yang sesuai dengan KB dan peraturan yang berlaku, serta gunakan sitasi yang tepat jika diperlukan.</p></li><li><p><strong>Bias &amp; Privacy Compliance:</strong> Jangan pernah meminta atau menyimpan informasi pribadi mahasiswa yang tidak relevan untuk layanan yang diminta terkait informasi umum.</p></li></ul><hr><p><strong>Example Workflow for Non-Trivial Questions</strong></p><ol><li><p>Terima pertanyaan dari mahasiswa terkait informasi umum.</p></li><li><p>Tentukan apakah pertanyaan tersebut trivial atau non-trivial.</p></li><li><p>Jika trivial, berikan jawaban singkat sesuai pedoman.</p></li><li><p>Jika non-trivial, lakukan pencarian di KB terkait informasi umum:</p><ul><li><p>Jika ada jawaban yang relevan, berikan dengan mencantumkan sumber (sitasi).</p></li><li><p>Jika tidak ada jawaban yang relevan, beri tahu mahasiswa bahwa informasi tersebut tidak ditemukan dan arahkan mereka ke <strong>https://linktr.ee/laaksoc</strong> untuk informasi lebih lanjut.</p></li></ul></li></ol><hr><p><strong>For Fallbacks:</strong><br>Jika sistem tidak dapat memproses pertanyaan dengan akurat terkait informasi umum, arahkan mahasiswa ke opsi fallback dengan langkah-langkah berikut:</p><ul><li><p><strong>Fallback ke Tautan Informasi Umum:</strong> Jika sistem tidak menemukan informasi atau tidak dapat memberikan jawaban yang relevan, beri tahu mahasiswa untuk mengunjungi <strong>https://linktr.ee/laaksoc</strong>, yang menyediakan berbagai informasi tambahan tentang Fakultas Informatika Telkom University.</p></li></ul><hr><p><strong>Non-Allowed Topics</strong><br>Jika mahasiswa bertanya di luar ruang lingkup informasi umum (misalnya: cuaca, berita umum, atau opini pribadi), tolak dengan sopan:</p><ul><li><p>\"Mohon maaf, saya hanya dapat membantu dengan pertanyaan terkait informasi umum dan administrasi di Fakultas Informatika.\"</p></li></ul><hr><p><strong>Example Input and Output</strong></p><ul><li><p><strong>Input:</strong><br>\"Di mana saya bisa melihat pengumuman tentang jadwal ujian semester ini?\"</p></li><li><p><strong>Output:</strong><br>\"Untuk informasi terbaru mengenai pengumuman jadwal ujian dan acara kampus lainnya, Anda dapat mengunjungi <strong>https://linktr.ee/laaksoc</strong>\"</p></li></ul><hr><p><strong>Compliance:</strong><br>Pastikan untuk selalu mengikuti kebijakan data dan privasi universitas. Jangan meminta informasi pribadi sensitif mahasiswa di luar konteks yang diperlukan untuk layanan.</p>"
+            }
+          ],
+          "agentTools": "",
+          "agentKnowledgeDocumentStores": [
+            {
+              "documentStore": "9baa9873-0bbf-4ba4-a201-1452decf45a1:Informasi Umum Fakultas",
+              "docStoreDescription": "Layanan Administrasi Akademik:\n\nCuti Akademik: Procedures for applying for academic leave, including eligibility and necessary forms.\n\nPengajuan LAAK: How to apply for Layanan Administrasi Akademik (LAAK) for administrative requests.\n\nPengajuan Undur Diri: Steps for withdrawing from the university, including the required documentation.\n\nFAQ: Frequently asked questions about the helpdesk services and university administration.\n\nPedoman Akademik: The official academic handbook, detailing the university’s academic policies, including the required SKS and the course structure.\n\nRegulasi dan Kebijakan:\n\nKode Etik Mahasiswa: The student code of ethics, outlining behavioral expectations and academic integrity policies.\n\nPengumuman Permohonan Aktif Kuliah: Instructions on how to apply for reactivation of student status.",
+              "returnSourceDocuments": true
+            }
+          ],
+          "agentKnowledgeVSEmbeddings": "",
+          "agentEnableMemory": true,
+          "agentMemoryType": "allMessages",
+          "agentUserMessage": "",
+          "agentReturnResponseAs": "userMessage",
+          "agentUpdateState": "",
+          "undefined": "",
+          "agentModelConfig": {
+            "credential": "",
+            "modelName": "gpt-4o-mini",
+            "temperature": "0.6",
+            "streaming": true,
+            "maxTokens": "",
+            "topP": "",
+            "frequencyPenalty": "",
+            "presencePenalty": "",
+            "timeout": "",
+            "strictToolCalling": "",
+            "stopSequence": "",
+            "basepath": "",
+            "proxyUrl": "",
+            "baseOptions": "",
+            "allowImageUploads": "",
+            "imageResolution": "low",
+            "reasoning": "",
+            "reasoningEffort": "",
+            "reasoningSummary": "",
+            "agentModel": "chatOpenAI"
+          },
+          "agentToolsBuiltInOpenAI": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "agentAgentflow_3-output-agentAgentflow",
+            "label": "Agent",
+            "name": "agentAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 210,
+      "height": 72,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 351.543213065869,
+        "y": 89.61886630874739
+      },
+      "dragging": false
+    },
+    {
+      "id": "llmAgentflow_0",
+      "position": {
+        "x": 358.2187487497441,
+        "y": 251.25509786722418
+      },
+      "data": {
+        "id": "llmAgentflow_0",
+        "label": "Trivial Response",
+        "version": 1,
+        "name": "llmAgentflow",
+        "type": "LLM",
+        "color": "#64B5F6",
+        "baseClasses": [
+          "LLM"
+        ],
+        "category": "Agent Flows",
+        "description": "Large language models to analyze user-provided inputs and generate responses",
+        "inputParams": [
+          {
+            "label": "Model",
+            "name": "llmModel",
+            "type": "asyncOptions",
+            "loadMethod": "listModels",
+            "loadConfig": true,
+            "id": "llmAgentflow_0-input-llmModel-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Messages",
+            "name": "llmMessages",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Role",
+                "name": "role",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "System",
+                    "name": "system"
+                  },
+                  {
+                    "label": "Assistant",
+                    "name": "assistant"
+                  },
+                  {
+                    "label": "Developer",
+                    "name": "developer"
+                  },
+                  {
+                    "label": "User",
+                    "name": "user"
+                  }
+                ]
+              },
+              {
+                "label": "Content",
+                "name": "content",
+                "type": "string",
+                "acceptVariable": true,
+                "generateInstruction": true,
+                "rows": 4
+              }
+            ],
+            "id": "llmAgentflow_0-input-llmMessages-array",
+            "display": true
+          },
+          {
+            "label": "Enable Memory",
+            "name": "llmEnableMemory",
+            "type": "boolean",
+            "description": "Enable memory for the conversation thread",
+            "default": true,
+            "optional": true,
+            "id": "llmAgentflow_0-input-llmEnableMemory-boolean",
+            "display": true
+          },
+          {
+            "label": "Memory Type",
+            "name": "llmMemoryType",
+            "type": "options",
+            "options": [
+              {
+                "label": "All Messages",
+                "name": "allMessages",
+                "description": "Retrieve all messages from the conversation"
+              },
+              {
+                "label": "Window Size",
+                "name": "windowSize",
+                "description": "Uses a fixed window size to surface the last N messages"
+              },
+              {
+                "label": "Conversation Summary",
+                "name": "conversationSummary",
+                "description": "Summarizes the whole conversation"
+              },
+              {
+                "label": "Conversation Summary Buffer",
+                "name": "conversationSummaryBuffer",
+                "description": "Summarize conversations once token limit is reached. Default to 2000"
+              }
+            ],
+            "optional": true,
+            "default": "allMessages",
+            "show": {
+              "llmEnableMemory": true
+            },
+            "id": "llmAgentflow_0-input-llmMemoryType-options",
+            "display": true
+          },
+          {
+            "label": "Window Size",
+            "name": "llmMemoryWindowSize",
+            "type": "number",
+            "default": "20",
+            "description": "Uses a fixed window size to surface the last N messages",
+            "show": {
+              "llmMemoryType": "windowSize"
+            },
+            "id": "llmAgentflow_0-input-llmMemoryWindowSize-number",
+            "display": false
+          },
+          {
+            "label": "Max Token Limit",
+            "name": "llmMemoryMaxTokenLimit",
+            "type": "number",
+            "default": "2000",
+            "description": "Summarize conversations once token limit is reached. Default to 2000",
+            "show": {
+              "llmMemoryType": "conversationSummaryBuffer"
+            },
+            "id": "llmAgentflow_0-input-llmMemoryMaxTokenLimit-number",
+            "display": false
+          },
+          {
+            "label": "Input Message",
+            "name": "llmUserMessage",
+            "type": "string",
+            "description": "Add an input message as user message at the end of the conversation",
+            "rows": 4,
+            "optional": true,
+            "acceptVariable": true,
+            "show": {
+              "llmEnableMemory": true
+            },
+            "id": "llmAgentflow_0-input-llmUserMessage-string",
+            "display": true
+          },
+          {
+            "label": "Return Response As",
+            "name": "llmReturnResponseAs",
+            "type": "options",
+            "options": [
+              {
+                "label": "User Message",
+                "name": "userMessage"
+              },
+              {
+                "label": "Assistant Message",
+                "name": "assistantMessage"
+              }
+            ],
+            "default": "userMessage",
+            "id": "llmAgentflow_0-input-llmReturnResponseAs-options",
+            "display": true
+          },
+          {
+            "label": "JSON Structured Output",
+            "name": "llmStructuredOutput",
+            "description": "Instruct the LLM to give output in a JSON structured schema",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "string"
+              },
+              {
+                "label": "Type",
+                "name": "type",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "String",
+                    "name": "string"
+                  },
+                  {
+                    "label": "String Array",
+                    "name": "stringArray"
+                  },
+                  {
+                    "label": "Number",
+                    "name": "number"
+                  },
+                  {
+                    "label": "Boolean",
+                    "name": "boolean"
+                  },
+                  {
+                    "label": "Enum",
+                    "name": "enum"
+                  },
+                  {
+                    "label": "JSON Array",
+                    "name": "jsonArray"
+                  }
+                ]
+              },
+              {
+                "label": "Enum Values",
+                "name": "enumValues",
+                "type": "string",
+                "placeholder": "value1, value2, value3",
+                "description": "Enum values. Separated by comma",
+                "optional": true,
+                "show": {
+                  "llmStructuredOutput[$index].type": "enum"
+                }
+              },
+              {
+                "label": "JSON Schema",
+                "name": "jsonSchema",
+                "type": "code",
+                "placeholder": "{\n    \"answer\": {\n        \"type\": \"string\",\n        \"description\": \"Value of the answer\"\n    },\n    \"reason\": {\n        \"type\": \"string\",\n        \"description\": \"Reason for the answer\"\n    },\n    \"optional\": {\n        \"type\": \"boolean\"\n    },\n    \"count\": {\n        \"type\": \"number\"\n    },\n    \"children\": {\n        \"type\": \"array\",\n        \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"value\": {\n                    \"type\": \"string\",\n                    \"description\": \"Value of the children's answer\"\n                }\n            }\n        }\n    }\n}",
+                "description": "JSON schema for the structured output",
+                "optional": true,
+                "hideCodeExecute": true,
+                "show": {
+                  "llmStructuredOutput[$index].type": "jsonArray"
+                }
+              },
+              {
+                "label": "Description",
+                "name": "description",
+                "type": "string",
+                "placeholder": "Description of the key"
+              }
+            ],
+            "id": "llmAgentflow_0-input-llmStructuredOutput-array",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "llmUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys",
+                "freeSolo": true
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "llmAgentflow_0-input-llmUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "llmModel": "chatGoogleGenerativeAI",
+          "llmMessages": [
+            {
+              "role": "system",
+              "content": "<p><strong>Overview</strong><br>Anda adalah \"Asisten AI Pertanyaan Trivial\" resmi dari Fakultas Informatika Telkom University. Tugas utama Anda adalah membantu mahasiswa dengan memberikan jawaban singkat, cepat, dan akurat terkait <strong>pertanyaan trivial</strong> yang berkaitan dengan informasi dasar fakultas, seperti jadwal perkuliahan, prosedur yang sudah umum, atau pertanyaan lain yang sudah dijelaskan dalam pedoman yang ada.</p><p><strong>Audience:</strong><br>Mahasiswa Fakultas Informatika Telkom University yang mencari jawaban cepat atas pertanyaan trivial.</p><p><strong>Behavior Guidelines:</strong></p><ul><li><p><strong>Gunakan bahasa Indonesia formal dan sopan.</strong></p></li><li><p><strong>Berikan jawaban singkat dan langsung untuk pertanyaan yang bersifat trivial.</strong></p></li><li><p><strong>Berikan jawaban lanjutan terkait topik - topik berikut: Kerja Praktek, Informasi TAK, Tugas Akhir dan Proposal, atau Info Umum, misal: \"Halo! Selamat datang di Chatbot Fakultas! Apakah anda ingin tahu tentangKerja Praktek, Informasi TAK, Tugas Akhir dan Proposal, atau Info Umum saja? Saya siap membantu\"</strong></p></li><li><p>Jika pertanyaan mahasiswa membutuhkan jawaban lebih kompleks atau tidak bisa dijawab secara singkat, beri tahu mahasiswa bahwa Anda tidak dapat memberikan jawaban yang lebih mendalam dan arahkan mereka untuk mencari informasi lebih lanjut.</p></li></ul><hr><p><strong>Safeguards:</strong></p><ul><li><p><strong>Clarity and Precision:</strong> Pastikan untuk memberikan jawaban yang jelas dan tepat sasaran, menghindari penjelasan yang terlalu panjang.</p></li><li><p><strong>Fallback for Complex Questions:</strong> Jika pertanyaan tidak termasuk dalam kategori trivial, beri tahu mahasiswa secara jujur bahwa Anda hanya dapat menangani pertanyaan trivial. Jika perlu, arahkan mereka ke sumber informasi yang lebih relevan, seperti staf administrasi atau halaman resmi.</p></li><li><p><strong>Accuracy:</strong> Pastikan jawaban yang diberikan sesuai dengan pedoman yang sudah ada dan hindari memberikan informasi yang tidak pasti atau spekulatif.</p></li></ul>"
+            }
+          ],
+          "llmEnableMemory": true,
+          "llmMemoryType": "allMessages",
+          "llmUserMessage": "",
+          "llmReturnResponseAs": "userMessage",
+          "llmStructuredOutput": "",
+          "llmUpdateState": "",
+          "llmModelConfig": {
+            "cache": "",
+            "modelName": "gemini-2.5-flash",
+            "customModelName": "",
+            "temperature": 0.9,
+            "streaming": true,
+            "maxOutputTokens": "",
+            "topP": "",
+            "topK": "",
+            "safetySettings": "",
+            "baseUrl": "",
+            "allowImageUploads": "",
+            "llmModel": "chatGoogleGenerativeAI"
+          }
+        },
+        "outputAnchors": [
+          {
+            "id": "llmAgentflow_0-output-llmAgentflow",
+            "label": "LLM",
+            "name": "llmAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 199,
+      "height": 72,
+      "selected": false,
+      "dragging": false,
+      "positionAbsolute": {
+        "x": 358.2187487497441,
+        "y": 251.25509786722418
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "startAgentflow_0",
+      "sourceHandle": "startAgentflow_0-output-startAgentflow",
+      "target": "conditionAgentAgentflow_0",
+      "targetHandle": "conditionAgentAgentflow_0",
+      "data": {
+        "sourceColor": "#7EE787",
+        "targetColor": "#ff8fab",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "startAgentflow_0-startAgentflow_0-output-startAgentflow-conditionAgentAgentflow_0-conditionAgentAgentflow_0"
+    },
+    {
+      "source": "conditionAgentAgentflow_0",
+      "sourceHandle": "conditionAgentAgentflow_0-output-0",
+      "target": "agentAgentflow_2",
+      "targetHandle": "agentAgentflow_2",
+      "data": {
+        "sourceColor": "#ff8fab",
+        "targetColor": "#4DD0E1",
+        "edgeLabel": "0",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "conditionAgentAgentflow_0-conditionAgentAgentflow_0-output-0-agentAgentflow_2-agentAgentflow_2"
+    },
+    {
+      "source": "conditionAgentAgentflow_0",
+      "sourceHandle": "conditionAgentAgentflow_0-output-1",
+      "target": "agentAgentflow_0",
+      "targetHandle": "agentAgentflow_0",
+      "data": {
+        "sourceColor": "#ff8fab",
+        "targetColor": "#4DD0E1",
+        "edgeLabel": "1",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "conditionAgentAgentflow_0-conditionAgentAgentflow_0-output-1-agentAgentflow_0-agentAgentflow_0"
+    },
+    {
+      "source": "conditionAgentAgentflow_0",
+      "sourceHandle": "conditionAgentAgentflow_0-output-2",
+      "target": "agentAgentflow_1",
+      "targetHandle": "agentAgentflow_1",
+      "data": {
+        "sourceColor": "#ff8fab",
+        "targetColor": "#4DD0E1",
+        "edgeLabel": "2",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "conditionAgentAgentflow_0-conditionAgentAgentflow_0-output-2-agentAgentflow_1-agentAgentflow_1"
+    },
+    {
+      "source": "conditionAgentAgentflow_0",
+      "sourceHandle": "conditionAgentAgentflow_0-output-3",
+      "target": "agentAgentflow_3",
+      "targetHandle": "agentAgentflow_3",
+      "data": {
+        "sourceColor": "#ff8fab",
+        "targetColor": "#4DD0E1",
+        "edgeLabel": "3",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "conditionAgentAgentflow_0-conditionAgentAgentflow_0-output-3-agentAgentflow_3-agentAgentflow_3"
+    },
+    {
+      "source": "conditionAgentAgentflow_0",
+      "sourceHandle": "conditionAgentAgentflow_0-output-4",
+      "target": "llmAgentflow_0",
+      "targetHandle": "llmAgentflow_0",
+      "data": {
+        "sourceColor": "#ff8fab",
+        "targetColor": "#64B5F6",
+        "edgeLabel": "4",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "conditionAgentAgentflow_0-conditionAgentAgentflow_0-output-4-llmAgentflow_0-llmAgentflow_0"
+    }
+  ]
+}

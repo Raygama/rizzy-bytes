@@ -1,0 +1,13 @@
+{
+  "jobId": "5f1b30e7-9599-4a51-a8a3-8473bb97e65b",
+  "createdAt": "2025-12-21T10:26:21.991Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "FAQ BIF",
+    "description": "Info terkait FAQ BIF",
+    "filename": "INFORMASI GENERAL LAAK FIF.docx"
+  },
+  "updatedAt": "2025-12-21T10:26:21.991Z"
+}

@@ -1,0 +1,13 @@
+{
+  "jobId": "2ec8c1dc-422a-4659-b8c6-272c8e6eceab",
+  "createdAt": "2025-12-21T10:04:01.637Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Alur Pengajuan Undur Diri Mahasiswa",
+    "description": "Info terkait Alur Pengajuan Undur Diri Mahasiswa",
+    "filename": "ALUR PENGAJUAN UNDUR DIRI.docx"
+  },
+  "updatedAt": "2025-12-21T10:04:01.637Z"
+}

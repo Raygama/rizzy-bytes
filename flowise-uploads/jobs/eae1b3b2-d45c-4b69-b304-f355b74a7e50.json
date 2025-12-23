@@ -1,0 +1,13 @@
+{
+  "jobId": "eae1b3b2-d45c-4b69-b304-f355b74a7e50",
+  "createdAt": "2025-12-21T10:00:10.463Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Informasi TA dan Proposal",
+    "description": "Info terkait Tugas Akhir dan Proposal Mahasiswa",
+    "filename": "Informasi untuk Mahasiswa Terkait Sosialisasi TA (TUGAS AKHIR).docx"
+  },
+  "updatedAt": "2025-12-21T10:00:10.463Z"
+}

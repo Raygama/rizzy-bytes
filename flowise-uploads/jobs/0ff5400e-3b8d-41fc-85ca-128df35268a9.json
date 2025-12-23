@@ -1,0 +1,11 @@
+{
+  "jobId": "0ff5400e-3b8d-41fc-85ca-128df35268a9",
+  "createdAt": "2025-12-21T08:54:03.952Z",
+  "status": "succeeded",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "updatedAt": "2025-12-21T08:54:10.181Z",
+  "result": {
+    "docId": "f5d2a542-60e6-4b89-922a-99541e5b6bcc"
+  }
+}

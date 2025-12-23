@@ -1,0 +1,13 @@
+{
+  "jobId": "6b3c0eea-7abe-498d-af8d-034e4f08db6b",
+  "createdAt": "2025-12-21T09:53:01.127Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Daftar Pembimbing KP",
+    "description": "Daftar Pembimbing KP",
+    "filename": "2025_Daftar Pembimbing KP.xlsx"
+  },
+  "updatedAt": "2025-12-21T09:53:01.127Z"
+}

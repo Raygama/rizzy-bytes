@@ -1,0 +1,13 @@
+{
+  "jobId": "1c18b6f9-1362-4348-8a7f-c815e1f1fda0",
+  "createdAt": "2025-12-21T10:28:53.296Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Info umum terkait program studi IF",
+    "description": "Info terkait prodi S1 Informatika",
+    "filename": "Scraping BIF.pdf"
+  },
+  "updatedAt": "2025-12-21T10:28:53.296Z"
+}

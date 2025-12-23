@@ -1,0 +1,13 @@
+{
+  "jobId": "3eafae5f-d799-4203-a4a0-ee6c170d9d8d",
+  "createdAt": "2025-12-16T10:20:38.424Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Pedoman Akademik Tel-U",
+    "description": "Dokumen pedoman akademik Tel-U",
+    "filename": "Pedoman_Akademik_Tel-U_2024.pdf"
+  },
+  "updatedAt": "2025-12-16T10:20:38.424Z"
+}

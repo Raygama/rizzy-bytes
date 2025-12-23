@@ -1,0 +1,13 @@
+{
+  "jobId": "219411b3-f4db-4353-951d-ff1ad029145a",
+  "createdAt": "2025-12-21T10:25:13.983Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "FAQ BIF",
+    "description": "Info terkait FAQ BIF",
+    "filename": "FAQ BIF.pdf"
+  },
+  "updatedAt": "2025-12-21T10:25:13.983Z"
+}

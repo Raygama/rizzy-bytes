@@ -1,0 +1,13 @@
+{
+  "jobId": "acad2577-f75a-4eb7-8a64-ddaf07d00cd9",
+  "createdAt": "2025-12-21T10:24:31.174Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Administratif Proposal dan TA",
+    "description": "Info terkait Administratif Proposal dan TA",
+    "filename": "Administratif Proposal dan Tugas Akhir.pdf"
+  },
+  "updatedAt": "2025-12-21T10:24:31.174Z"
+}

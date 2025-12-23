@@ -30,6 +30,32 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || "/uploads";
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const READ_TIMEOUT_MS = parseInt(process.env.READ_TIMEOUT_MS || "60000", 10);
 const DOCUMENT_STORE_ID = process.env.DOCUMENT_STORE_ID || "d21759a2-d263-414e-b5a4-f2e5819d516e";
+const KB_TYPES = {
+  ta: {
+    key: "ta",
+    storeId: "09fadd22-0448-4e31-854d-6080ac8f9864",
+    collectionName: "helpdesk_kb_ta",
+    topK: 10
+  },
+  kp: {
+    key: "kp",
+    storeId: "c9b03bfa-f4ac-430d-a20d-81dade61a626",
+    collectionName: "helpdesk_kb_kp",
+    topK: 10
+  },
+  tak: {
+    key: "tak",
+    storeId: "0b77caad-ec5d-4be0-81b4-63ce72af9a5e",
+    collectionName: "helpdesk_kb_tak",
+    topK: 10
+  },
+  general: {
+    key: "general",
+    storeId: "9baa9873-0bbf-4ba4-a201-1452decf45a1",
+    collectionName: "helpdesk_kb_general",
+    topK: 10
+  }
+};
 const BROKER_URL = process.env.BROKER_URL || "http://broker-service:3000";
 const ASYNC_KB = (process.env.ASYNC_KB || "true").toLowerCase() === "true";
 const WORKER_TOKEN = process.env.WORKER_TOKEN || process.env.INTERNAL_JOB_TOKEN || "change-me";
@@ -386,7 +412,18 @@ const buildPredictionPayload = (body) => {
   return rest;
 };
 
+const resolveTypeConfig = (typeRaw) => {
+  const key = (typeRaw || "").toString().trim().toLowerCase();
+  if (!key) return null;
+  return KB_TYPES[key] || null;
+};
+
 const getStoreIdFromReq = (req) => {
+  const typeCfg =
+    resolveTypeConfig(req.params?.type) ||
+    resolveTypeConfig(req.query?.type) ||
+    resolveTypeConfig(req.body?.type);
+  if (typeCfg?.storeId) return typeCfg.storeId;
   return (
     pickFirstString(req.params?.storeId) ||
     pickFirstString(req.query?.storeId) ||
@@ -702,8 +739,16 @@ const loadDocuments = async (storeId) => {
   }
 };
 
-const buildUpsertForm = ({ docId, metadata, replaceExisting = false, file }) => {
+const buildUpsertForm = ({ docId, metadata, replaceExisting = false, file, collectionName, topK }) => {
   const componentPayloads = getComponentPayloads();
+  if (collectionName && componentPayloads?.vectorStore?.config) {
+    componentPayloads.vectorStore.config.collectionName = collectionName;
+    if (topK) {
+      componentPayloads.vectorStore.config.topK = topK;
+    }
+  } else if (topK && componentPayloads?.vectorStore?.config) {
+    componentPayloads.vectorStore.config.topK = topK;
+  }
   const form = new FormData();
   
   if (replaceExisting) {
@@ -759,9 +804,23 @@ const resolveDescription = ({ description, metadata }) => {
   return "";
 };
 
-const performUpsert = async ({ storeId, filePath, originalName, metadata, replaceExisting, name, description }) => {
+const performUpsert = async ({
+  storeId,
+  filePath,
+  originalName,
+  metadata,
+  replaceExisting,
+  name,
+  description,
+  type,
+  collectionName,
+  topK
+}) => {
   if (!filePath || !originalName) {
     throw { status: 400, body: { error: "filePath and originalName are required" } };
+  }
+  if (!type) {
+    throw { status: 400, body: { error: "type is required" } };
   }
   const stat = await fsp.stat(filePath);
   const fauxFile = {
@@ -776,7 +835,8 @@ const performUpsert = async ({ storeId, filePath, originalName, metadata, replac
     source: reservedIds.kbId,
     name: resolveName({ name, metadata, fallback: originalName }),
     description: resolveDescription({ description, metadata }),
-    tags: Array.isArray(metadata?.tags) ? metadata.tags : metadata?.tags ? [metadata.tags] : []
+    tags: Array.isArray(metadata?.tags) ? metadata.tags : metadata?.tags ? [metadata.tags] : [],
+    type
   };
 
   const result = await sendUpsertForm(
@@ -784,7 +844,9 @@ const performUpsert = async ({ storeId, filePath, originalName, metadata, replac
     buildUpsertForm({
       metadata: kbMetadataBase,
       replaceExisting: !!replaceExisting,
-      file: fauxFile
+      file: fauxFile,
+      collectionName,
+      topK
     })
   );
 
@@ -801,6 +863,7 @@ const performUpsert = async ({ storeId, filePath, originalName, metadata, replac
     name: kbMetadata.name,
     description: kbMetadata.description,
     metadata: kbMetadata,
+    type,
     filename: originalName,
     size: stat.size,
     uploadedAt: new Date()
@@ -824,10 +887,16 @@ const performReprocess = async ({
   filePath,
   originalName,
   name,
-  description
+  description,
+  type,
+  collectionName,
+  topK
 }) => {
   if (!loaderId) {
     throw { status: 400, body: { error: "loaderId is required" } };
+  }
+  if (!type) {
+    throw { status: 400, body: { error: "type is required" } };
   }
 
   let fauxFile = null;
@@ -840,7 +909,9 @@ const performReprocess = async ({
     docId: loaderId,
     metadata: metadata || undefined,
     replaceExisting: replaceExisting !== false,
-    file: fauxFile || undefined
+    file: fauxFile || undefined,
+    collectionName,
+    topK
   });
 
   const result = await sendUpsertForm(storeId, form);
@@ -850,6 +921,7 @@ const performReprocess = async ({
     name: resolveName({ name, metadata, fallback: loaderId }),
     description: resolveDescription({ description, metadata }),
     metadata,
+    type,
     filename: originalName || undefined
   });
   await upsertManifestEntry(storeId, {
@@ -864,19 +936,44 @@ const performReprocess = async ({
   return { ...result, storeId, kbEntry };
 };
 
-const performJsonUpsert = async ({ storeId, body }) => {
+const performJsonUpsert = async ({ storeId, body, type, collectionName, topK }) => {
   if (!body || typeof body !== "object" || !Object.keys(body).length) {
     throw { status: 400, body: { error: "Request body is required" } };
   }
+  if (!type) {
+    throw { status: 400, body: { error: "type is required" } };
+  }
   const pathUrl = `/api/v1/document-store/upsert/${storeId}`;
-  const result = await callFlowise("post", pathUrl, body);
+  const payload = {
+    ...body
+  };
+  if (collectionName) {
+    payload.vectorStore = {
+      ...(payload.vectorStore || {}),
+      config: {
+        ...(payload.vectorStore?.config || {}),
+        collectionName,
+        ...(topK ? { topK } : {})
+      }
+    };
+  } else if (topK) {
+    payload.vectorStore = {
+      ...(payload.vectorStore || {}),
+      config: {
+        ...(payload.vectorStore?.config || {}),
+        topK
+      }
+    };
+  }
+  const result = await callFlowise("post", pathUrl, payload);
   if (result?.docId) {
     await knowledgeBaseStore.upsert({
       storeId,
       loaderId: result.docId,
       name: resolveName({ name: body.name, metadata: body.metadata, fallback: result.docId }),
       description: resolveDescription({ description: body.description, metadata: body.metadata }),
-      metadata: body.metadata || {},
+      metadata: { ...(body.metadata || {}), type },
+      type,
       filename: body.filename || body.metadata?.originalFileName || null,
       size: body.metadata?.size || null,
       uploadedAt: body.uploadedAt ? new Date(body.uploadedAt) : new Date()
@@ -1016,11 +1113,15 @@ const getLoaderHandler = async (req, res) => {
 
 const listChunksHandler = async (req, res) => {
   try {
+    const typeCfg =
+      resolveTypeConfig(req.params?.type) ||
+      resolveTypeConfig(req.query?.type) ||
+      resolveTypeConfig(req.body?.type);
     const loaderId = pickFirstString(req.params?.loaderId);
     if (!loaderId) {
       return res.status(400).json({ error: "loaderId is required" });
     }
-    const storeId = await resolveStoreIdForLoader(req, loaderId);
+    const storeId = typeCfg?.storeId || (await resolveStoreIdForLoader(req, loaderId));
     const pageSource = req.query?.page ?? req.query?.pageNo ?? req.body?.page ?? req.body?.pageNo;
     const page = parsePositiveInt(pageSource, 1);
     const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${page}`;
@@ -1040,32 +1141,45 @@ const listChunksHandler = async (req, res) => {
 
 const listLoaderEntriesHandler = async (req, res) => {
   try {
-    const storeId = getStoreIdFromReq(req);
-    const { storeData, documents } = await loadDocuments(storeId);
+    const filterType =
+      resolveTypeConfig(req.query?.type) ||
+      resolveTypeConfig(req.params?.type) ||
+      resolveTypeConfig(req.body?.type) ||
+      null;
 
-    const statusMap = new Map();
-    if (Array.isArray(storeData?.loaders)) {
-      storeData.loaders.forEach((loader) => {
-        const id = loader?.id;
-        if (!id) return;
-        statusMap.set(id, loader.status || loader.state || null);
+    const targetTypes = filterType ? [filterType] : Object.values(KB_TYPES);
+    const entries = [];
+
+    for (const typeCfg of targetTypes) {
+      const { storeData, documents } = await loadDocuments(typeCfg.storeId);
+
+      const statusMap = new Map();
+      if (Array.isArray(storeData?.loaders)) {
+        storeData.loaders.forEach((loader) => {
+          const id = loader?.id;
+          if (!id) return;
+          statusMap.set(id, loader.status || loader.state || null);
+        });
+      }
+
+      (documents || []).forEach((doc) => {
+        entries.push({
+          storeId: doc.storeId || typeCfg.storeId,
+          loaderId: doc.loaderId || doc.docId || null,
+          kbId: doc.kbId || null,
+          name: doc.name || null,
+          description: doc.description || "",
+          filename: doc.filename || null,
+          size: doc.size ?? null,
+          uploadedAt: doc.uploadedAt || null,
+          metadata: doc.metadata || {},
+          createdAt: doc.createdAt || null,
+          updatedAt: doc.updatedAt || null,
+          status: statusMap.get(doc.loaderId || doc.docId || doc.id) || null,
+          type: doc.type || typeCfg.key
+        });
       });
     }
-
-    const entries = (documents || []).map((doc) => ({
-      storeId: doc.storeId || storeId,
-      loaderId: doc.loaderId || doc.docId || null,
-      kbId: doc.kbId || null,
-      name: doc.name || null,
-      description: doc.description || "",
-      filename: doc.filename || null,
-      size: doc.size ?? null,
-      uploadedAt: doc.uploadedAt || null,
-      metadata: doc.metadata || {},
-      createdAt: doc.createdAt || null,
-      updatedAt: doc.updatedAt || null,
-      status: statusMap.get(doc.loaderId || doc.docId || doc.id) || null
-    }));
     return res.json(entries);
   } catch (err) {
     console.error("list loader entries error:", err);
@@ -1148,7 +1262,12 @@ const updateKbMetaHandler = async (req, res) => {
 };
 
 const uploadAndUpsertHandler = async (req, res) => {
-  const storeId = getStoreIdFromReq(req);
+  const typeCfg = resolveTypeConfig(req.body?.type || req.query?.type || req.params?.type);
+  if (!typeCfg) {
+    if (req.file) await cleanupUploadedFile(req.file);
+    return res.status(400).json({ error: "type is required" });
+  }
+  const storeId = typeCfg.storeId;
   if (req.fileValidationError) {
     return res.status(400).json({ error: req.fileValidationError });
   }
@@ -1197,16 +1316,19 @@ const uploadAndUpsertHandler = async (req, res) => {
         storeId,
         payload: { name, description, filename: req.file.originalname }
       });
-      await enqueueJob("kb.ingest", {
-        jobId,
-        storeId,
-        filePath: req.file.path,
-        originalName: req.file.originalname,
-        metadata,
-        replaceExisting: req.body?.replaceExisting === "true",
-        name,
-        description
-      });
+    await enqueueJob("kb.ingest", {
+      jobId,
+      storeId,
+      filePath: req.file.path,
+      originalName: req.file.originalname,
+      metadata,
+      replaceExisting: req.body?.replaceExisting === "true",
+      name,
+      description,
+      type: typeCfg.key,
+      collectionName: typeCfg.collectionName,
+      topK: typeCfg.topK
+    });
       return res.status(202).json({ jobId, status: "queued" });
     } catch (err) {
       console.error("enqueue kb.ingest failed:", err);
@@ -1219,7 +1341,9 @@ const uploadAndUpsertHandler = async (req, res) => {
     const form = buildUpsertForm({
       metadata,
       replaceExisting: req.body?.replaceExisting === "true",
-      file: req.file
+      file: req.file,
+      collectionName: typeCfg.collectionName,
+      topK: typeCfg.topK
     });
     const result = await sendUpsertForm(storeId, form);
 
@@ -1230,6 +1354,7 @@ const uploadAndUpsertHandler = async (req, res) => {
         loaderId: result.docId,
         name,
         description,
+        type: typeCfg.key,
         filename: req.file.originalname,
         size: req.file.size,
         metadata,
@@ -1272,7 +1397,12 @@ const reprocessHandler = async (req, res) => {
     if (req.file) await cleanupUploadedFile(req.file);
     return res.status(400).json({ error: "loaderId is required" });
   }
-  const storeId = await resolveStoreIdForLoader(req, loaderId);
+  const typeCfg = resolveTypeConfig(req.body?.type || req.query?.type || req.params?.type);
+  const storeId = typeCfg?.storeId || (await resolveStoreIdForLoader(req, loaderId));
+  if (!typeCfg) {
+    if (req.file) await cleanupUploadedFile(req.file);
+    return res.status(400).json({ error: "type is required" });
+  }
 
   if (req.fileValidationError) {
     if (req.file) await cleanupUploadedFile(req.file);
@@ -1343,11 +1473,14 @@ const reprocessHandler = async (req, res) => {
         loaderId,
         metadata,
         replaceExisting: req.body?.replaceExisting !== "false",
-        filePath: req.file?.path,
-        originalName: req.file?.originalname,
-        name,
-        description
-      });
+      filePath: req.file?.path,
+      originalName: req.file?.originalname,
+      name,
+      description,
+      type: typeCfg.key,
+      collectionName: typeCfg.collectionName,
+      topK: typeCfg.topK
+    });
       return res.status(202).json({ jobId, status: "queued" });
     } catch (err) {
       console.error("enqueue kb.reprocess failed:", err);
@@ -1363,7 +1496,9 @@ const reprocessHandler = async (req, res) => {
       docId: loaderId,
       metadata,
       replaceExisting: req.body?.replaceExisting !== "false",
-      file: req.file || undefined
+      file: req.file || undefined,
+      collectionName: typeCfg.collectionName,
+      topK: typeCfg.topK
     });
     const result = await sendUpsertForm(storeId, form);
     const kbEntry = await knowledgeBaseStore.upsert({
@@ -1371,6 +1506,7 @@ const reprocessHandler = async (req, res) => {
       loaderId,
       name,
       description,
+      type: typeCfg.key,
       filename: req.file?.originalname || existingEntry?.filename || null,
       size: req.file?.size ?? existingEntry?.size ?? null,
       metadata,
@@ -1403,7 +1539,11 @@ const deleteLoaderHandler = async (req, res) => {
     if (!loaderId) {
       return res.status(400).json({ error: "loaderId is required" });
     }
-    const storeId = await resolveStoreIdForLoader(req, loaderId);
+    const typeCfg = resolveTypeConfig(req.body?.type || req.query?.type || req.params?.type);
+    const storeId = typeCfg?.storeId || (await resolveStoreIdForLoader(req, loaderId));
+    if (!typeCfg) {
+      return res.status(400).json({ error: "type is required" });
+    }
     const pathUrl = `/api/v1/document-store/loader/${storeId}/${loaderId}`;
     const result = await callFlowise("delete", pathUrl);
     if (typeof result === "string" && result.trim().startsWith("<!DOCTYPE")) {
@@ -1446,7 +1586,11 @@ const deleteLoaderHandler = async (req, res) => {
 
 const jsonUpsertHandler = async (req, res) => {
   try {
-    const storeId = getStoreIdFromReq(req);
+    const typeCfg = resolveTypeConfig(req.body?.type || req.query?.type || req.params?.type);
+    if (!typeCfg) {
+      return res.status(400).json({ error: "type is required" });
+    }
+    const storeId = typeCfg.storeId;
     if (!req.body || !Object.keys(req.body).length) {
       return res.status(400).json({ error: "Request body is required" });
     }
@@ -1458,7 +1602,14 @@ const jsonUpsertHandler = async (req, res) => {
         storeId,
         payload: { docId: req.body?.docId }
       });
-      await enqueueJob("kb.upsert", { jobId, storeId, body: req.body });
+      await enqueueJob("kb.upsert", {
+        jobId,
+        storeId,
+        body: req.body,
+        type: typeCfg.key,
+        collectionName: typeCfg.collectionName,
+        topK: typeCfg.topK
+      });
       return res.status(202).json({ jobId, status: "queued" });
     }
     const bodyWithSource = { ...req.body };
@@ -1469,7 +1620,13 @@ const jsonUpsertHandler = async (req, res) => {
         sourceUrl
       };
     }
-    const result = await performJsonUpsert({ storeId, body: bodyWithSource });
+    const result = await performJsonUpsert({
+      storeId,
+      body: bodyWithSource,
+      type: typeCfg.key,
+      collectionName: typeCfg.collectionName,
+      topK: typeCfg.topK
+    });
     return res.json(result);
   } catch (err) {
     console.error("json upsert error:", err);
@@ -1479,12 +1636,16 @@ const jsonUpsertHandler = async (req, res) => {
 
 const refreshHandler = async (req, res) => {
   try {
-    const storeId = getStoreIdFromReq(req);
+    const typeCfg = resolveTypeConfig(req.body?.type || req.query?.type || req.params?.type);
+    if (!typeCfg) {
+      return res.status(400).json({ error: "type is required" });
+    }
+    const storeId = typeCfg.storeId;
     const body = req.body && Object.keys(req.body).length ? req.body : {};
     if (ASYNC_KB) {
       const jobId = randomUUID();
       await setJobStatus(jobId, { status: "queued", type: "kb.refresh", storeId });
-      await enqueueJob("kb.refresh", { jobId, storeId, body });
+      await enqueueJob("kb.refresh", { jobId, storeId, body, type: typeCfg.key });
       return res.status(202).json({ jobId, status: "queued" });
     }
     const result = await performRefresh({ storeId, body });
@@ -1505,10 +1666,15 @@ const internalKbIngestHandler = async (req, res) => {
     metadata,
     replaceExisting,
     name,
-    description
+    description,
+    type,
+    collectionName
   } = req.body || {};
   if (!jobId || !filePath || !originalName) {
     return res.status(400).json({ error: "jobId, filePath, and originalName are required" });
+  }
+  if (!type) {
+    return res.status(400).json({ error: "type is required" });
   }
   const existingStatus = await readJobStatus(jobId);
   if (existingStatus?.status === "succeeded") {
@@ -1524,7 +1690,9 @@ const internalKbIngestHandler = async (req, res) => {
       metadata,
       replaceExisting,
       name,
-      description
+      description,
+      type,
+      collectionName
     });
     await setJobStatus(jobId, { status: "succeeded", type: "kb.ingest", storeId, result: { docId: result.docId } });
     return res.json({ ok: true, jobId, result });
@@ -1550,10 +1718,15 @@ const internalKbReprocessHandler = async (req, res) => {
     filePath,
     originalName,
     name,
-    description
+    description,
+    type,
+    collectionName
   } = req.body || {};
   if (!jobId || !loaderId) {
     return res.status(400).json({ error: "jobId and loaderId are required" });
+  }
+  if (!type) {
+    return res.status(400).json({ error: "type is required" });
   }
   const existingStatus = await readJobStatus(jobId);
   if (existingStatus?.status === "succeeded") {
@@ -1570,7 +1743,9 @@ const internalKbReprocessHandler = async (req, res) => {
       filePath,
       originalName,
       name,
-      description
+      description,
+      type,
+      collectionName
     });
     await setJobStatus(jobId, {
       status: "succeeded",
@@ -1592,9 +1767,12 @@ const internalKbReprocessHandler = async (req, res) => {
 
 const internalKbUpsertHandler = async (req, res) => {
   if (!ensureWorkerAuth(req, res)) return;
-  const { jobId, storeId: rawStoreId, body } = req.body || {};
+  const { jobId, storeId: rawStoreId, body, type, collectionName } = req.body || {};
   if (!jobId) {
     return res.status(400).json({ error: "jobId is required" });
+  }
+  if (!type) {
+    return res.status(400).json({ error: "type is required" });
   }
   const existingStatus = await readJobStatus(jobId);
   if (existingStatus?.status === "succeeded") {
@@ -1603,7 +1781,7 @@ const internalKbUpsertHandler = async (req, res) => {
   const storeId = rawStoreId || DOCUMENT_STORE_ID;
   await setJobStatus(jobId, { status: "processing", type: "kb.upsert", storeId });
   try {
-    const result = await performJsonUpsert({ storeId, body: body || {} });
+    const result = await performJsonUpsert({ storeId, body: body || {}, type, collectionName });
     await setJobStatus(jobId, {
       status: "succeeded",
       type: "kb.upsert",

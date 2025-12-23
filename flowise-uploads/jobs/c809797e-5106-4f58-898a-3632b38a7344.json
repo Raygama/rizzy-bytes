@@ -1,0 +1,13 @@
+{
+  "jobId": "c809797e-5106-4f58-898a-3632b38a7344",
+  "createdAt": "2025-12-16T12:47:41.102Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "4d58c4a1-7a6e-42a4-b1f0-f834692eb7c2",
+  "payload": {
+    "name": "Permohonan Aktif Kuliah",
+    "description": "Dokumen Permohonan Aktif Kuliah",
+    "filename": "Pengumuman Permohonan Aktif Kuliah.pdf"
+  },
+  "updatedAt": "2025-12-16T12:47:41.102Z"
+}

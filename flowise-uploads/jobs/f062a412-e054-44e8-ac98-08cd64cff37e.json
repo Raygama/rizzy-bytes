@@ -1,0 +1,13 @@
+{
+  "jobId": "f062a412-e054-44e8-ac98-08cd64cff37e",
+  "createdAt": "2025-12-21T09:55:07.532Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Pengumuman KP",
+    "description": "Pengumuman KP",
+    "filename": "Pengumuman Terkait Kerja Praktek 2223-2 dan 2324-1.docx"
+  },
+  "updatedAt": "2025-12-21T09:55:07.532Z"
+}

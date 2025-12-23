@@ -1,0 +1,13 @@
+{
+  "jobId": "8718324b-5bc9-40bb-934f-092ca14f9fd6",
+  "createdAt": "2025-12-21T10:21:24.309Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "PANDUAN PENULISAN TA",
+    "description": "Info terkait PANDUAN PENULISAN TA",
+    "filename": "20250310_SK Dekan_Panduan TA FIF 2025_v4 (1).pdf"
+  },
+  "updatedAt": "2025-12-21T10:21:24.309Z"
+}

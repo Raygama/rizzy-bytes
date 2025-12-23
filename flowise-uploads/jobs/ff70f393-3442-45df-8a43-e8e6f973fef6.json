@@ -1,0 +1,13 @@
+{
+  "jobId": "ff70f393-3442-45df-8a43-e8e6f973fef6",
+  "createdAt": "2025-12-21T09:48:08.014Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Timeline KP",
+    "description": "Informasi Timeline KP",
+    "filename": "Timeline KP.pdf"
+  },
+  "updatedAt": "2025-12-21T09:48:08.014Z"
+}

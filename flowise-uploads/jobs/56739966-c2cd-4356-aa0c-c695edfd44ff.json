@@ -1,0 +1,13 @@
+{
+  "jobId": "56739966-c2cd-4356-aa0c-c695edfd44ff",
+  "createdAt": "2025-12-21T10:16:26.579Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "INFORMASI GENERAL LAAK FIF",
+    "description": "Info terkait INFORMASI GENERAL LAAK FIF",
+    "filename": "INFORMASI GENERAL LAAK FIF.docx"
+  },
+  "updatedAt": "2025-12-21T10:16:26.579Z"
+}

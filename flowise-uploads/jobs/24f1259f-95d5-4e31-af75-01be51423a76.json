@@ -1,0 +1,13 @@
+{
+  "jobId": "24f1259f-95d5-4e31-af75-01be51423a76",
+  "createdAt": "2025-12-21T10:05:05.191Z",
+  "status": "queued",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "payload": {
+    "name": "Alur Pengajuan Cuti Akademik",
+    "description": "Info terkait Alur Pengajuan Cuti Akademik",
+    "filename": "Alur Pengajuan Cuti Akademik.docx"
+  },
+  "updatedAt": "2025-12-21T10:05:05.191Z"
+}
