@@ -440,6 +440,8 @@ Proxy for Flowise AI chatbot with knowledge base and chat history management.
 
 Send a prediction request to a Flowise flow (single message).
 
+**Authentication:** Required - Bearer token (JWT) via `Authorization` header
+
 **Request:**
 
 ```json
@@ -447,6 +449,7 @@ Send a prediction request to a Flowise flow (single message).
   "question": "What are office hours?",
   "sessionId": "uuid-or-session-id", // optional, generates if not provided
   "userId": "user-id" // optional, for tracking
+  // any additional fields are passed through to Flowise
 }
 ```
 
@@ -454,7 +457,7 @@ Send a prediction request to a Flowise flow (single message).
 
 ```json
 {
-  "message": "AI response text here",
+  "text": "AI response text here",
   "sessionId": "uuid-of-session",
   "sourceDocuments": [
     {
@@ -466,12 +469,26 @@ Send a prediction request to a Flowise flow (single message).
 }
 ```
 
+**Error Responses:**
+
+- `401 { "error": "Missing Bearer token" }` — No authentication provided
+- `429 { "error": "Too many concurrent predictions, please retry shortly" }` — Concurrency limit reached (default: 4)
+- `400 { "error": "question is required" }` — Missing question field
+- `500 { "error": "Unable to complete prediction" }` — Server error
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required)
+- `Accept: text/event-stream` (optional, switches to streaming mode)
+
 **Notes:**
 
 - Multi-round conversations: reuse the same `sessionId` for follow-ups
-- `sessionId` is auto-generated and returned; use it for next message in same session
+- `sessionId` is auto-generated if not provided; use returned `sessionId` for next message in same session
 - `sourceDocuments` lists knowledge base documents used for the answer
-- Stored in MongoDB for chat history
+- Chat interactions are persisted to MongoDB
+- Additional request fields (beyond `question`, `sessionId`, `userId`) are passed to Flowise
+- Metrics collected: request duration, CPU usage, token estimates, GPU utilization
 
 ---
 
@@ -479,12 +496,15 @@ Send a prediction request to a Flowise flow (single message).
 
 Stream a prediction response (for real-time chat UI updates).
 
+**Authentication:** Required - Bearer token (JWT) via `Authorization` header
+
 **Request:**
 
 ```json
 {
   "question": "What are office hours?",
-  "sessionId": "uuid-or-session-id",
+  "sessionId": "uuid-or-session-id", // optional
+  "userId": "user-id", // optional
   "stream": true
 }
 ```
@@ -503,20 +523,31 @@ data: {"token": "The"}
 data: {"token": " office"}
 data: {"token": " is"}
 ...
-data: "[DONE]"
+event: done
+data: "done"
 ```
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required)
+- `Content-Type: text/event-stream` (response)
 
 **Notes:**
 
-- Use `eventSource` or axios with `responseType: "stream"` in frontend
+- Use `EventSource` or fetch with `{ mode: 'no-cors', responseType: 'stream' }` in frontend
 - Real-time token streaming for better UX
 - Same session persistence as non-streaming endpoint
+- Chat interactions persisted to MongoDB
+- Metrics collected during streaming
+- Stream automatically ends with `event: done` marker
 
 ---
 
 ### GET `/api/chat/history/:flowId`
 
 List all chat sessions for a flow.
+
+**Authentication:** Required - Bearer token (JWT) via `Authorization` header
 
 **Response (200):**
 
@@ -540,16 +571,23 @@ List all chat sessions for a flow.
 }
 ```
 
-**Query Parameters:**
+**Headers:**
 
-- `summary=true` — Return only summary (no messages)
-- `includeMessages=true` — Include full message history (default: true)
+- `Authorization: Bearer <jwt>` (required)
+
+**Error Responses:**
+
+- `401 { "error": "Missing Bearer token" }` — No authentication
+- `400 { "error": "flowId is required" }` — Missing flow ID
+- `500 { "error": "Unable to load chat history" }` — Server error
 
 ---
 
 ### GET `/api/chat/history/:flowId/:sessionId`
 
 Get full chat history for a specific session.
+
+**Authentication:** Required - Bearer token (JWT) via `Authorization` header
 
 **Response (200):**
 
@@ -583,14 +621,23 @@ Get full chat history for a specific session.
 }
 ```
 
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required)
+
 **Error Responses:**
 
+- `401 { "error": "Missing Bearer token" }` — No authentication
+- `400 { "error": "flowId and sessionId are required" }` — Missing parameters
 - `404 { "error": "Chat session not found" }` — Session doesn't exist
+- `500 { "error": "Unable to load chat session" }` — Server error
 
 ---
 
 ### GET `/api/kb` or `/api/kb/store/:storeId`
 Get knowledge base documents with metadata.
+
+**Authentication:** Required - Bearer token with `staff` or `admin` role
 
 **Response (200):**
 
@@ -611,16 +658,6 @@ Get knowledge base documents with metadata.
         "department": "HR",
         "category": "policies"
       }
-    },
-    {
-      "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
-      "loaderId": "loader-2",
-      "kbId": "kb-entry-uuid-2",
-      "name": "FAQ",
-      "description": "Frequently asked questions",
-      "filename": "faq.pdf",
-      "size": 512000,
-      "uploadedAt": "2025-11-19T10:00:00Z"
     }
   ],
   "store": {
@@ -630,54 +667,82 @@ Get knowledge base documents with metadata.
 }
 ```
 
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
+
+**Error Responses:**
+
+- `401 { "error": "Missing Bearer token" }` — No authentication
+- `403 { "error": "Forbidden" }` — Insufficient role permissions
+- `500 { "error": "Unable to read document list" }` — Server error
+
 ---
 
 ### GET `/api/kb/:storeId/loaders` or `/api/kb/loaders`
 
-List documents in knowledge base (same as manifest).
+List documents in knowledge base.
+
+**Authentication:** Required - Bearer token with `staff` or `admin` role
+
+**Response (200):**
+
+```json
+[
+  {
+    "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+    "loaderId": "loader-1",
+    "kbId": "kb-entry-uuid",
+    "name": "Office Hours Policy",
+    "description": "Company office hours and schedule",
+    "filename": "office_hours.pdf",
+    "size": 245632,
+    "uploadedAt": "2025-11-20T15:30:00Z",
+    "metadata": {
+      "department": "HR",
+      "category": "policies"
+    }
+  }
+]
+```
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
 
 ---
 
 ### GET `/api/kb/entries` or `/api/kb/:storeId/entries`
 Get normalized knowledge base entries with full metadata from MongoDB KB store.
 
+**Authentication:** Required - Bearer token with `staff` or `admin` role
+
 **Response (200):**
 ```json
-{
-  "entries": [
-    {
-      "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
-      "loaderId": "loader-1",
-      "kbId": "kb-entry-uuid",
-      "name": "Office Hours Policy",
-      "description": "Company office hours and schedule",
-      "filename": "office_hours.pdf",
-      "size": 245632,
-      "uploadedAt": "2025-11-20T15:30:00Z",
-      "createdAt": "2025-11-20T15:30:00Z",
-      "updatedAt": "2025-11-20T15:30:00Z",
-      "metadata": {
-        "department": "HR",
-        "category": "policies",
-        "version": "1.0"
-      }
-    },
-    {
-      "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
-      "loaderId": "loader-2",
-      "kbId": "kb-entry-uuid-2",
-      "name": "FAQ",
-      "description": "Frequently asked questions",
-      "filename": "faq.pdf",
-      "size": 512000,
-      "uploadedAt": "2025-11-19T10:00:00Z",
-      "createdAt": "2025-11-19T10:00:00Z",
-      "updatedAt": "2025-11-19T10:00:00Z",
-      "metadata": {}
+[
+  {
+    "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+    "loaderId": "loader-1",
+    "kbId": "kb-entry-uuid",
+    "name": "Office Hours Policy",
+    "description": "Company office hours and schedule",
+    "filename": "office_hours.pdf",
+    "size": 245632,
+    "uploadedAt": "2025-11-20T15:30:00Z",
+    "createdAt": "2025-11-20T15:30:00Z",
+    "updatedAt": "2025-11-20T15:30:00Z",
+    "metadata": {
+      "department": "HR",
+      "category": "policies",
+      "version": "1.0"
     }
-  ]
-}
+  }
+]
 ```
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
 
 **Notes:**
 - Returns normalized entries directly from MongoDB KB store
@@ -689,6 +754,8 @@ Get normalized knowledge base entries with full metadata from MongoDB KB store.
 
 ### GET `/api/kb/:storeId/loaders/:loaderId` or `/api/kb/loaders/:loaderId`
 Get a single document with full details.
+
+**Authentication:** Required - Bearer token with `staff` or `admin` role
 
 **Response (200):**
 ```json
@@ -710,13 +777,20 @@ Get a single document with full details.
 }
 ```
 
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
+
 **Error Responses:**
+- `400 { "error": "loaderId is required" }` — Missing loader ID
 - `404 { "error": "Unable to read knowledge base entry" }` — Loader not found
 
 ---
 
 ### GET `/api/kb/:storeId/loaders/:loaderId/chunks` or `/api/kb/loaders/:loaderId/chunks`
 Get chunks (text segments) from a document.
+
+**Authentication:** Required - Bearer token with `staff` or `admin` role
 
 **Query Parameters:**
 
@@ -744,13 +818,20 @@ Get chunks (text segments) from a document.
 }
 ```
 
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
+
 **Error Responses:**
 - `400 { "error": "loaderId is required" }` — Missing loader ID
+- `502 { "error": "Flowise returned an unexpected HTML payload when requesting chunks" }` — Flowise error
 
 ---
 
 ### PUT `/api/kb/:storeId/loaders/:loaderId/chunks/:chunkId` or `/api/kb/loaders/:loaderId/chunks/:chunkId`
 Update content of a specific chunk.
+
+**Authentication:** Required - Bearer token with `staff` or `admin` role
 
 **Request:**
 ```json
@@ -773,7 +854,12 @@ Update content of a specific chunk.
 }
 ```
 
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
+
 **Error Responses:**
+- `400 { "error": "loaderId and chunkId are required" }` — Missing parameters
 - `400 { "error": "content is required" }` — Missing content field
 
 ---
@@ -781,15 +867,18 @@ Update content of a specific chunk.
 ### POST `/api/kb/:storeId/loaders` or `/api/kb/loaders`
 Upload a document to knowledge base and automatically process it (extract text, split into chunks, embed).
 
+**Authentication:** Required - Bearer token with `staff` or `admin` role
+
 **Request:**
 
 - **Content-Type:** `multipart/form-data`
 - **Fields:**
-  - `file` (required) — PDF, DOCX, CSV, TXT, etc. (Allowed: .pdf, .doc, .docx, .csv, .xls, .xlsx)
+  - `file` (required) — PDF, DOCX, CSV, TXT, XLS, XLSX, DOC (Allowed: .pdf, .doc, .docx, .csv, .xls, .xlsx)
   - `name` (required) — Display name for the document
   - `description` (required) — Brief description of document content
   - `metadata` (optional) — JSON string with additional custom metadata
-  - `replaceExisting` (optional) — "true" to replace existing document
+  - `sourceUrl` (optional) — Source URL of the document
+  - `replaceExisting` (optional) — "true" to replace existing document with same ID
 
 **Example (using FormData):**
 
@@ -803,9 +892,10 @@ formData.append('metadata', JSON.stringify({
   category: 'policies',
   version: '1.0'
 }));
+formData.append('sourceUrl', 'https://example.com/policies/hours');
 ```
 
-**Response (200):**
+**Response (200 - Sync Mode):**
 
 ```json
 {
@@ -819,18 +909,41 @@ formData.append('metadata', JSON.stringify({
 }
 ```
 
+**Response (202 - Async Mode):**
+
+```json
+{
+  "jobId": "job-uuid",
+  "status": "queued"
+}
+```
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
+- `Content-Type: multipart/form-data`
+
 **Error Responses:**
 - `400 { "error": "file field is required" }` — No file provided
 - `400 { "error": "name is required" }` — Missing document name
 - `400 { "error": "description is required" }` — Missing description
-- `400 { "error": "Unsupported file type..." }` — Invalid file type
+- `400 { "error": "Unsupported file type. Allowed types: PDF, DOC, DOCX, CSV, XLS, XLSX" }` — Invalid file type
 - `500 { "error": "Unable to upsert document" }` — Processing error
+- `500 { "error": "Unable to enqueue KB ingestion" }` — Job queue error
+
+**Notes:**
+- If `ASYNC_KB=true` (environment variable), returns 202 with jobId and queues processing
+- If `ASYNC_KB=false`, processes synchronously and returns 200 with document details
+- Query job status with `GET /api/jobs/:jobId`
+- File is automatically sanitized and stored in upload directory
 
 ---
 
 ### DELETE `/api/kb/:storeId/loaders/:loaderId` or `/api/kb/loaders/:loaderId`
 
 Delete a document from knowledge base.
+
+**Authentication:** Required - Bearer token with `staff` or `admin` role
 
 **Response (200):**
 
@@ -843,6 +956,10 @@ Delete a document from knowledge base.
 }
 ```
 
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
+
 **Error Responses:**
 - `400 { "error": "loaderId is required" }` — Missing loader ID
 - `500 { "error": "Unable to delete document" }` — Deletion error
@@ -851,6 +968,8 @@ Delete a document from knowledge base.
 
 ### PUT `/api/kb/:storeId/loaders/:loaderId` or `/api/kb/loaders/:loaderId`
 Update or reprocess a document (update metadata, replace file, re-split chunks).
+
+**Authentication:** Required - Bearer token with `staff` or `admin` role
 
 **Request:**
 
@@ -874,7 +993,7 @@ formData.append('metadata', JSON.stringify({
 }));
 ```
 
-**Response (200):**
+**Response (200 - Sync Mode):**
 
 ```json
 {
@@ -887,6 +1006,19 @@ formData.append('metadata', JSON.stringify({
 }
 ```
 
+**Response (202 - Async Mode):**
+
+```json
+{
+  "jobId": "job-uuid",
+  "status": "queued"
+}
+```
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
+
 **Error Responses:**
 - `400 { "error": "loaderId is required" }` — Missing loader ID
 - `400 { "error": "name is required" }` — Name cannot be empty
@@ -898,14 +1030,24 @@ formData.append('metadata', JSON.stringify({
 ### POST `/api/kb/:storeId/loaders/:loaderId/process` or `/api/kb/loaders/:loaderId/process`
 Reprocess a document (same as PUT, alternative endpoint).
 
-**Request:** Same as PUT endpoint
+**Authentication:** Required - Bearer token with `staff` or `admin` role
 
-**Response (200):** Same as PUT endpoint
+**Request:** Same as PUT endpoint (multipart/form-data with file, name, description, metadata)
+
+**Response (200 - Sync Mode):** Same as PUT endpoint
+
+**Response (202 - Async Mode):** Same as PUT endpoint
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
 
 ---
 
 ### POST `/api/kb/:storeId/upsert` or `/api/kb/upsert`
 Upsert (insert or update) documents via JSON (raw text content, not files).
+
+**Authentication:** Required - Bearer token with `staff` or `admin` role
 
 **Request:**
 
@@ -913,6 +1055,9 @@ Upsert (insert or update) documents via JSON (raw text content, not files).
 {
   "docId": "manual-doc-1",
   "text": "Office policy content here. Detailed text content that will be split into chunks...",
+  "name": "Office Policies",
+  "description": "Company office policies document",
+  "filename": "policies.pdf",
   "metadata": {
     "source": "manual",
     "department": "HR",
@@ -921,7 +1066,7 @@ Upsert (insert or update) documents via JSON (raw text content, not files).
 }
 ```
 
-**Response (200):**
+**Response (200 - Sync Mode):**
 
 ```json
 {
@@ -932,34 +1077,117 @@ Upsert (insert or update) documents via JSON (raw text content, not files).
 }
 ```
 
+**Response (202 - Async Mode):**
+
+```json
+{
+  "jobId": "job-uuid",
+  "status": "queued"
+}
+```
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
+
 **Error Responses:**
 - `400 { "error": "Request body is required" }` — Empty request body
 - `500 { "error": "Unable to upsert document" }` — Processing error
+
+**Notes:**
+- If `ASYNC_KB=true`, returns 202 with jobId
+- Directly upserts text content without file upload
+- Text is automatically split into chunks and embedded
+- Query job status with `GET /api/jobs/:jobId`
 
 ---
 
 ### POST `/api/kb/:storeId/refresh` or `/api/kb/refresh`
 Refresh/rebuild the knowledge base vector store (reindex all documents).
 
+**Authentication:** Required - Bearer token with `staff` or `admin` role
+
 **Request:** (empty body or {})
 
-**Response (200):**
+**Response (200 - Sync Mode):**
 
 ```json
 {
-  "status": "refresh_started",
+  "status": "refresh_completed",
   "totalDocuments": 5,
   "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e"
 }
 ```
 
+**Response (202 - Async Mode):**
+
+```json
+{
+  "jobId": "job-uuid",
+  "status": "queued"
+}
+```
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required, role must be `staff` or `admin`)
+
 **Error Responses:**
 - `500 { "error": "Unable to refresh document store" }` — Refresh error
 
 **Notes:**
-- Async operation, returns immediately after starting
+- If `ASYNC_KB=true`, returns 202 with jobId and queues refresh job
+- If `ASYNC_KB=false`, processes synchronously and returns 200
 - Rebuilds vector embeddings for all documents in the store
-- Check document list later to see updated status
+- Query job status with `GET /api/jobs/:jobId`
+
+---
+
+### GET `/api/jobs/:jobId`
+
+Get the status of an async KB operation job.
+
+**Authentication:** Required - Bearer token (JWT) via `Authorization` header
+
+**Response (200):**
+
+```json
+{
+  "jobId": "job-uuid",
+  "status": "processing",
+  "type": "kb.ingest",
+  "storeId": "d21759a2-d263-414e-b5a4-f2e5819d516e",
+  "result": {
+    "docId": "loader-123"
+  },
+  "error": null,
+  "createdAt": "2025-11-21T14:00:00Z",
+  "updatedAt": "2025-11-21T14:05:00Z"
+}
+```
+
+**Headers:**
+
+- `Authorization: Bearer <jwt>` (required)
+
+**Job Status Values:**
+
+- `queued` — Job is waiting to be processed
+- `processing` — Job is currently being processed
+- `succeeded` — Job completed successfully with result
+- `failed` — Job failed with error message
+
+**Error Responses:**
+
+- `401 { "error": "Missing Bearer token" }` — No authentication
+- `404 { "error": "Job not found" }` — Job ID doesn't exist
+
+**Notes:**
+
+- Used to track async KB operations (ingest, reprocess, upsert, refresh)
+- Poll this endpoint to check operation completion
+- Successful jobs include result data in response
+- Failed jobs include error message
 
 ---
 
@@ -972,6 +1200,32 @@ Health check endpoint.
 ```json
 { "status": "ok" }
 ```
+
+**Notes:**
+
+- No authentication required
+- Returns 200 if service is running
+
+---
+
+### GET `/metrics`
+
+Prometheus metrics endpoint for monitoring.
+
+**Response (200):**
+
+Plain text Prometheus metrics format containing:
+
+- HTTP request metrics (count, duration, status codes)
+- Prediction metrics (tokens, cost, duration, GPU utilization)
+- Custom application metrics
+
+**Notes:**
+
+- No authentication required
+- Format: `# HELP` and `# TYPE` headers followed by metric data
+- Used by Prometheus scraper (`http://localhost:9090`)
+- Includes latency buckets and quantiles
 
 ---
 
@@ -1171,25 +1425,118 @@ All services follow a consistent error format:
 
 ## CORS & Authentication
 
-- **CORS:** All services allow `http://localhost:3000` and `http://127.0.0.1:3000`
-- **Authentication:** Currently stateless (login returns user info, no token management in backend yet)
-- **Sessions:** Chat sessions use `sessionId` UUID for multi-round conversations
+### CORS
+
+- **Allowed Origins:** `http://localhost:3000`, `http://127.0.0.1:3000`
+- **Allowed Methods:** GET, POST, PUT, DELETE, OPTIONS
+- **Allowed Headers:** Content-Type, Authorization, and others
+
+### Authentication (Flowise Proxy)
+
+- **Type:** JWT (JSON Web Token) Bearer authentication
+- **Location:** `Authorization: Bearer <jwt>` header (required for most endpoints)
+- **Secret:** Uses `AUTH_JWT_SECRET` or `JWT_SECRET` environment variable
+- **Token Format:** JWT with `role` claim (e.g., `student`, `staff`, `admin`, `guest`)
+
+### Role-Based Access Control
+
+**Chat Endpoints** (prediction, chat history):
+- Required: Valid JWT token (any role)
+- Returns: Authenticated user's chat data
+
+**Knowledge Base Endpoints** (documents, chunks, uploads):
+- Required: JWT token with `staff` or `admin` role
+- Returns: 403 Forbidden if user role is insufficient
+
+### Sessions
+
+- **Chat Sessions:** Use `sessionId` UUID for multi-round conversations
+- **Persistence:** Sessions stored in MongoDB
+- **Auto-generation:** `sessionId` generated if not provided in request
 
 ---
 
-## Environment Variables (Frontend)
+## Environment Variables
+
+### Frontend (.env.local)
 
 ```bash
-# .env.local
 NEXT_PUBLIC_AUTH_API_URL=http://localhost:3001
 NEXT_PUBLIC_FLOWISE_PROXY_URL=http://localhost:4000
 NEXT_PUBLIC_BROKER_URL=http://localhost:3002
 NEXT_PUBLIC_MAIL_URL=http://localhost:3004
 ```
 
+### Flowise Proxy Service (.env)
+
+```bash
+# Authentication
+AUTH_JWT_SECRET=your-jwt-secret-key
+JWT_SECRET=your-jwt-secret-key
+
+# Flowise Configuration
+FLOWISE_URL=http://flowise:3000
+FLOWISE_API_KEY=optional-api-key
+FLOWISE_LOADER_NAME=fileLoader
+FLOWISE_SPLITTER_NAME=recursiveCharacterTextSplitter
+FLOWISE_VECTOR_STORE_NAME=pineconeUpsert
+FLOWISE_EMBEDDING_NAME=openaiEmbedding
+
+# Knowledge Base
+DOCUMENT_STORE_ID=d21759a2-d263-414e-b5a4-f2e5819d516e
+UPLOAD_DIR=/uploads
+ASYNC_KB=true  # Enable async KB processing
+
+# Database
+MONGO_URI=mongodb://mongo:27017/helpdesk
+MONGO_DB_NAME=helpdesk
+
+# Server
+PORT=4000
+READ_TIMEOUT_MS=60000
+MAX_CONCURRENT_PREDICTIONS=4
+
+# Metrics
+COST_PER_1K_TOKENS_USD=0.002
+```
+
 ---
 
-## Flow IDs (Flowise)
+## Async Knowledge Base Processing
+
+When `ASYNC_KB=true`, knowledge base operations (upload, reprocess, upsert, refresh) are queued for async processing via RabbitMQ instead of blocking the HTTP request.
+
+### Workflow
+
+1. **Client Request** → POST `/api/kb/loaders` (upload file)
+2. **Proxy Response** → Returns 202 with `jobId`
+3. **Job Queued** → Event sent to RabbitMQ `kb.ingest` queue
+4. **Broker Listener** → Picks up job from queue
+5. **Internal Processing** → Calls `POST /internal/jobs/kb/ingest` on proxy
+6. **Completion** → Job status updated to `succeeded` or `failed`
+7. **Client Polling** → Calls `GET /api/jobs/:jobId` to track progress
+
+### Job Types
+
+- `kb.ingest` — File upload and vector embedding
+- `kb.reprocess` — Re-split and re-embed existing document
+- `kb.upsert` — Insert/update via JSON (raw text)
+- `kb.refresh` — Rebuild entire vector store
+
+### Internal Endpoints (Worker Only)
+
+These endpoints are for internal job processing via RabbitMQ and require `WORKER_TOKEN` authentication.
+
+**POST `/internal/jobs/kb/ingest`**
+**POST `/internal/jobs/kb/reprocess`**
+**POST `/internal/jobs/kb/upsert`**
+**POST `/internal/jobs/kb/refresh`**
+**POST `/internal/jobs/status`**
+
+**Headers:**
+- `Authorization: Bearer <WORKER_TOKEN>`
+
+---
 
 - **Main Helpdesk Flow:** `2d844a72-3dc8-4475-8134-9f034015741f`
 
@@ -1197,28 +1544,119 @@ NEXT_PUBLIC_MAIL_URL=http://localhost:3004
 
 ---
 
-## Testing Endpoints
+## Key Implementation Differences
+
+### Chat Prediction Responses
+
+**Field Changes:**
+- `message` → `text` (response text field renamed)
+- Added `sessionId` to all responses (auto-generated if not provided)
+- `sourceDocuments` still present for source attribution
+
+### Metrics Collection
+
+All prediction requests automatically collect:
+
+- **Duration**: Request processing time in seconds
+- **CPU Usage**: CPU time consumed during request
+- **Token Estimate**: Approximate tokens in response
+- **Cost Estimation**: Estimated USD cost based on token count
+- **GPU Utilization**: Sampled GPU usage if available
+
+Metrics are exposed via `GET /metrics` endpoint in Prometheus format.
+
+### Concurrency Control
+
+- Maximum concurrent predictions: `MAX_CONCURRENT_PREDICTIONS` (default: 4)
+- Excess requests receive: `429 { "error": "Too many concurrent predictions, please retry shortly" }`
+- Helps prevent resource exhaustion under high load
+
+### File Upload Changes
+
+- Files stored on disk in `UPLOAD_DIR` with timestamp+name
+- Metadata automatically enriched with: `originalFileName`, `name`, `description`
+- Unsupported file types rejected with error
+- Multipart form-data validation includes MIME type checking
+
+### Authentication Throughout
+
+- **Chat endpoints** require valid JWT (any role)
+- **KB endpoints** require JWT with `staff` or `admin` role
+- **Health/Metrics endpoints** require no authentication
+- **Internal endpoints** require `WORKER_TOKEN` authentication
+
+---
+
+## Troubleshooting
+
+### 401 Unauthorized
+- Verify `Authorization: Bearer <token>` header is present
+- Check JWT is valid and not expired
+- Verify `AUTH_JWT_SECRET` or `JWT_SECRET` env var is set
+
+### 403 Forbidden
+- KB endpoints require `staff` or `admin` role in JWT
+- Check user role claim in token payload
+
+### 429 Too Many Requests
+- Concurrent prediction limit reached
+- Wait a moment and retry
+- Increase `MAX_CONCURRENT_PREDICTIONS` if needed
+
+### 502 Bad Gateway (chunks endpoint)
+- Flowise returned HTML instead of JSON
+- Check Flowise service is running and healthy
+- Verify document/loader IDs are valid
+
+### Async Jobs Stuck in "queued"
+- Verify `ASYNC_KB=true` and RabbitMQ connection
+- Check broker-service is running and connected
+- Verify listener-service is consuming KB queue events
+
+---
+
+## Testing Endpoints (Quick Reference)
 
 Use Postman, cURL, or VS Code REST Client:
 
 ```
-### Login
-POST http://localhost:3001/auth/login
-Content-Type: application/json
+### Health Check
+GET http://localhost:4000/health
 
-{
-  "identifier": "test@example.com",
-  "password": "password"
-}
+### Get Metrics
+GET http://localhost:4000/metrics
 
-### Chat
+### Chat with Knowledge Base (requires valid JWT token)
 POST http://localhost:4000/api/v1/prediction/2d844a72-3dc8-4475-8134-9f034015741f
+Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
 {
   "question": "What are office hours?"
 }
 
-### Chat History
-GET http://localhost:4000/api/chat/history/2d844a72-3dc8-4475-8134-9f034015741f
+### Stream Chat Response
+POST http://localhost:4000/api/v1/prediction/2d844a72-3dc8-4475-8134-9f034015741f/stream
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "question": "Explain our policies",
+  "stream": true
+}
+
+### List Knowledge Base Documents (requires staff/admin role)
+GET http://localhost:4000/api/kb
+Authorization: Bearer your-staff-jwt-token
+
+### Upload Document (requires staff/admin role)
+POST http://localhost:4000/api/kb/loaders
+Authorization: Bearer your-staff-jwt-token
+Content-Type: multipart/form-data
+
+(Form fields: file, name, description, metadata)
+
+### Check Job Status
+GET http://localhost:4000/api/jobs/job-uuid
+Authorization: Bearer your-jwt-token
 ```
