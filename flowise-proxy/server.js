@@ -418,6 +418,11 @@ const resolveTypeConfig = (typeRaw) => {
   return KB_TYPES[key] || null;
 };
 
+const resolveTypeConfigByStoreId = (storeId) => {
+  if (!storeId) return null;
+  return Object.values(KB_TYPES).find((cfg) => cfg.storeId === storeId) || null;
+};
+
 const getStoreIdFromReq = (req) => {
   const typeCfg =
     resolveTypeConfig(req.params?.type) ||
@@ -661,31 +666,51 @@ const resolveComponentPayloads = async (storeId) => {
 };
 
 const mergeLoaderWithKbEntry = ({ loader, kbEntry, storeId }) => {
-  const metadata =
+  const loaderMeta =
     loader?.metadata && typeof loader.metadata === "object" && !Array.isArray(loader.metadata)
       ? loader.metadata
-      : {};
+      : loader?.loaderConfig?.metadata && typeof loader.loaderConfig.metadata === "object"
+        ? loader.loaderConfig.metadata
+        : {};
+  const metadata = kbEntry?.metadata && Object.keys(kbEntry.metadata || {}).length ? kbEntry.metadata : loaderMeta;
   const resolvedStoreId = kbEntry?.storeId || storeId || DOCUMENT_STORE_ID;
   const loaderId = kbEntry?.loaderId || loader?.id || metadata?.docId || null;
   const nameCandidate =
     kbEntry?.name ||
-    resolveName({ name: null, metadata: { ...metadata, name: loader?.name }, fallback: loaderId || loader?.fileName });
+    resolveName({
+      name: loader?.name,
+      metadata: { ...metadata, name: metadata?.name || loader?.name },
+      fallback: loaderId || loader?.fileName
+    });
   const descriptionCandidate = resolveDescription({
     description: kbEntry?.description,
-    metadata
+    metadata: { ...metadata, description: metadata?.description || loader?.description }
   });
   const filename =
-    kbEntry?.filename || loader?.fileName || metadata?.originalFileName || metadata?.filename || metadata?.name || null;
-  const size = kbEntry?.size || metadata?.size || loader?.size || null;
+    kbEntry?.filename ||
+    loader?.fileName ||
+    metadata?.originalFileName ||
+    metadata?.filename ||
+    metadata?.name ||
+    (Array.isArray(loader?.files) && loader.files[0]?.name) ||
+    null;
+  const size =
+    kbEntry?.size ||
+    metadata?.size ||
+    loader?.size ||
+    (Array.isArray(loader?.files) && loader.files[0]?.size) ||
+    null;
   const uploadedAt =
     kbEntry?.uploadedAt ||
     metadata?.uploadedAt ||
+    (Array.isArray(loader?.files) && loader.files[0]?.uploaded) ||
     loader?.uploadedAt ||
     loader?.createdAt ||
     kbEntry?.createdAt ||
     null;
-  const mergedMetadata =
-    kbEntry?.metadata && Object.keys(kbEntry.metadata || {}).length ? kbEntry.metadata : metadata;
+  const mergedMetadata = { ...(metadata || {}), ...(kbEntry?.metadata || {}), type: kbEntry?.type || metadata?.type };
+  const typeValue = mergedMetadata?.type || kbEntry?.type || null;
+  const statusValue = loader?.status || loader?.state || null;
 
   return {
     storeId: resolvedStoreId,
@@ -699,8 +724,73 @@ const mergeLoaderWithKbEntry = ({ loader, kbEntry, storeId }) => {
     uploadedAt,
     createdAt: kbEntry?.createdAt || loader?.createdAt || null,
     updatedAt: kbEntry?.updatedAt || loader?.updatedAt || null,
-    flowiseLoader: loader || null
+    flowiseLoader: loader || null,
+    status: statusValue,
+    type: typeValue
   };
+};
+
+const deriveEntryStatus = (entry) => {
+  const hasCoreFields =
+    entry?.kbId &&
+    entry?.filename &&
+    entry?.size !== null &&
+    entry?.size !== undefined &&
+    entry?.uploadedAt;
+
+  if (!hasCoreFields) return "PENDING";
+  if (entry?.status && `${entry.status}`.toUpperCase() !== "SYNC") return "PENDING";
+  return "SYNC";
+};
+
+const buildEntryResponse = async ({ storeId, loaderId, kbEntry, flowiseLoader, typeCfg }) => {
+  const resolvedTypeCfg =
+    typeCfg ||
+    resolveTypeConfigByStoreId(storeId) ||
+    resolveTypeConfig(kbEntry?.type || kbEntry?.metadata?.type);
+
+  let loader = flowiseLoader || null;
+  const existingKb =
+    kbEntry || (loaderId ? await knowledgeBaseStore.findByLoader({ loaderId, storeId }) : null);
+
+  if (!loader && storeId && loaderId) {
+    try {
+      const storeData = await fetchFlowiseStore(storeId);
+      loader = Array.isArray(storeData?.loaders)
+        ? storeData.loaders.find((l) => l.id === loaderId) || null
+        : null;
+    } catch (err) {
+      console.warn("Flowise fetch failed while building entry response:", err?.message || err);
+    }
+  }
+
+  if (!existingKb && !loader) {
+    return null;
+  }
+
+  const merged = mergeLoaderWithKbEntry({
+    loader,
+    kbEntry: existingKb,
+    storeId: storeId || existingKb?.storeId || loader?.storeId
+  });
+
+  const entry = {
+    storeId: merged.storeId || storeId || resolvedTypeCfg?.storeId || null,
+    loaderId: merged.loaderId || loaderId || null,
+    kbId: merged.kbId || null,
+    name: merged.name || null,
+    description: merged.description || "",
+    filename: merged.filename || null,
+    size: merged.size ?? null,
+    uploadedAt: merged.uploadedAt || null,
+    metadata: merged.metadata || {},
+    createdAt: merged.createdAt || null,
+    updatedAt: merged.updatedAt || null,
+    status: merged.status || loader?.status || loader?.state || null,
+    type: merged.type || resolvedTypeCfg?.key || existingKb?.metadata?.type || null
+  };
+
+  return { ...entry, status: deriveEntryStatus(entry) };
 };
 
 const loadDocuments = async (storeId) => {
@@ -1088,23 +1178,11 @@ const getLoaderHandler = async (req, res) => {
       return res.status(400).json({ error: "loaderId is required" });
     }
     const storeId = await resolveStoreIdForLoader(req, loaderId);
-    const kbEntry = await knowledgeBaseStore.findByLoader({ loaderId, storeId });
-    let loader = null;
-
-    try {
-      const storeData = await fetchFlowiseStore(storeId);
-      loader = Array.isArray(storeData?.loaders)
-        ? storeData.loaders.find((entry) => entry.id === loaderId) || null
-        : null;
-    } catch (err) {
-      if (!kbEntry) {
-        throw err;
-      }
-      console.warn("Flowise fetch failed for loader, serving Mongo data:", err?.message || err);
+    const entry = await buildEntryResponse({ storeId, loaderId });
+    if (!entry) {
+      return res.status(404).json({ error: "Knowledge base entry not found" });
     }
-
-    const document = mergeLoaderWithKbEntry({ loader, kbEntry, storeId });
-    return res.json(document);
+    return res.json(entry);
   } catch (err) {
     console.error("get loader error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to read knowledge base entry" });
@@ -1163,7 +1241,8 @@ const listLoaderEntriesHandler = async (req, res) => {
       }
 
       (documents || []).forEach((doc) => {
-        entries.push({
+        const loaderStatus = statusMap.get(doc.loaderId || doc.docId || doc.id) || doc.status || null;
+        const enriched = {
           storeId: doc.storeId || typeCfg.storeId,
           loaderId: doc.loaderId || doc.docId || null,
           kbId: doc.kbId || null,
@@ -1175,9 +1254,10 @@ const listLoaderEntriesHandler = async (req, res) => {
           metadata: doc.metadata || {},
           createdAt: doc.createdAt || null,
           updatedAt: doc.updatedAt || null,
-          status: statusMap.get(doc.loaderId || doc.docId || doc.id) || null,
+          status: loaderStatus,
           type: doc.type || typeCfg.key
-        });
+        };
+        entries.push({ ...enriched, status: deriveEntryStatus(enriched) });
       });
     }
     return res.json(entries);
@@ -1211,7 +1291,8 @@ const updateKbMetaHandler = async (req, res) => {
     if (!loaderId) {
       return res.status(400).json({ error: "loaderId is required" });
     }
-    const storeId = await resolveStoreIdForLoader(req, loaderId);
+    const typeCfgFromReq = resolveTypeConfig(req.body?.type || req.query?.type || req.params?.type);
+    const storeId = typeCfgFromReq?.storeId || (await resolveStoreIdForLoader(req, loaderId));
 
     const name = pickNonEmptyString(req.body?.name);
     const descriptionInput = pickFirstString(req.body?.description);
@@ -1230,6 +1311,10 @@ const updateKbMetaHandler = async (req, res) => {
     if (!existingEntry) {
       return res.status(404).json({ error: "KB entry not found for loaderId" });
     }
+    const typeCfg =
+      typeCfgFromReq ||
+      resolveTypeConfig(existingEntry?.type || existingEntry?.metadata?.type) ||
+      resolveTypeConfigByStoreId(storeId);
 
     const mergedMetadata = {
       ...(existingEntry.metadata || {}),
@@ -1254,7 +1339,14 @@ const updateKbMetaHandler = async (req, res) => {
       metadata: updated?.metadata
     });
 
-    return res.json(updated);
+    const entry = await buildEntryResponse({
+      storeId,
+      loaderId,
+      kbEntry: updated,
+      typeCfg
+    });
+
+    return res.json(entry || updated);
   } catch (err) {
     console.error("update kb meta error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to update KB metadata" });
@@ -1380,7 +1472,13 @@ const uploadAndUpsertHandler = async (req, res) => {
       name: kbEntry?.name,
       description: kbEntry?.description
     });
-    return res.json({ ...result, storeId, kb: kbEntry, kbId: kbEntry?.kbId });
+    const entry = await buildEntryResponse({
+      storeId,
+      loaderId: result.docId,
+      kbEntry,
+      typeCfg
+    });
+    return res.json({ ...result, storeId, kb: kbEntry, kbId: kbEntry?.kbId, entry });
   } catch (err) {
     console.error("upsert upload error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to upsert document" });
@@ -1522,7 +1620,13 @@ const reprocessHandler = async (req, res) => {
       filename: kbEntry?.filename,
       size: kbEntry?.size
     });
-    return res.json({ ...result, storeId, kb: kbEntry, kbId: kbEntry?.kbId });
+    const entry = await buildEntryResponse({
+      storeId,
+      loaderId,
+      kbEntry,
+      typeCfg
+    });
+    return res.json({ ...result, storeId, kb: kbEntry, kbId: kbEntry?.kbId, entry });
   } catch (err) {
     console.error("reprocess error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to process document" });
@@ -1539,11 +1643,24 @@ const deleteLoaderHandler = async (req, res) => {
     if (!loaderId) {
       return res.status(400).json({ error: "loaderId is required" });
     }
-    const typeCfg = resolveTypeConfig(req.body?.type || req.query?.type || req.params?.type);
-    const storeId = typeCfg?.storeId || (await resolveStoreIdForLoader(req, loaderId));
+    const typeCfgFromReq = resolveTypeConfig(req.body?.type || req.query?.type || req.params?.type);
+    const storeId = typeCfgFromReq?.storeId || (await resolveStoreIdForLoader(req, loaderId));
+    const typeCfg = typeCfgFromReq || resolveTypeConfigByStoreId(storeId);
     if (!typeCfg) {
       return res.status(400).json({ error: "type is required" });
     }
+
+    const preKb = await knowledgeBaseStore.findByLoader({ loaderId, storeId });
+    let preLoader = null;
+    try {
+      const storeData = await fetchFlowiseStore(storeId);
+      preLoader = Array.isArray(storeData?.loaders)
+        ? storeData.loaders.find((l) => l.id === loaderId) || null
+        : null;
+    } catch (fetchErr) {
+      console.warn("Flowise fetch failed before delete:", fetchErr?.message || fetchErr);
+    }
+
     const pathUrl = `/api/v1/document-store/loader/${storeId}/${loaderId}`;
     const result = await callFlowise("delete", pathUrl);
     if (typeof result === "string" && result.trim().startsWith("<!DOCTYPE")) {
@@ -1567,7 +1684,17 @@ const deleteLoaderHandler = async (req, res) => {
         console.warn("refresh after delete failed:", refreshErr?.message || refreshErr);
       }
     }
-    return res.json({ ...result, storeId, loaderId, refreshJobId });
+    const entry = await buildEntryResponse({
+      storeId,
+      loaderId,
+      kbEntry: preKb,
+      flowiseLoader: preLoader,
+      typeCfg
+    });
+    const responseBody = entry
+      ? { ...entry, refreshJobId: refreshJobId || null }
+      : { storeId, loaderId, refreshJobId: refreshJobId || null };
+    return res.json(responseBody);
   } catch (err) {
     const flowiseMessage = err?.body?.message || err?.message || "";
     const isNotFound =
