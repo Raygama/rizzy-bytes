@@ -731,6 +731,7 @@ const mergeLoaderWithKbEntry = ({ loader, kbEntry, storeId }) => {
 };
 
 const deriveEntryStatus = (entry) => {
+  const loaderStatus = entry?.status ? `${entry.status}`.toUpperCase() : null;
   const hasCoreFields =
     entry?.kbId &&
     entry?.filename &&
@@ -738,9 +739,14 @@ const deriveEntryStatus = (entry) => {
     entry?.size !== undefined &&
     entry?.uploadedAt;
 
-  if (!hasCoreFields) return "PENDING";
-  if (entry?.status && `${entry.status}`.toUpperCase() !== "SYNC") return "PENDING";
-  return "SYNC";
+  // If Flowise reports SYNC, trust it even if some fields are not yet populated locally
+  if (loaderStatus === "SYNC") return "SYNC";
+
+  // If we have the core fields, consider it synchronized
+  if (hasCoreFields) return "SYNC";
+
+  // Otherwise still pending
+  return "PENDING";
 };
 
 const buildEntryResponse = async ({ storeId, loaderId, kbEntry, flowiseLoader, typeCfg }) => {
