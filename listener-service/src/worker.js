@@ -29,6 +29,7 @@ const OTP_TEMPLATE_PATH = path.join(
   "templates",
   "otp-email.html"
 );
+const OTP_LOGO_URL = process.env.OTP_LOGO_URL || "https://koeliah.com/wp-content/uploads/2018/11/telkom-university.png";
 
 // [ADDED] Cache untuk menghindari baca file berulang-ulang
 let otpTemplateCache = null; // [ADDED]
@@ -46,10 +47,14 @@ function getOtpTemplate() {
 function renderOtpHtml({ otp, username }) {
   // [ADDED]
   const tpl = getOtpTemplate();
+  const hasLogo = OTP_LOGO_URL && OTP_LOGO_URL.trim();
 
   return tpl
     .replace(/{{OTP_CODE}}/g, otp) // ganti semua {{OTP_CODE}}
-    .replace(/{{USERNAME}}/g, username || ""); // ganti {{USERNAME}} kalau ada
+    .replace(/{{USERNAME}}/g, username || "") // ganti {{USERNAME}} kalau ada
+    .replace(/{{LOGO_URL}}/g, hasLogo ? OTP_LOGO_URL.trim() : "")
+    .replace(/{{LOGO_DISPLAY}}/g, hasLogo ? "block" : "none")
+    .replace(/{{LOGO_PLACEHOLDER_DISPLAY}}/g, hasLogo ? "none" : "flex");
 }
 
 const callProxy = async (path, payload) => {
