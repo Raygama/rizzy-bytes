@@ -739,14 +739,44 @@ const deriveEntryStatus = (entry) => {
     entry?.size !== undefined &&
     entry?.uploadedAt;
 
-  // If Flowise reports SYNC, trust it even if some fields are not yet populated locally
   if (loaderStatus === "SYNC") return "SYNC";
-
-  // If we have the core fields, consider it synchronized
   if (hasCoreFields) return "SYNC";
-
-  // Otherwise still pending
   return "PENDING";
+};
+
+const hydrateKbEntryForLoader = async (loader, storeId) => {
+  if (!loader?.id) return null;
+  const existing = await knowledgeBaseStore.findByLoader({ loaderId: loader.id, storeId });
+  if (existing) return existing;
+
+  const typeCfg = resolveTypeConfigByStoreId(storeId);
+  const metadataFromLoader = loader?.loaderConfig?.metadata || {};
+  const files = Array.isArray(loader?.files) ? loader.files : [];
+  const firstFile = files[0] || {};
+
+  const name = resolveName({
+    name: metadataFromLoader.name,
+    metadata: metadataFromLoader,
+    fallback: loader.id
+  });
+  const description = resolveDescription({
+    description: metadataFromLoader.description,
+    metadata: metadataFromLoader
+  });
+
+  const { kbId, kbNumericId } = await nextKbId();
+  return knowledgeBaseStore.create({
+    storeId,
+    loaderId: loader.id,
+    kbId,
+    kbNumericId,
+    name,
+    description,
+    filename: firstFile.name || metadataFromLoader.originalFileName || null,
+    size: firstFile.size ?? metadataFromLoader.size ?? null,
+    metadata: { ...metadataFromLoader, type: metadataFromLoader.type || typeCfg?.key || null },
+    uploadedAt: firstFile.uploaded ? new Date(firstFile.uploaded) : new Date()
+  });
 };
 
 const buildEntryResponse = async ({ storeId, loaderId, kbEntry, flowiseLoader, typeCfg }) => {
@@ -806,6 +836,16 @@ const loadDocuments = async (storeId) => {
   try {
     const storeData = await fetchFlowiseStore(storeId);
     const loaders = Array.isArray(storeData?.loaders) ? storeData.loaders : [];
+
+    for (const loader of loaders) {
+      if (!kbMap.has(loader.id)) {
+        const created = await hydrateKbEntryForLoader(loader, storeId);
+        if (created) {
+          kbMap.set(loader.id, created);
+        }
+      }
+    }
+
     const documents = loaders.map((loader) =>
       mergeLoaderWithKbEntry({ loader, kbEntry: kbMap.get(loader.id), storeId })
     );
