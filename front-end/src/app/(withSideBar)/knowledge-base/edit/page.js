@@ -9,7 +9,6 @@ export default function AddNewEntryPage() {
 
   const [fileLoaderName, setFileLoaderName] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState("");
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -69,15 +68,11 @@ export default function AddNewEntryPage() {
     formData.append("file", file);
     formData.append("name", fileLoaderName);
     formData.append("description", description);
-    formData.append("type", type);
 
     try {
       const res = await fetch("http://localhost:4000/api/kb/loaders", {
         method: "POST",
         body: formData,
-        headers: {
-          authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
       });
 
       if (!res.ok) throw new Error("Upload failed");
@@ -213,24 +208,6 @@ export default function AddNewEntryPage() {
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-red-500"
                 placeholder="Placeholder"
               />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-900">
-                Type
-              </label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-red-500"
-              >
-                <option value="" disabled>
-                  Select type...
-                </option>
-                <option value="ta">Tugas Akhir</option>
-                <option value="kp">Kerja Praktik</option>
-                <option value="general">Other</option>
-              </select>
             </div>
           </div>
         </div>

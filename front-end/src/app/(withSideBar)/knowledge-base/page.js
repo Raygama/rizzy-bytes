@@ -1,12 +1,20 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
-import Swal from "sweetalert2"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import Swal from "sweetalert2";
+import EditKb from "@/components/editKB";
 
 export default function KnowledgeBasePage() {
-  const router = useRouter()
+  const router = useRouter();
+  const [dataKB, setDataKB] = useState([]);
+  const [fetchStatus, setFetchStatus] = useState(true);
+  const [editState, setEditState] = useState({
+    isEditing: false,
+    kbData: null,
+  });
   const [entries, setEntries] = useState([
     { id: "KB-001", question: "Placeholder", answer: "Placeholder" },
     { id: "KB-002", question: "Placeholder", answer: "Placeholder" },
@@ -18,14 +26,46 @@ export default function KnowledgeBasePage() {
     { id: "KB-008", question: "Placeholder", answer: "Placeholder" },
     { id: "KB-009", question: "Placeholder", answer: "Placeholder" },
     { id: "KB-010", question: "Placeholder", answer: "Placeholder" },
-  ])
+  ]);
+
+  const handlePopup = (type, data = null) => {
+    setEditState((prev) => ({
+      ...prev,
+      [type]: !prev[type],
+      kbData: data,
+    }));
+  };
 
   const handleAddNewEntry = () => {
-    router.push("/knowledge-base/add")
-  }
+    router.push("/knowledge-base/add");
+  };
 
-  const handleDelete = (id) => {
-    Swal.fire({
+  useEffect(() => {
+    if (fetchStatus === true) {
+      const fetchDataKB = async () => {
+        try {
+          const response = await fetch("http://localhost:4000/api/kb/entries", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          const result = await response.json();
+          let fetchOnlySyncData = result.filter(
+            (item) => item.status === "SYNC"
+          );
+          setDataKB(fetchOnlySyncData);
+        } catch (error) {
+          console.error("Error fetching knowledge base data:", error);
+        }
+      };
+      fetchDataKB();
+    }
+  }, [fetchStatus, setFetchStatus]);
+
+  const handleDelete = async (loaderId) => {
+    const confirm = await Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
       icon: "warning",
@@ -34,27 +74,54 @@ export default function KnowledgeBasePage() {
       cancelButtonColor: "#9ca3af",
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        // Remove the entry from the list
-        setEntries(entries.filter((entry) => entry.id !== id))
-        Swal.fire({
-          title: "Deleted!",
-          text: "Your entry has been deleted.",
-          icon: "success",
-          confirmButtonColor: "#ef4444",
-        })
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:4000/api/kb/loaders/${loaderId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(`Delete failed: ${res.status}`);
       }
-    })
-  }
+
+      // ✅ update UI langsung
+      setDataKB((prev) => prev.filter((e) => e.loaderId !== loaderId));
+
+      await Swal.fire({
+        title: "Deleted!",
+        text: "Your entry has been deleted.",
+        icon: "success",
+        confirmButtonColor: "#ef4444",
+      });
+    } catch (error) {
+      console.error("Error deleting knowledge base entry:", error);
+      Swal.fire({
+        title: "Error",
+        text: "Failed to delete entry. Please try again.",
+        icon: "error",
+      });
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] p-6 md:p-8 lg:p-12">
+    <div className="relative min-h-screen bg-[#F5F5F7] p-6 md:p-8 lg:p-12">
       <div className="mx-auto max-w-7xl">
         {/* Header Section */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 lg:text-4xl">Knowledge Base Management</h1>
+            <h1 className="text-3xl font-bold text-gray-900 lg:text-4xl">
+              Knowledge Base Management
+            </h1>
             <p className="mt-2 text-sm text-gray-500">
               View, Add, and Manage interconnected Q&A entries for the chatbot.
             </p>
@@ -79,10 +146,13 @@ export default function KnowledgeBasePage() {
                     ID
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
-                    Question
+                    Name
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
-                    Answer
+                    Description
+                  </th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    Type
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     Actions
@@ -90,30 +160,45 @@ export default function KnowledgeBasePage() {
                 </tr>
               </thead>
               <tbody>
-                {entries.length === 0 ? (
+                {dataKB.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-6 py-32">
                       <div className="flex items-center justify-center">
-                        <p className="text-sm text-gray-400">You haven&apos;t input any data</p>
+                        <p className="text-sm text-gray-400">
+                          You haven&apos;t input any data
+                        </p>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  entries.map((entry) => (
-                    <tr key={entry.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-gray-900">{entry.id}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{entry.question}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{entry.answer}</td>
+                  dataKB.map((entry) => (
+                    <tr
+                      key={entry.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {entry.kbId}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {entry.name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {entry.description}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {entry.type}
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button
+                            onClick={() => handlePopup("isEditing", entry)}
                             className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
                             aria-label="Edit entry"
                           >
                             <Pencil size={16} />
                           </button>
                           <button
-                            onClick={() => handleDelete(entry.id)}
+                            onClick={() => handleDelete(entry.loaderId)}
                             className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
                             aria-label="Delete entry"
                           >
@@ -130,7 +215,9 @@ export default function KnowledgeBasePage() {
 
           {/* Footer / Pagination */}
           <div className="flex items-center justify-between border-t border-gray-200 bg-white px-6 py-4">
-            <div className="text-sm text-gray-500">Show 1 to 10 of 110 results</div>
+            <div className="text-sm text-gray-500">
+              Show 1 to 10 of 110 results
+            </div>
             <div className="flex items-center gap-2">
               <button
                 className="flex items-center justify-center text-gray-400 transition-colors hover:text-gray-600 focus:outline-none"
@@ -164,6 +251,28 @@ export default function KnowledgeBasePage() {
           </div>
         </div>
       </div>
+
+      {/* Popup */}
+      {editState.isEditing && (
+        <EditKb
+          isEditing={editState.isEditing}
+          kbData={editState.kbData}
+          onClose={() => handlePopup("isEditing")}
+          onUpdated={(updated) => {
+            setDataKB((prev) =>
+              prev.map((e) =>
+                e.loaderId === updated.loaderId
+                  ? {
+                      ...e,
+                      name: updated.name,
+                      description: updated.description,
+                    }
+                  : e
+              )
+            );
+          }}
+        />
+      )}
     </div>
-  )
+  );
 }
