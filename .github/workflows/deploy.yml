@@ -39,7 +39,8 @@ jobs:
 
       - name: Deploy on VM
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no \
+                ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             set -e
             cd ${{ secrets.PROJECT_PATH }}
             git pull origin main
