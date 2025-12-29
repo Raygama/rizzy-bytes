@@ -69,7 +69,7 @@ services:
       - mongo
   front-end:
     build:
-      context: C:/kuliah_C/Compro/rizzy-bytes/front-end
+      context: ../front-end
       dockerfile: front-end.dockerfile
     ports:
       - "3000:3000"
