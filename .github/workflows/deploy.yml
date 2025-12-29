@@ -37,12 +37,12 @@ jobs:
           fi
           echo "Secrets validated"
 
-          
+
       - name: Deploy on VM
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             set -e
             cd ${{ secrets.PROJECT_PATH }}
             git pull origin main
-            docker compose up -d --build
+            docker compose up -f docker-compose.light.yml -d --build
           EOF
