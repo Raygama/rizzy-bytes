@@ -37,6 +37,7 @@ jobs:
           fi
           echo "Secrets validated"
 
+          
       - name: Deploy on VM
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
