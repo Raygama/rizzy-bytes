@@ -73,12 +73,10 @@ services:
       - NEXT_PUBLIC_FLOWISE_PROXY_URL=http://flowise-proxy:4000
   mongo:
     image: mongo:6
-    ports:
-      - 27017:27017
+
   redis:
     image: redis:7
-    ports:
-      - 6379:6379
+
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -217,8 +215,6 @@ services:
       POSTGRES_USER: flowise
       POSTGRES_PASSWORD: flowisepass
       POSTGRES_DB: flowise_db
-    ports:
-      - 5432:5432
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
   ollama:
