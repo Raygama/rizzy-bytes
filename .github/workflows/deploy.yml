@@ -44,5 +44,5 @@ jobs:
             set -e
             cd ${{ secrets.PROJECT_PATH }}
             git pull origin main
-            docker compose up -f docker-compose.light.yml -d --build
+            docker compose -f docker-compose.light.yml up -d --build
           EOF
