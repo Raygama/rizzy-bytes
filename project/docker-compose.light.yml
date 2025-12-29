@@ -78,6 +78,8 @@ services:
       - NEXT_PUBLIC_FLOWISE_PROXY_URL=http://flowise-proxy:4000
   mongo:
     image: mongo:6
+    ports:
+      - "127.0.0.1:27017:27017"
 
   redis:
     image: redis:7
