@@ -13,6 +13,7 @@ build/
 
 mongo-data/
 dump/
+flowie-data/
 
 redis-data/
 postgres-data/
