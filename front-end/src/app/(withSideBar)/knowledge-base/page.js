@@ -1,15 +1,16 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
-import Swal from "sweetalert2"
-import EditKb from "@/components/editKB"
+import { useState, useEffect } from "react";
+import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import Swal from "sweetalert2";
+import EditKb from "@/components/editKB";
+import Link from "next/link";
 
 export default function KnowledgeBasePage() {
-  const [dataKB, setDataKB] = useState([])
-  const [fetchStatus, setFetchStatus] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editingData, setEditingData] = useState(null)
+  const [dataKB, setDataKB] = useState([]);
+  const [fetchStatus, setFetchStatus] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingData, setEditingData] = useState(null);
 
   useEffect(() => {
     if (fetchStatus === true) {
@@ -21,22 +22,24 @@ export default function KnowledgeBasePage() {
               "Content-Type": "application/json",
               authorization: `Bearer ${localStorage.getItem("token")}`,
             },
-          })
-          const result = await response.json()
-          const fetchOnlySyncData = result.filter((item) => item.status === "SYNC")
-          setDataKB(fetchOnlySyncData)
+          });
+          const result = await response.json();
+          const fetchOnlySyncData = result.filter(
+            (item) => item.status === "SYNC"
+          );
+          setDataKB(fetchOnlySyncData);
         } catch (error) {
-          console.error("Error fetching knowledge base data:", error)
+          console.error("Error fetching knowledge base data:", error);
         }
-      }
-      fetchDataKB()
+      };
+      fetchDataKB();
     }
-  }, [fetchStatus, setFetchStatus])
+  }, [fetchStatus, setFetchStatus]);
 
   const handleAddNewEntry = () => {
-    setEditingData(null)
-    setShowModal(true)
-  }
+    setEditingData(null);
+    setShowModal(true);
+  };
 
   const handleDelete = async (loaderId) => {
     const confirm = await Swal.fire({
@@ -48,39 +51,42 @@ export default function KnowledgeBasePage() {
       cancelButtonColor: "#9ca3af",
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
-    })
+    });
 
-    if (!confirm.isConfirmed) return
+    if (!confirm.isConfirmed) return;
 
     try {
-      const res = await fetch(`http://localhost:4000/api/kb/loaders/${loaderId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      })
+      const res = await fetch(
+        `http://localhost:4000/api/kb/loaders/${loaderId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
       if (!res.ok) {
-        throw new Error(`Delete failed: ${res.status}`)
+        throw new Error(`Delete failed: ${res.status}`);
       }
 
-      setDataKB((prev) => prev.filter((e) => e.loaderId !== loaderId))
+      setDataKB((prev) => prev.filter((e) => e.loaderId !== loaderId));
 
       await Swal.fire({
         title: "Deleted!",
         text: "Your entry has been deleted.",
         icon: "success",
-      })
+      });
     } catch (error) {
-      console.error("Error deleting knowledge base entry:", error)
+      console.error("Error deleting knowledge base entry:", error);
       Swal.fire({
         title: "Error",
         text: "Failed to delete entry. Please try again.",
         icon: "error",
-      })
+      });
     }
-  }
+  };
 
   return (
     <div className="relative min-h-screen bg-[#F5F5F7] p-6 md:p-8 lg:p-12">
@@ -88,17 +94,21 @@ export default function KnowledgeBasePage() {
         {/* Header Section */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 lg:text-4xl">Knowledge Base Management</h1>
+            <h1 className="text-3xl font-bold text-gray-900 lg:text-4xl">
+              Knowledge Base Management
+            </h1>
             <p className="mt-2 text-sm text-gray-500">
               View, Add, and Manage interconnected Q&A entries for the chatbot.
             </p>
           </div>
           <button
-            onClick={handleAddNewEntry}
+            // onClick={handleAddNewEntry}
             className="inline-flex items-center gap-2 rounded-full bg-red-500 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-red-600 transition-colors"
           >
-            <Plus size={18} />
-            Add New Entry
+            <Link href="/knowledge-base/add">
+              <Plus size={18} />
+              Add New Entry
+            </Link>
           </button>
         </div>
 
@@ -131,23 +141,36 @@ export default function KnowledgeBasePage() {
                   <tr>
                     <td colSpan={5} className="px-6 py-32">
                       <div className="flex items-center justify-center">
-                        <p className="text-sm text-gray-400">You haven&apos;t input any data</p>
+                        <p className="text-sm text-gray-400">
+                          You haven&apos;t input any data
+                        </p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   dataKB.map((entry) => (
-                    <tr key={entry.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-gray-900">{entry.kbId}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{entry.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{entry.description}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{entry.type}</td>
+                    <tr
+                      key={entry.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {entry.kbId}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {entry.name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {entry.description}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {entry.type}
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => {
-                              setEditingData(entry)
-                              setShowModal(true)
+                              setEditingData(entry);
+                              setShowModal(true);
                             }}
                             className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
                             aria-label="Edit entry"
@@ -172,7 +195,9 @@ export default function KnowledgeBasePage() {
 
           {/* Footer / Pagination */}
           <div className="flex items-center justify-between border-t border-gray-200 bg-white px-6 py-4">
-            <div className="text-sm text-gray-500">Show 1 to 10 of 110 results</div>
+            <div className="text-sm text-gray-500">
+              Show 1 to 10 of 110 results
+            </div>
             <div className="flex items-center gap-2">
               <button
                 className="flex items-center justify-center text-gray-400 transition-colors hover:text-gray-600 focus:outline-none"
@@ -222,16 +247,16 @@ export default function KnowledgeBasePage() {
                         name: updated.name,
                         description: updated.description,
                       }
-                    : e,
-                ),
-              )
+                    : e
+                )
+              );
             } else {
-              setFetchStatus(!fetchStatus)
+              setFetchStatus(!fetchStatus);
             }
-            setShowModal(false)
+            setShowModal(false);
           }}
         />
       )}
     </div>
-  )
+  );
 }
