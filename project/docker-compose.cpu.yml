@@ -13,6 +13,7 @@ services:
     depends_on:
       - mongo
       - rabbitmq
+    restart: unless-stopped
   broker-service:
     build:
       context: ../broker-service
@@ -64,7 +65,7 @@ services:
       - mongo
   front-end:
     build:
-      context: C:/kuliah_C/Compro/rizzy-bytes/front-end
+      context: ../front-end
       dockerfile: front-end.dockerfile
     ports:
       - "3000:3000"
@@ -73,12 +74,10 @@ services:
       - NEXT_PUBLIC_FLOWISE_PROXY_URL=http://flowise-proxy:4000
   mongo:
     image: mongo:6
-    ports:
-      - 27017:27017
+
   redis:
     image: redis:7
-    ports:
-      - 6379:6379
+
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -100,7 +99,6 @@ services:
     ports:
       - 9090:9090
     depends_on:
-      - cadvisor
       - node-exporter
   grafana:
     image: grafana/grafana:latest
@@ -132,16 +130,7 @@ services:
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    restart: unless-stopped
-    privileged: true
-    ports:
-      - 8080:8080
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /sys:/sys:ro
+
   flowise:
     image: flowiseai/flowise:latest
     container_name: flowise
@@ -167,6 +156,7 @@ services:
     depends_on:
       - mongo
       - redis
+      - postgres
   flowise-proxy:
     build:
       context: ../flowise-proxy
@@ -223,11 +213,9 @@ services:
     container_name: postgres
     restart: always
     environment:
-      POSTGRES_USER: flowise
-      POSTGRES_PASSWORD: flowisepass
-      POSTGRES_DB: flowise_db
-    ports:
-      - 5432:5432
+      POSTGRES_USER: ${POSTGRES_USER:-flowise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowisepass}
+      POSTGRES_DB: ${POSTGRES_DB:-flowise_db}
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
   ollama:
@@ -239,10 +227,24 @@ services:
     volumes:
       - ./ollama-data:/root/.ollama
     environment:
-      - OLLAMA_MODELS=mistral nomic-embed-text
+      - OLLAMA_MODELS=nomic-embed-text
     entrypoint:
       "sh -c '\n  set -e\n  ollama serve &\n  # wait for API\n  for i in\
       \ 1 2 3 4 5; do\n    if curl -sSf http://127.0.0.1:11434/api/tags >/dev/null;\
       \ then break; fi\n    echo \"waiting for ollama...\" && sleep 2\n  done\n  for\
       \ m in $${OLLAMA_MODELS}; do\n    # pull only if missing\n    ollama show \"\
       $$m\" >/dev/null 2>&1 || ollama pull \"$$m\"\n  done\n  wait\n'\n"
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - front-end
+      - authentication-service
+      - broker-service
+      - flowise
+      - grafana

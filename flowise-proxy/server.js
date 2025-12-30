@@ -744,6 +744,22 @@ const deriveEntryStatus = (entry) => {
   return "PENDING";
 };
 
+const scheduleRefresh = async (storeId) => {
+  let refreshJobId = null;
+  if (ASYNC_KB) {
+    refreshJobId = randomUUID();
+    await setJobStatus(refreshJobId, { status: "queued", type: "kb.refresh", storeId });
+    await enqueueJob("kb.refresh", { jobId: refreshJobId, storeId, body: {} });
+  } else {
+    try {
+      await callFlowise("post", `/api/v1/document-store/refresh/${storeId}`, {});
+    } catch (refreshErr) {
+      console.warn("refresh after mutation failed:", refreshErr?.message || refreshErr);
+    }
+  }
+  return refreshJobId;
+};
+
 const hydrateKbEntryForLoader = async (loader, storeId) => {
   if (!loader?.id) return null;
   const existing = await knowledgeBaseStore.findByLoader({ loaderId: loader.id, storeId });
@@ -1324,10 +1340,29 @@ const updateChunkHandler = async (req, res) => {
     const body = req.body && Object.keys(req.body).length ? req.body : {};
     const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${chunkId}`;
     const result = await callFlowise("put", pathUrl, body);
-    return res.json(result);
+    const refreshJobId = await scheduleRefresh(storeId);
+    return res.json({ ...result, storeId, loaderId, refreshJobId, status: "PENDING" });
   } catch (err) {
     console.error("update chunk error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to update chunk" });
+  }
+};
+
+const deleteChunkHandler = async (req, res) => {
+  try {
+    const loaderId = pickFirstString(req.params?.loaderId);
+    const chunkId = pickFirstString(req.params?.chunkId);
+    if (!loaderId || !chunkId) {
+      return res.status(400).json({ error: "loaderId and chunkId are required" });
+    }
+    const storeId = await resolveStoreIdForLoader(req, loaderId);
+    const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${chunkId}`;
+    const result = await callFlowise("delete", pathUrl);
+    const refreshJobId = await scheduleRefresh(storeId);
+    return res.json({ ...result, storeId, loaderId, refreshJobId, status: "PENDING" });
+  } catch (err) {
+    console.error("delete chunk error:", err);
+    return res.status(err.status || 500).json(err.body || { error: "Unable to delete chunk" });
   }
 };
 
@@ -1718,18 +1753,7 @@ const deleteLoaderHandler = async (req, res) => {
     await removeManifestEntry(storeId, loaderId);
     await knowledgeBaseStore.remove({ loaderId, storeId });
     // trigger refresh to reprocess remaining chunks/loaders (queued if async)
-    let refreshJobId = null;
-    if (ASYNC_KB) {
-      refreshJobId = randomUUID();
-      await setJobStatus(refreshJobId, { status: "queued", type: "kb.refresh", storeId });
-      await enqueueJob("kb.refresh", { jobId: refreshJobId, storeId, body: {} });
-    } else {
-      try {
-        await callFlowise("post", `/api/v1/document-store/refresh/${storeId}`, {});
-      } catch (refreshErr) {
-        console.warn("refresh after delete failed:", refreshErr?.message || refreshErr);
-      }
-    }
+    const refreshJobId = await scheduleRefresh(storeId);
     const entry = await buildEntryResponse({
       storeId,
       loaderId,
@@ -2294,6 +2318,8 @@ app.get("/api/kb/loaders/:loaderId/chunks", requireKbRole, listChunksHandler);
 app.get("/api/kb/:storeId/loaders/:loaderId/chunks", requireKbRole, listChunksHandler);
 app.put("/api/kb/loaders/:loaderId/chunks/:chunkId", requireKbRole, updateChunkHandler);
 app.put("/api/kb/:storeId/loaders/:loaderId/chunks/:chunkId", requireKbRole, updateChunkHandler);
+app.delete("/api/kb/loaders/:loaderId/chunks/:chunkId", requireKbRole, deleteChunkHandler);
+app.delete("/api/kb/:storeId/loaders/:loaderId/chunks/:chunkId", requireKbRole, deleteChunkHandler);
 app.patch("/api/kb/loaders/:loaderId/meta", requireKbRole, updateKbMetaHandler);
 app.patch("/api/kb/:storeId/loaders/:loaderId/meta", requireKbRole, updateKbMetaHandler);
 
