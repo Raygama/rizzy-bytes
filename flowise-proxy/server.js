@@ -740,6 +740,8 @@ const deriveEntryStatus = (entry) => {
     entry?.uploadedAt;
 
   if (loaderStatus === "SYNC") return "SYNC";
+  // Any non-SYNC upstream status should be treated as pending, even if core fields exist
+  if (loaderStatus && loaderStatus !== "SYNC") return "PENDING";
   if (hasCoreFields) return "SYNC";
   return "PENDING";
 };
@@ -758,6 +760,29 @@ const scheduleRefresh = async (storeId) => {
     }
   }
   return refreshJobId;
+};
+
+const vectorStoreInsert = async ({ storeId, docId, typeCfg }) => {
+  const componentPayloads = getComponentPayloads();
+  const vectorConfig = cloneConfig(componentPayloads.vectorStore?.config || {});
+  if (typeCfg?.collectionName) {
+    vectorConfig.collectionName = typeCfg.collectionName;
+  }
+  if (typeCfg?.topK) {
+    vectorConfig.topK = typeCfg.topK;
+  }
+  const payload = {
+    storeId,
+    docId,
+    isStrictSave: false,
+    vectorStoreName: componentPayloads.vectorStore?.name,
+    vectorStoreConfig: vectorConfig,
+    embeddingName: componentPayloads.embedding?.name,
+    embeddingConfig: cloneConfig(componentPayloads.embedding?.config || {}),
+    recordManagerName: componentPayloads.recordManager?.name,
+    recordManagerConfig: cloneConfig(componentPayloads.recordManager?.config || {})
+  };
+  return callFlowise("post", "/api/v1/document-store/vectorstore/insert", payload);
 };
 
 const hydrateKbEntryForLoader = async (loader, storeId) => {
@@ -1336,12 +1361,21 @@ const updateChunkHandler = async (req, res) => {
     if (!loaderId || !chunkId) {
       return res.status(400).json({ error: "loaderId and chunkId are required" });
     }
-    const storeId = await resolveStoreIdForLoader(req, loaderId);
+    const typeCfg =
+      resolveTypeConfig(req.params?.type) ||
+      resolveTypeConfig(req.query?.type) ||
+      resolveTypeConfig(req.body?.type) ||
+      null;
+    const storeId = typeCfg?.storeId || (await resolveStoreIdForLoader(req, loaderId));
     const body = req.body && Object.keys(req.body).length ? req.body : {};
     const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${chunkId}`;
     const result = await callFlowise("put", pathUrl, body);
-    const refreshJobId = await scheduleRefresh(storeId);
-    return res.json({ ...result, storeId, loaderId, refreshJobId, status: "PENDING" });
+    try {
+      await vectorStoreInsert({ storeId, docId: loaderId, typeCfg: typeCfg || resolveTypeConfigByStoreId(storeId) });
+    } catch (insertErr) {
+      console.warn("vectorstore insert after chunk update failed:", insertErr?.message || insertErr);
+    }
+    return res.json({ ...result, storeId, loaderId, status: "PENDING" });
   } catch (err) {
     console.error("update chunk error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to update chunk" });
@@ -1355,11 +1389,20 @@ const deleteChunkHandler = async (req, res) => {
     if (!loaderId || !chunkId) {
       return res.status(400).json({ error: "loaderId and chunkId are required" });
     }
-    const storeId = await resolveStoreIdForLoader(req, loaderId);
+    const typeCfg =
+      resolveTypeConfig(req.params?.type) ||
+      resolveTypeConfig(req.query?.type) ||
+      resolveTypeConfig(req.body?.type) ||
+      null;
+    const storeId = typeCfg?.storeId || (await resolveStoreIdForLoader(req, loaderId));
     const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${chunkId}`;
     const result = await callFlowise("delete", pathUrl);
-    const refreshJobId = await scheduleRefresh(storeId);
-    return res.json({ ...result, storeId, loaderId, refreshJobId, status: "PENDING" });
+    try {
+      await vectorStoreInsert({ storeId, docId: loaderId, typeCfg: typeCfg || resolveTypeConfigByStoreId(storeId) });
+    } catch (insertErr) {
+      console.warn("vectorstore insert after chunk delete failed:", insertErr?.message || insertErr);
+    }
+    return res.json({ ...result, storeId, loaderId, status: "PENDING" });
   } catch (err) {
     console.error("delete chunk error:", err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to delete chunk" });
