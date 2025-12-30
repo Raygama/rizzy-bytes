@@ -1367,7 +1367,22 @@ const updateChunkHandler = async (req, res) => {
       resolveTypeConfig(req.body?.type) ||
       null;
     const storeId = typeCfg?.storeId || (await resolveStoreIdForLoader(req, loaderId));
-    const body = req.body && Object.keys(req.body).length ? req.body : {};
+    const body = req.body && Object.keys(req.body).length ? { ...req.body } : {};
+
+    // Preserve metadata type: if a stringified JSON is passed, parse it so Flowise stores an object.
+    if (typeof body.metadata === "string") {
+      try {
+        body.metadata = JSON.parse(body.metadata);
+      } catch (_err) {
+        // If parsing fails, drop metadata to avoid double-stringifying
+        delete body.metadata;
+      }
+    }
+    // If metadata is explicitly empty/undefined, don't override existing metadata in Flowise
+    if (body.metadata === undefined) {
+      delete body.metadata;
+    }
+
     const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${chunkId}`;
     const result = await callFlowise("put", pathUrl, body);
     try {
