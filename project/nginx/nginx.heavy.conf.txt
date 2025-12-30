@@ -113,5 +113,15 @@ http {
     location /flowise/ {
       proxy_pass http://flowise_ui/;
     }
+
+    # ---------- Grafana ----------
+    location /grafana/ {
+      proxy_pass http://grafana_ui/;
+    }
+
+    # ---------- Prometheus UI ----------
+    location /prometheus/ {
+      proxy_pass http://prometheus_api/;
+    }
   }
 }
