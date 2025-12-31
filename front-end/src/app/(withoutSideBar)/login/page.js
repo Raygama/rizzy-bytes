@@ -1,200 +1,146 @@
-"use client";
+"use client"
 
-// BARU: Impor useRouter untuk redirect setelah login
-import { useState } from "react";
-import Image from "next/image";
-import { useRouter } from "next/navigation"; // << BARU
-import Link from "next/link";
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Eye, EyeOff } from "lucide-react"
 
-export default function Login() {
-  const [activeIndex, setActiveIndex] = useState(0);
+export default function LoginPage() {
+  const router = useRouter()
   const AUTH_API_URL =
-    process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001";
-  // --- LOGIKA LOGIN (BARU) ---
-  const router = useRouter(); // BARU: Hook untuk redirect
+    process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001"
 
-  // BARU: State untuk menyimpan input form
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
-  // BARU: State untuk menangani error dan loading
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  // BARU: Fungsi yang dipanggil saat form disubmit
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Mencegah form me-refresh halaman
-    setIsLoading(true); // Mulai loading
-    setError(""); // Bersihkan error lama
+    e.preventDefault()
+    setIsLoading(true)
+    setError("")
 
-    // Tentukan data yang akan dikirim berdasarkan tab yang aktif
     const credentials = {
-      identifier: activeIndex === 0 ? email : username,
+      identifier: email,
       password: password,
-    };
+    }
 
-    // Simulasi pemanggilan API
     try {
-      // POST to the authentication-service (use env var or fallback)
-      const response = await fetch(`http://localhost:3001/auth/login`, {
+      const response = await fetch(`${AUTH_API_URL}/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
-      });
+      })
 
       if (!response.ok) {
-        // Jika server merespon dengan error (misal: 401 Unauthorized)
-        const data = await response.json();
-        throw new Error(data.message || "Email atau password salah");
+        const data = await response.json()
+        throw new Error(data.message || "Email atau password salah")
       }
 
-      //Jika login berhasil (server merespon OK)
-      const data = await response.json(); // Mungkin Anda dapat token di sini
-
-      //Arahkan (redirect) pengguna ke halaman chat
-      if (activeIndex === 0) {
-        sessionStorage.setItem("email", email); // simpan email di sessionStorage buat otp
-        router.push("/otp");
-      } else {
-        router.push("/chat");
-      }
+      await response.json()
+      sessionStorage.setItem("email", email)
+      router.push("/otp")
     } catch (err) {
-      // Tangkap error (baik dari fetch atau dari throw di atas)
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
-      // Apapun yang terjadi (berhasil atau gagal), hentikan loading
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-  // --- BATAS AKHIR LOGIKA LOGIN ---
+  }
 
   return (
-    <>
-      <div className="flex items-center justify-around w-full h-screen">
-        {/* Logo and welcome word (Tidak berubah) */}
-        <div className="w-1/3 flex flex-col items-center">
-          <div className="w-5/6">
-            <Image
-              src="/logo-fakultas.png"
-              alt="Logo Fakultas"
-              width={317}
-              height={83}
-            />
-            <h1 className="font-bold text-4xl ">
-              Selamat Datang di Chatbot Helpdesk Informatik
-            </h1>
-          </div>
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center p-4">
+      <div className="w-full max-w-[440px] bg-white rounded-xl shadow-md p-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Informatics AI</h1>
+          <p className="text-sm text-gray-500 mt-1">Telkom University</p>
         </div>
 
-        {/* dividing line (Tidak berubah) */}
-        <div className="border-l-2 h-2/3 border-black "></div>
+        {/* Title */}
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900">Welcome Back!</h2>
+        </div>
 
-        {/* MODIFIKASI: 
-          Bungkus form dengan tag <form> dan tambahkan onSubmit={handleSubmit} 
-        */}
-        <form
-          onSubmit={handleSubmit}
-          className="w-1/3 grid grid-cols-2 gap-4 p-4 rounded-xl shadow-2xl"
-        >
-          <p className="col-span-2 text-center">
-            Silahkan Pilih Tipe Pengguna Anda
-          </p>
-          <button
-            type="button" // MODIFIKASI: ubah ke type="button" agar tidak mensubmit form
-            className={`p-1 text-lg rounded-md ${
-              activeIndex === 0
-                ? "bg-[#BF0101] text-white"
-                : "bg-white text-black border border-gray-300"
-            }`}
-            onClick={() => {
-              setActiveIndex(0);
-              setError(""); // BARU: bersihkan error saat ganti tab
-            }}
-          >
-            Civitas Telkom
-          </button>
-
-          <button
-            type="button" // MODIFIKASI: ubah ke type="button"
-            className={`p-1 text-lg rounded-md ${
-              activeIndex === 1
-                ? "bg-[#BF0101] text-white"
-                : "bg-white text-black border border-gray-300"
-            }`}
-            onClick={() => {
-              setActiveIndex(1);
-              setError(""); // BARU: bersihkan error saat ganti tab
-            }}
-          >
-            Tamu
-          </button>
-
-          <div className="col-span-2 ">
-            {activeIndex === 0 ? (
-              <div>
-                <label className="block text-lg">Email</label>
-                <input
-                  type="email"
-                  placeholder="Enter your SSO email"
-                  className="border-1 border-gray-300 w-full p-2 rounded-md"
-                  value={email} // MODIFIKASI: hubungkan ke state
-                  onChange={(e) => setEmail(e.target.value)} // MODIFIKASI: hubungkan ke state
-                  required // BARU: tambahkan validasi dasar
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="block text-lg">Username</label>
-                <input
-                  type="text" // MODIFIKASI: ganti type jadi 'text'
-                  placeholder="Enter your Username"
-                  className="border-1 border-gray-300 w-full p-2 rounded-md"
-                  value={username} // MODIFIKASI: hubungkan ke state
-                  onChange={(e) => setUsername(e.target.value)} // MODIFIKASI: hubungkan ke state
-                  required // BARU: tambahkan validasi dasar
-                />
-              </div>
-            )}
-          </div>
-          <div className="col-span-2 ">
-            <label className="block text-lg">Password</label>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
             <input
-              type="password"
-              placeholder="Enter your password"
-              className="border-1 border-gray-300 w-full p-2 rounded-md"
-              value={password} // MODIFIKASI: hubungkan ke state
-              onChange={(e) => setPassword(e.target.value)} // MODIFIKASI: hubungkan ke state
-              required // BARU: tambahkan validasi dasar
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-[#4E4E4E]/5 focus:outline-none focus:ring-2 focus:ring-[#E53935]"
+              required
             />
           </div>
-          <div className="flex items-center">
-            <input type="checkbox" className="mr-2" />
-            <label>Remember Me</label>
+
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E53935]"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
 
-          <Link href="/register" className="text-right align-top">
-            Create Account
-          </Link>
+          {/* Remember & Register */}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={rememberMe} onChange={() => {}} />
+              Remember Me
+            </label>
+            <Link href="/register" className="text-sm text-[#E53935]">
+              Create Account
+            </Link>
+          </div>
 
-          {/* BARU: Tampilkan pesan error jika ada */}
-          {error && (
-            <div className="col-span-2 text-center text-red-600">{error}</div>
-          )}
+          {/* Terms */}
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+            />
+            Accept <span className="text-[#E53935]">Terms and Condition</span>
+          </label>
 
-          {/* MODIFIKASI: Ganti <Link> dengan button type="submit" */}
+          {error && <p className="text-center text-red-600 text-sm">{error}</p>}
+
           <button
-            type="submit" // MODIFIKASI: ganti jadi type="submit"
-            className="bg-[#BF0101] p-1 col-span-2 text-white text-lg rounded-md disabled:bg-gray-400" // BARU: style untuk disabled
-            disabled={isLoading} // BARU: nonaktifkan tombol saat loading
+            type="submit"
+            disabled={isLoading || !acceptTerms}
+            className={`w-full py-3 rounded-full text-white font-semibold ${
+              isLoading || !acceptTerms
+                ? "bg-gray-400"
+                : "bg-[#E53935] hover:bg-[#D32F2F]"
+            }`}
           >
-            {/* BARU: ubah teks saat loading */}
             {isLoading ? "Loading..." : "Login"}
           </button>
         </form>
       </div>
-    </>
-  );
+    </div>
+  )
 }
