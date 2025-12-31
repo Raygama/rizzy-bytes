@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ChevronLeft, Save, X } from "lucide-react"
+import { flowiseUrl } from "@/lib/apiConfig"
 
 export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
   const loaderId = kbData?.loaderId
@@ -38,7 +39,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
       setChunksError("")
 
       try {
-        const res = await fetch(`http://localhost:4000/api/kb/loaders/${loaderId}/chunks`, {
+        const res = await fetch(flowiseUrl(`/api/kb/loaders/${loaderId}/chunks`), {
           method: "GET",
           headers: {
             authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -84,7 +85,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
         type: type,
       }
 
-      const res = await fetch(`http://localhost:4000/api/kb/loaders/${loaderId}/meta`, {
+      const res = await fetch(flowiseUrl(`/api/kb/loaders/${loaderId}/meta`), {
         method: "PATCH",
         body: JSON.stringify(editData),
         headers: {
@@ -166,7 +167,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
     setChunkEditState((prev) => ({ ...prev, saving: true }))
 
     try {
-      const res = await fetch(`http://localhost:4000/api/kb/loaders/${loaderId}/chunks/${chunkId}`, {
+      const res = await fetch(flowiseUrl(`/api/kb/loaders/${loaderId}/chunks/${chunkId}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

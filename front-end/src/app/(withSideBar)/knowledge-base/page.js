@@ -5,6 +5,7 @@ import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
 import AddKbModal from "@/components/AddKbModal";
 import EditKb from "@/components/editKB";
+import { flowiseUrl } from "@/lib/apiConfig";
 
 export default function KnowledgeBasePage() {
   const [dataKB, setDataKB] = useState([]);
@@ -17,7 +18,7 @@ export default function KnowledgeBasePage() {
     if (fetchStatus === true) {
       const fetchDataKB = async () => {
         try {
-          const response = await fetch("http://localhost:4000/api/kb/entries", {
+          const response = await fetch(flowiseUrl("/api/kb/entries"), {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -60,7 +61,7 @@ export default function KnowledgeBasePage() {
 
     try {
       const res = await fetch(
-        `http://localhost:4000/api/kb/loaders/${loaderId}`,
+        flowiseUrl(`/api/kb/loaders/${loaderId}`),
         {
           method: "DELETE",
           headers: {
@@ -154,7 +155,7 @@ export default function KnowledgeBasePage() {
                 ) : (
                   dataKB.map((entry) => (
                     <tr
-                      key={entry.id}
+                      key={entry.kbId}
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">

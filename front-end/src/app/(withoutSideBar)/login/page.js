@@ -4,11 +4,10 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff } from "lucide-react"
+import { authUrl } from "@/lib/apiConfig"
 
 export default function LoginPage() {
   const router = useRouter()
-  const AUTH_API_URL =
-    process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001"
 
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
@@ -37,7 +36,7 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch(`${AUTH_API_URL}/auth/login`, {
+      const response = await fetch(authUrl("/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),

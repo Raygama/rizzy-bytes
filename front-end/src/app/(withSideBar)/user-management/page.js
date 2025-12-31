@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, ChevronLeft, ChevronRight, Trash2, Search, X } from "lucide-react"
 import Swal from "sweetalert2"
+import { authUrl } from "@/lib/apiConfig"
 
 export default function UserManagementPage() {
   const router = useRouter()
@@ -36,7 +37,7 @@ export default function UserManagementPage() {
       try {
         const token = localStorage.getItem("token")
 
-        const res = await fetch("http://localhost:3001/auth/users", {
+        const res = await fetch(authUrl("/users"), {
           method: "GET",
           headers: {
             // kalau ga butuh auth, hapus 2 baris ini
@@ -156,7 +157,7 @@ export default function UserManagementPage() {
             return
           }
           try {
-            const response = await fetch(`http://localhost:3001/auth/users/${targetId}`, {
+            const response = await fetch(authUrl(`/users/${targetId}`), {
               method: "DELETE",
               headers: {
                 "Content-Type": "application/json",

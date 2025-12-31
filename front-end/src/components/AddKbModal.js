@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { Save, X, Upload, FileText } from "lucide-react"
 import Swal from "sweetalert2"
+import { flowiseUrl } from "@/lib/apiConfig"
 
 export default function AddKbModal({ isOpen, onClose, onAdded }) {
   const [fileLoaderName, setFileLoaderName] = useState("")
@@ -65,7 +66,7 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
       formData.append("description", description)
       formData.append("type", type)
 
-      const res = await fetch("http://localhost:3000/api/kb/loaders", {
+      const res = await fetch(flowiseUrl("/api/kb/loaders"), {
         method: "POST",
         body: formData,
         headers: {

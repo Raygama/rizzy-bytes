@@ -11,6 +11,8 @@ import {
   Database,
   Settings,
 } from "lucide-react";
+import Swal from "sweetalert2";
+import { authUrl } from "@/lib/apiConfig";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -46,7 +48,7 @@ export default function Sidebar() {
     if (!confirm.isConfirmed) return;
 
     try {
-      const res = await fetch(`http://localhost:3001/auth/logout`, {
+      const res = await fetch(authUrl("/logout"), {
         method: "POST",
         headers: {
           authorization: `Bearer ${localStorage.getItem("token")}`,

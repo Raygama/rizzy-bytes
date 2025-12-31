@@ -4,11 +4,12 @@ import { useState } from "react";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
+import { authUrl } from "@/lib/apiConfig";
 
 const roleDescriptions = {
   student: "Limited access to chat.",
   staff: "Can manage knowledge base of the chat.",
-  administrator: "Full system access, user management, and settings.",
+  admin: "Full system access, user management, and settings.",
   guest: "View-only access to public resources.",
 };
 
@@ -98,7 +99,7 @@ export default function AddNewUserPage() {
         return;
       }
 
-      const response = await fetch("http://localhost:3001/auth/users", {
+      const response = await fetch(authUrl("/users"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

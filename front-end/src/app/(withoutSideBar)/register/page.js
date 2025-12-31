@@ -4,11 +4,10 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff } from "lucide-react"
+import { authUrl } from "@/lib/apiConfig"
 
 export default function RegisterPage() {
   const router = useRouter()
-  const AUTH_API_URL =
-    process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001"
 
   const [email, setEmail] = useState("")
   const [username, setUsername] = useState("")
@@ -39,7 +38,7 @@ export default function RegisterPage() {
     }
 
     try {
-      const response = await fetch(`${AUTH_API_URL}/auth/register`, {
+      const response = await fetch(authUrl("/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
@@ -50,7 +49,7 @@ export default function RegisterPage() {
         throw new Error(data.message || "Registrasi gagal")
       }
 
-      router.push("/")
+      router.push("/login")
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import { authUrl } from "@/lib/apiConfig";
 
 export default function VerifyPage() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -48,7 +49,7 @@ export default function VerifyPage() {
     try {
       console.log("Submitting OTP:", finalOtp);
       console.log("For email:", email);
-      const res = await fetch("http://localhost:3001/auth/login/verify", {
+      const res = await fetch(authUrl("/login/verify"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -68,7 +69,7 @@ export default function VerifyPage() {
 
       router.push("/chat");
     } catch (error) {
-      console.log("VERIFY URL =", "http://localhost:3001/auth/login/verify");
+      console.log("VERIFY URL =", authUrl("/login/verify"));
       console.trace("TRACE verify call");
 
       console.error(error);
@@ -80,7 +81,7 @@ export default function VerifyPage() {
     <div className="flex min-h-screen items-center justify-center bg-[#f8f7f7]">
       <div className="text-center max-w-md">
         <h1 className="text-2xl font-semibold mb-2">
-          Masukkan Kode Autentikas
+          Masukkan Kode Autentikasi
         </h1>
 
         <p className="text-sm text-gray-600 mb-6">

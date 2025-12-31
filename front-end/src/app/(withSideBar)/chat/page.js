@@ -7,6 +7,7 @@ import { Menu, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
+import { flowiseUrl } from "@/lib/apiConfig";
 
 export default function ChatbotPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -41,11 +42,10 @@ export default function ChatbotPage() {
   const getBotResponse = async (userMessage) => {
     try {
       const token = localStorage.getItem("token") || "";
-      const PROXY_BASE =
-        process.env.NEXT_PUBLIC_FLOWISE_PROXY_URL || "http://localhost:4000";
-      // or just use the rewrite:
-      const PREDICTION_URL =
-        "http://localhost:4000/api/v1/prediction/2d844a72-3dc8-4475-8134-9f034015741f";
+      const flowId =
+        process.env.NEXT_PUBLIC_FLOWISE_FLOW_ID ||
+        "2d844a72-3dc8-4475-8134-9f034015741f";
+      const PREDICTION_URL = flowiseUrl(`/api/v1/prediction/${flowId}`);
       const response = await fetch(PREDICTION_URL, {
         method: "POST",
         headers: {
