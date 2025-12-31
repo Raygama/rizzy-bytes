@@ -27,17 +27,34 @@ const allowedOrigins = (() => {
 
 const allowAllOrigins = allowedOrigins.includes("*");
 
-const corsOptions = {
-  origin: allowAllOrigins
-    ? true
-    : (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
+const isSameHost = (origin, host) => {
+  if (!origin || !host) return false;
+  try {
+    const originUrl = new URL(origin);
+    return originUrl.host === host;
+  } catch {
+    return false;
+  }
+};
 
-        console.warn(`[CORS] Blocked request from origin: ${origin}`);
-        return callback(new Error(`Origin ${origin} not allowed by CORS`));
-      },
+const corsOptionsDelegate = (req, callback) => {
+  const origin = req.header("Origin");
+  const host = req.header("Host");
+
+  if (allowAllOrigins || !origin) {
+    return callback(null, true);
+  }
+
+  if (allowedOrigins.includes(origin) || isSameHost(origin, host)) {
+    return callback(null, true);
+  }
+
+  console.warn(`[CORS] Blocked request from origin: ${origin}`);
+  return callback(new Error(`Origin ${origin} not allowed by CORS`));
+};
+
+const corsOptions = {
+  origin: corsOptionsDelegate,
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
@@ -49,7 +66,7 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
-console.log("[CORS] Allowed origins:", allowedOrigins);
+console.log("[CORS] Allowed origins:", allowedOrigins, "| allow same-host: true");
 
 // Handle both requests and preflight. Without the OPTIONS handler the browser
 // reports CORS failures for JSON POSTs to /auth/*.
