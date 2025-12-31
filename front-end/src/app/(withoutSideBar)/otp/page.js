@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import { authEndpoint } from "@/lib/authApi";
 
 export default function VerifyPage() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -46,9 +47,10 @@ export default function VerifyPage() {
     console.log("Email:", email);
 
     try {
+      const verifyUrl = authEndpoint("/login/verify");
       console.log("Submitting OTP:", finalOtp);
       console.log("For email:", email);
-      const res = await fetch("http://localhost:3001/auth/login/verify", {
+      const res = await fetch(verifyUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -68,7 +70,7 @@ export default function VerifyPage() {
 
       router.push("/chat");
     } catch (error) {
-      console.log("VERIFY URL =", "http://localhost:3001/auth/login/verify");
+      console.log("VERIFY URL =", authEndpoint("/login/verify"));
       console.trace("TRACE verify call");
 
       console.error(error);

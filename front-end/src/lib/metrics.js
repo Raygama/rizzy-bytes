@@ -1,6 +1,7 @@
 // lib/prometheus.js
-
-const PROMETHEUS_BASE_URL = "http://localhost:9090/api/v1";
+const PROMETHEUS_BASE_URL = (
+  process.env.NEXT_PUBLIC_PROMETHEUS_URL || "/prometheus/api/v1"
+).replace(/\/$/, "");
 
 export async function queryRange({ query, start, end, step }) {
   const url = `${PROMETHEUS_BASE_URL}/query_range?query=${encodeURIComponent(

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, Upload, Save, X, FileText } from "lucide-react";
+import { flowiseEndpoint } from "@/lib/flowiseApi";
 
 export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
   const loaderId = kbData?.loaderId;
@@ -47,7 +48,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
 
       try {
         const res = await fetch(
-          `http://localhost:4000/api/kb/loaders/${loaderId}/chunks`,
+          flowiseEndpoint(`/api/kb/loaders/${loaderId}/chunks`),
           {
             method: "GET",
             headers: {
@@ -136,7 +137,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
       // Untuk sekarang aku fokus PATCH meta JSON dulu.
 
       const res = await fetch(
-        `http://localhost:4000/api/kb/loaders/${loaderId}/meta`,
+        flowiseEndpoint(`/api/kb/loaders/${loaderId}/meta`),
         {
           method: "PATCH",
           body: JSON.stringify(editData),
@@ -233,7 +234,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
 
     try {
       const res = await fetch(
-        `http://localhost:4000/api/kb/loaders/${loaderId}/chunks/${chunkId}`,
+        flowiseEndpoint(`/api/kb/loaders/${loaderId}/chunks/${chunkId}`),
         {
           method: "PUT",
           headers: {

@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Upload, Save, X, FileText } from "lucide-react";
+import { flowiseEndpoint } from "@/lib/flowiseApi";
 
 export default function AddNewEntryPage() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function AddNewEntryPage() {
     formData.append("type", type);
 
     try {
-      const res = await fetch("http://localhost:4000/api/kb/loaders", {
+      const res = await fetch(flowiseEndpoint("/api/kb/loaders"), {
         method: "POST",
         body: formData,
         headers: {

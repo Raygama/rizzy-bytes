@@ -1,9 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Plus, ChevronLeft, ChevronRight, Trash2, Search, X } from "lucide-react"
-import Swal from "sweetalert2"
+import { useEffect, useState } from "react";
+import {
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Search,
+  X,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import Swal from "sweetalert2";
 
 export default function UserManagementPage() {
   const router = useRouter()
@@ -36,7 +44,7 @@ export default function UserManagementPage() {
       try {
         const token = localStorage.getItem("token")
 
-        const res = await fetch("http://localhost:3001/auth/users", {
+        const res = await fetch(authEndpoint("/users"), {
           method: "GET",
           headers: {
             // kalau ga butuh auth, hapus 2 baris ini
@@ -156,13 +164,16 @@ export default function UserManagementPage() {
             return
           }
           try {
-            const response = await fetch(`http://localhost:3001/auth/users/${targetId}`, {
-              method: "DELETE",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-            })
+            const response = await fetch(
+              `http://localhost:3001/auth/users/${targetId}`,
+              {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+              }
+            );
           } catch (error) {
             console.error("Error deleting user:", error)
             Swal.fire("Error", "Failed to delete user.", "error")

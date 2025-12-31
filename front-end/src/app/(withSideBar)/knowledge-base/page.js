@@ -5,6 +5,7 @@ import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
 import EditKb from "@/components/editKB";
 import Link from "next/link";
+import { flowiseEndpoint } from "@/lib/flowiseApi";
 
 export default function KnowledgeBasePage() {
   const [dataKB, setDataKB] = useState([]);
@@ -16,7 +17,7 @@ export default function KnowledgeBasePage() {
     if (fetchStatus === true) {
       const fetchDataKB = async () => {
         try {
-          const response = await fetch("http://localhost:4000/api/kb/entries", {
+          const response = await fetch(flowiseEndpoint("/api/kb/entries"), {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -56,16 +57,13 @@ export default function KnowledgeBasePage() {
     if (!confirm.isConfirmed) return;
 
     try {
-      const res = await fetch(
-        `http://localhost:4000/api/kb/loaders/${loaderId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      const res = await fetch(flowiseEndpoint(`/api/kb/loaders/${loaderId}`), {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
       if (!res.ok) {
         throw new Error(`Delete failed: ${res.status}`);

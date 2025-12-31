@@ -4,14 +4,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation"; // << BARU
+import { authEndpoint } from "@/lib/authApi";
 
 // MODIFIKASI: Sebaiknya nama komponen diawali huruf kapital
 export default function Register() {
   // HAPUS: State activeIndex tidak digunakan di halaman register ini
   // const [activeIndex, setActiveIndex] = useState(0);
-
-  const AUTH_API_URL =
-    process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001/auth";
 
   const router = useRouter(); // Hook untuk redirect
 
@@ -51,7 +49,7 @@ export default function Register() {
     // Simulasi pemanggilan API
     try {
       // MODIFIKASI: Menggunakan AUTH_API_URL dan endpoint /register
-      const response = await fetch("http://localhost:3001/auth/register", {
+      const response = await fetch(authEndpoint("/register"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

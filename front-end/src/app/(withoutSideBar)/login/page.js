@@ -5,11 +5,10 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation"; // << BARU
 import Link from "next/link";
+import { authEndpoint } from "@/lib/authApi";
 
 export default function Login() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const AUTH_API_URL =
-    process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001";
   // --- LOGIKA LOGIN (BARU) ---
   const router = useRouter(); // BARU: Hook untuk redirect
 
@@ -37,7 +36,7 @@ export default function Login() {
     // Simulasi pemanggilan API
     try {
       // POST to the authentication-service (use env var or fallback)
-      const response = await fetch(`http://localhost:3001/auth/login`, {
+      const response = await fetch(authEndpoint("/login"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
