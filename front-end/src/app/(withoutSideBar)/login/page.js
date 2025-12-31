@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff } from "lucide-react"
@@ -17,6 +17,14 @@ export default function LoginPage() {
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberedEmail")
+    if (savedEmail) {
+      setEmail(savedEmail)
+      setRememberMe(true)
+    }
+  }, []) 
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -41,6 +49,13 @@ export default function LoginPage() {
       }
 
       await response.json()
+
+      if (rememberMe) {
+        localStorage.setItem("rememberedEmail", email)
+      } else {
+        localStorage.removeItem("rememberedEmail")
+      }
+
       sessionStorage.setItem("email", email)
       router.push("/otp")
     } catch (err) {
@@ -49,6 +64,7 @@ export default function LoginPage() {
       setIsLoading(false)
     }
   }
+
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center p-4">
@@ -91,7 +107,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#E53935]"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-[#4E4E4E]/5 focus:outline-none focus:ring-2 focus:ring-[#E53935]"
                 required
               />
               <button
@@ -108,7 +124,7 @@ export default function LoginPage() {
           {/* Remember & Register */}
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={rememberMe} onChange={() => {}} />
+              <input type="checkbox" checked={rememberMe} onChange={(e) => {setRememberMe(e.target.checked)}} />
               Remember Me
             </label>
             <Link href="/register" className="text-sm text-[#E53935]">

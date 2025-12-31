@@ -1,181 +1,194 @@
-"use client";
+"use client"
 
-// BARU: Impor useRouter untuk redirect setelah login
-import { useState } from "react";
-import Image from "next/image";
-import { useRouter } from "next/navigation"; // << BARU
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Eye, EyeOff } from "lucide-react"
 
-// MODIFIKASI: Sebaiknya nama komponen diawali huruf kapital
-export default function Register() {
-  // HAPUS: State activeIndex tidak digunakan di halaman register ini
-  // const [activeIndex, setActiveIndex] = useState(0);
-
+export default function RegisterPage() {
+  const router = useRouter()
   const AUTH_API_URL =
-    process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001/auth";
+    process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:3001"
 
-  const router = useRouter(); // Hook untuk redirect
+  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const [passwordConfirm, setPasswordConfirm] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
-  // State untuk menyimpan input form
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [password_confirm, setPasswordConfirm] = useState(""); // State ini sudah benar
-  const [username, setUsername] = useState("");
-
-  // State untuk menangani error dan loading
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Fungsi yang dipanggil saat form disubmit
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Mencegah form me-refresh halaman
-    setError(""); // Bersihkan error lama
+    e.preventDefault()
+    setError("")
 
-    // --- 1. VALIDASI PASSWORD (BARU) ---
-    // Cek apakah password dan konfirmasi password sama
-    if (password !== password_confirm) {
-      setError("Password tidak sama. Silakan periksa kembali.");
-      return; // Hentikan eksekusi jika password tidak sama
+    if (password !== passwordConfirm) {
+      setError("Password tidak sama. Silakan periksa kembali.")
+      return
     }
-    // --- AKHIR VALIDASI ---
 
-    setIsLoading(true); // Mulai loading
+    setIsLoading(true)
 
-    // MODIFIKASI: Data yang dikirim disesuaikan untuk registrasi
     const credentials = {
       email: email,
       usn: username,
       password: password,
       role: "student",
-    };
+    }
 
-    // Simulasi pemanggilan API
     try {
-      // MODIFIKASI: Menggunakan AUTH_API_URL dan endpoint /register
-      const response = await fetch("http://localhost:3001/auth/register", {
+      const response = await fetch(`${AUTH_API_URL}/auth/register`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
-      });
+      })
 
       if (!response.ok) {
-        // Jika server merespon dengan error
-        const data = await response.json();
-        throw new Error(data.message || "Registrasi gagal");
+        const data = await response.json()
+        throw new Error(data.message || "Registrasi gagal")
       }
 
-      // MODIFIKASI: Arahkan (redirect) pengguna ke halaman login setelah berhasil
-      router.push("/");
+      router.push("/")
     } catch (err) {
-      // Tangkap error (baik dari fetch atau dari throw di atas)
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
-      // Apapun yang terjadi (berhasil atau gagal), hentikan loading
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-  // --- BATAS AKHIR LOGIKA LOGIN ---
+  }
 
   return (
-    <>
-      <div className="flex items-center justify-around w-full h-screen">
-        {/* Logo and welcome word (Tidak berubah) */}
-        <div className="w-1/3 flex flex-col items-center">
-          <div className="w-5/6">
-            <Image
-              src="/logo-fakultas.png"
-              alt="Logo Fakultas"
-              width={317}
-              height={83}
-            />
-            <h1 className="font-bold text-4xl ">
-              Selamat Datang di Chatbot Helpdesk Informatik
-            </h1>
-          </div>
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center p-4">
+      <div className="w-full max-w-[440px] bg-white rounded-xl shadow-md p-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Informatics AI</h1>
+          <p className="text-sm text-gray-500 mt-1">Telkom University</p>
         </div>
 
-        {/* dividing line (Tidak berubah) */}
-        <div className="border-l-2 h-2/3 border-black "></div>
-
-        {/* Form Registrasi */}
-        <form
-          onSubmit={handleSubmit}
-          className="w-1/3 grid grid-cols-2 gap-4 p-4 rounded-xl shadow-2xl"
-        >
-          {/* --- 2. JUDUL FORM (BARU) --- */}
-          <h2 className="col-span-2 text-center text-3xl font-bold text-gray-900 mb-4">
+        {/* Title */}
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900">
             Create Account
           </h2>
+        </div>
 
-          <div className="col-span-2 ">
-            <label className="block text-lg">Email</label>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
             <input
               type="email"
-              placeholder="Enter your SSO email"
-              className="border-1 border-gray-300 w-full p-2 rounded-md"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-[#4E4E4E]/5 focus:outline-none focus:ring-2 focus:ring-[#E53935]"
               required
             />
           </div>
-          <div className="col-span-2 ">
-            <label className="block text-lg">Username</label>
+
+          {/* Username */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Username
+            </label>
             <input
               type="text"
-              placeholder="Enter your Username"
-              className="border-1 border-gray-300 w-full p-2 rounded-md"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
-          <div className="col-span-2 ">
-            <label className="block text-lg">Password</label>
-            <input
-              type="password"
-              placeholder="Enter your password"
-              className="border-1 border-gray-300 w-full p-2 rounded-md"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div className="col-span-2 ">
-            <label className="block text-lg">Retype Your Password</label>
-            <input
-              type="password"
-              placeholder="Retype Your Password"
-              className="border-1 border-gray-300 w-full p-2 rounded-md"
-              value={password_confirm}
-              // --- 3. PERBAIKAN BUG (MODIFIKASI) ---
-              onChange={(e) => setPasswordConfirm(e.target.value)} // Diperbaiki dari setPassword
+              placeholder="Enter your username"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-[#4E4E4E]/5 focus:outline-none focus:ring-2 focus:ring-[#E53935]"
               required
             />
           </div>
 
-          {/* MODIFIKASI: Dibuat span 2 agar rapi dan 'required' */}
-          <div className="flex items-center col-span-2">
-            <input type="checkbox" className="mr-2" required />
-            <label>Accept T&C</label>
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-[#4E4E4E]/5 focus:outline-none focus:ring-2 focus:ring-[#E53935]"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+              >
+                {showPassword ? <Eye /> : <EyeOff />}
+              </button>
+            </div>
           </div>
 
-          {/* BARU: Tampilkan pesan error jika ada */}
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Retype Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPasswordConfirm ? "text" : "password"}
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                placeholder="Retype your password"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-[#4E4E4E]/5 focus:outline-none focus:ring-2 focus:ring-[#E53935]"
+                required
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPasswordConfirm(!showPasswordConfirm)
+                }
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+              >
+                {showPasswordConfirm ? <Eye /> : <EyeOff />}
+              </button>
+            </div>
+          </div>
+
+          {/* Terms */}
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+            />
+            Accept <span className="text-[#E53935]">Terms and Condition</span>
+          </label>
+
           {error && (
-            <div className="col-span-2 text-center text-red-600">{error}</div>
+            <p className="text-center text-red-600 text-sm">{error}</p>
           )}
 
-          {/* MODIFIKASI: Ganti <Link> dengan button type="submit" */}
           <button
             type="submit"
-            className="bg-[#BF0101] p-1 col-span-2 text-white text-lg rounded-md disabled:bg-gray-400"
-            disabled={isLoading}
+            disabled={isLoading || !acceptTerms}
+            className={`w-full py-3 rounded-full text-white font-semibold ${
+              isLoading || !acceptTerms
+                ? "bg-gray-400"
+                : "bg-[#E53935] hover:bg-[#D32F2F]"
+            }`}
           >
-            {/* MODIFIKASI: Ubah teks tombol */}
             {isLoading ? "Loading..." : "Register"}
           </button>
+
+          {/* Back to Login */}
+          <div className="text-center">
+            <Link href="/" className="text-sm text-[#E53935] hover:underline">
+              Already have an account? Login
+            </Link>
+          </div>
         </form>
       </div>
-    </>
-  );
+    </div>
+  )
 }
