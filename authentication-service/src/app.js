@@ -41,37 +41,32 @@ const corsOptionsDelegate = (req, callback) => {
   const origin = req.header("Origin");
   const host = req.header("Host");
 
-  if (allowAllOrigins || !origin) {
-    return callback(null, true);
-  }
+  const baseOptions = {
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+    ],
+    optionsSuccessStatus: 204,
+  };
 
-  if (allowedOrigins.includes(origin) || isSameHost(origin, host)) {
-    return callback(null, true);
+  if (allowAllOrigins || !origin || allowedOrigins.includes(origin) || isSameHost(origin, host)) {
+    return callback(null, { ...baseOptions, origin: true });
   }
 
   console.warn(`[CORS] Blocked request from origin: ${origin}`);
-  return callback(new Error(`Origin ${origin} not allowed by CORS`));
-};
-
-const corsOptions = {
-  origin: corsOptionsDelegate,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-  ],
-  optionsSuccessStatus: 204,
+  return callback(null, { ...baseOptions, origin: false });
 };
 
 console.log("[CORS] Allowed origins:", allowedOrigins, "| allow same-host: true");
 
 // Handle both requests and preflight. Without the OPTIONS handler the browser
 // reports CORS failures for JSON POSTs to /auth/*.
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
+app.use(cors(corsOptionsDelegate));
+app.options(/.*/, cors(corsOptionsDelegate));
 
 app.use(express.json());
 app.use(requestContext);
