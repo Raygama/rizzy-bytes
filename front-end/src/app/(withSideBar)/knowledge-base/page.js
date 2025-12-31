@@ -1,16 +1,17 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
-import Swal from "sweetalert2";
-import EditKb from "@/components/editKB";
-import Link from "next/link";
+import { useState, useEffect } from "react"
+import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
+import Swal from "sweetalert2"
+import AddKbModal from "@/components/AddKbModal"
+import EditKb from "@/components/editKB"
 
 export default function KnowledgeBasePage() {
-  const [dataKB, setDataKB] = useState([]);
-  const [fetchStatus, setFetchStatus] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingData, setEditingData] = useState(null);
+  const [dataKB, setDataKB] = useState([])
+  const [fetchStatus, setFetchStatus] = useState(true)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingData, setEditingData] = useState(null)
 
   useEffect(() => {
     if (fetchStatus === true) {
@@ -22,24 +23,26 @@ export default function KnowledgeBasePage() {
               "Content-Type": "application/json",
               authorization: `Bearer ${localStorage.getItem("token")}`,
             },
-          });
-          const result = await response.json();
-          const fetchOnlySyncData = result.filter(
-            (item) => item.status === "SYNC"
-          );
-          setDataKB(fetchOnlySyncData);
+          })
+          const result = await response.json()
+          const fetchOnlySyncData = result.filter((item) => item.status === "SYNC")
+          setDataKB(fetchOnlySyncData)
         } catch (error) {
-          console.error("Error fetching knowledge base data:", error);
+          console.error("Error fetching knowledge base data:", error)
         }
-      };
-      fetchDataKB();
+      }
+      fetchDataKB()
     }
-  }, [fetchStatus, setFetchStatus]);
+  }, [fetchStatus, setFetchStatus])
 
   const handleAddNewEntry = () => {
-    setEditingData(null);
-    setShowModal(true);
-  };
+    setShowAddModal(true)
+  }
+
+  const handleEditEntry = (entry) => {
+    setEditingData(entry)
+    setShowEditModal(true)
+  }
 
   const handleDelete = async (loaderId) => {
     const confirm = await Swal.fire({
@@ -51,64 +54,57 @@ export default function KnowledgeBasePage() {
       cancelButtonColor: "#9ca3af",
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
-    });
+    })
 
-    if (!confirm.isConfirmed) return;
+    if (!confirm.isConfirmed) return
 
     try {
-      const res = await fetch(
-        `http://localhost:4000/api/kb/loaders/${loaderId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      const res = await fetch(`http://localhost:4000/api/kb/loaders/${loaderId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
 
       if (!res.ok) {
-        throw new Error(`Delete failed: ${res.status}`);
+        throw new Error(`Delete failed: ${res.status}`)
       }
 
-      setDataKB((prev) => prev.filter((e) => e.loaderId !== loaderId));
+      setDataKB((prev) => prev.filter((e) => e.loaderId !== loaderId))
 
       await Swal.fire({
         title: "Deleted!",
         text: "Your entry has been deleted.",
         icon: "success",
-      });
+      })
     } catch (error) {
-      console.error("Error deleting knowledge base entry:", error);
+      console.error("Error deleting knowledge base entry:", error)
       Swal.fire({
         title: "Error",
         text: "Failed to delete entry. Please try again.",
         icon: "error",
-      });
+      })
     }
-  };
+  }
 
   return (
-    <div className="relative min-h-screen bg-[#F5F5F7] p-6 md:p-8 lg:p-12">
+    <div className="relative min-h-screen bg-[#F5F5F7] p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl">
         {/* Header Section */}
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 lg:text-4xl">
-              Knowledge Base Management
-            </h1>
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl lg:text-4xl">Knowledge Base Management</h1>
             <p className="mt-2 text-sm text-gray-500">
               View, Add, and Manage interconnected Q&A entries for the chatbot.
             </p>
           </div>
           <button
-            // onClick={handleAddNewEntry}
-            className="inline-flex items-center gap-2 rounded-full bg-red-500 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-red-600 transition-colors"
+            onClick={handleAddNewEntry}
+            className="inline-flex items-center gap-2 rounded-full bg-red-500 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-red-600 transition-colors whitespace-nowrap"
           >
-            <Link href="/knowledge-base/add">
-              <Plus size={18} />
-              Add New Entry
-            </Link>
+            <Plus size={18} />
+            Add New Entry
           </button>
         </div>
 
@@ -119,19 +115,19 @@ export default function KnowledgeBasePage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  <th className="px-4 md:px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     ID
                   </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  <th className="px-4 md:px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     Name
                   </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  <th className="hidden sm:table-cell px-4 md:px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     Description
                   </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  <th className="hidden lg:table-cell px-4 md:px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     Type
                   </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  <th className="px-4 md:px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     Actions
                   </th>
                 </tr>
@@ -139,39 +135,27 @@ export default function KnowledgeBasePage() {
               <tbody>
                 {dataKB.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-32">
+                    <td colSpan={5} className="px-4 md:px-6 py-32">
                       <div className="flex items-center justify-center">
-                        <p className="text-sm text-gray-400">
-                          You haven&apos;t input any data
-                        </p>
+                        <p className="text-sm text-gray-400">You haven&apos;t input any data</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   dataKB.map((entry) => (
-                    <tr
-                      key={entry.id}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {entry.kbId}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {entry.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                    <tr key={entry.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">{entry.kbId}</td>
+                      <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">{entry.name}</td>
+                      <td className="hidden sm:table-cell px-4 md:px-6 py-4 text-xs md:text-sm text-gray-500">
                         {entry.description}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                      <td className="hidden lg:table-cell px-4 md:px-6 py-4 text-xs md:text-sm text-gray-500">
                         {entry.type}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 md:px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => {
-                              setEditingData(entry);
-                              setShowModal(true);
-                            }}
+                            onClick={() => handleEditEntry(entry)}
                             className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
                             aria-label="Edit entry"
                           >
@@ -194,10 +178,8 @@ export default function KnowledgeBasePage() {
           </div>
 
           {/* Footer / Pagination */}
-          <div className="flex items-center justify-between border-t border-gray-200 bg-white px-6 py-4">
-            <div className="text-sm text-gray-500">
-              Show 1 to 10 of 110 results
-            </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 bg-white px-4 md:px-6 py-4">
+            <div className="text-xs md:text-sm text-gray-500">Show 1 to 10 of 110 results</div>
             <div className="flex items-center gap-2">
               <button
                 className="flex items-center justify-center text-gray-400 transition-colors hover:text-gray-600 focus:outline-none"
@@ -232,31 +214,38 @@ export default function KnowledgeBasePage() {
         </div>
       </div>
 
-      {showModal && (
-        <EditKb
-          isEditing={showModal}
-          kbData={editingData}
-          onClose={() => setShowModal(false)}
-          onUpdated={(updated) => {
-            if (editingData) {
-              setDataKB((prev) =>
-                prev.map((e) =>
-                  e.loaderId === updated.loaderId
-                    ? {
-                        ...e,
-                        name: updated.name,
-                        description: updated.description,
-                      }
-                    : e
-                )
-              );
-            } else {
-              setFetchStatus(!fetchStatus);
-            }
-            setShowModal(false);
-          }}
-        />
-      )}
+      <AddKbModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdded={() => {
+          setShowAddModal(false)
+          setFetchStatus(!fetchStatus)
+        }}
+      />
+
+      <EditKb
+        isEditing={showEditModal}
+        kbData={editingData}
+        onClose={() => {
+          setShowEditModal(false)
+          setEditingData(null)
+        }}
+        onUpdated={(updated) => {
+          setDataKB((prev) =>
+            prev.map((e) =>
+              e.loaderId === updated.loaderId
+                ? {
+                    ...e,
+                    name: updated.name,
+                    description: updated.description,
+                  }
+                : e,
+            ),
+          )
+          setShowEditModal(false)
+          setEditingData(null)
+        }}
+      />
     </div>
-  );
+  )
 }
