@@ -220,7 +220,7 @@ export const createUser = async (req, res) => {
     if (!email || !usn || !password) {
       return res.status(400).json({ error: "email, usn, and password are required" });
     }
-    if (!["student", "staff", "admin"].includes(role)) {
+    if (!["student", "staff", "admin", "guest"].includes(role)) {
       return res.status(400).json({ error: "Invalid role" });
     }
     const exists = await User.findOne({ $or: [{ email }, { usn }] });
@@ -261,7 +261,7 @@ export const updateUser = async (req, res) => {
     if (patch.password) {
       patch.password = await hashPassword(patch.password);
     }
-    if (patch.role && !["student", "staff", "admin"].includes(patch.role)) {
+    if (patch.role && !["student", "staff", "admin", "guest"].includes(patch.role)) {
       return res.status(400).json({ error: "Invalid role" });
     }
     const user = await User.findByIdAndUpdate(id, { $set: patch }, { new: true });
