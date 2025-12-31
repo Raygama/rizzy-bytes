@@ -27,24 +27,38 @@ const allowedOrigins = (() => {
 
 const allowAllOrigins = allowedOrigins.includes("*");
 
-const corsOptions = {
-  origin: allowAllOrigins
-    ? true
-    : (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-        return callback(new Error(`Origin ${origin} not allowed by CORS`));
-      },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-  exposedHeaders: ["Content-Disposition"],
-  optionsSuccessStatus: 204
+const isSameHost = (origin, host) => {
+  if (!origin || !host) return false;
+  try {
+    const originUrl = new URL(origin);
+    return originUrl.host === host;
+  } catch {
+    return false;
+  }
 };
 
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
+const corsOptionsDelegate = (req, callback) => {
+  const origin = req.header("Origin");
+  const host = req.header("Host");
+
+  const baseOptions = {
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    exposedHeaders: ["Content-Disposition"],
+    optionsSuccessStatus: 204
+  };
+
+  if (allowAllOrigins || !origin || allowedOrigins.includes(origin) || isSameHost(origin, host)) {
+    return callback(null, { ...baseOptions, origin: true });
+  }
+
+  console.warn(`[CORS] Blocked request from origin: ${origin}`);
+  return callback(null, { ...baseOptions, origin: false });
+};
+
+app.use(cors(corsOptionsDelegate));
+app.options(/.*/, cors(corsOptionsDelegate));
 app.use(express.json());
 app.use(requestContext);
 app.use(requestLogger);

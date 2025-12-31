@@ -135,23 +135,38 @@ const resolveAllowedOrigins = () => {
   return parsed;
 };
 
+const isSameHost = (origin, host) => {
+  if (!origin || !host) return false;
+  try {
+    const originUrl = new URL(origin);
+    return originUrl.host === host;
+  } catch {
+    return false;
+  }
+};
+
 const createCorsOptions = () => {
   const origins = resolveAllowedOrigins();
   const allowAll = origins.includes("*");
-  return {
-    origin: allowAll
-      ? true
-      : (origin, callback) => {
-          if (!origin || origins.includes(origin)) {
-            return callback(null, true);
-          }
-          return callback(new Error(`Origin ${origin} not allowed by CORS`));
-        },
+
+  const baseOptions = {
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
     exposedHeaders: ["Content-Disposition"],
     optionsSuccessStatus: 204
+  };
+
+  return (req, callback) => {
+    const origin = req.header("Origin");
+    const host = req.header("Host");
+
+    if (allowAll || !origin || origins.includes(origin) || isSameHost(origin, host)) {
+      return callback(null, { ...baseOptions, origin: true });
+    }
+
+    console.warn(`[CORS] Blocked request from origin: ${origin}`);
+    return callback(null, { ...baseOptions, origin: false });
   };
 };
 
