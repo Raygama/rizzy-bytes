@@ -65,7 +65,7 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
       formData.append("description", description)
       formData.append("type", type)
 
-      const res = await fetch("http://localhost:4000/api/kb/loaders", {
+      const res = await fetch("http://localhost:3000/api/kb/loaders", {
         method: "POST",
         body: formData,
         headers: {
