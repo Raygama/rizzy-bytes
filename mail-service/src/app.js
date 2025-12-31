@@ -165,3 +165,14 @@ app.listen(PORT, () => {
     requestId: "startup"
   });
 });
+
+// Unified JSON error handler
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  console.error("Request error:", { path: req.originalUrl, method: req.method, status, message, stack: err.stack });
+  const payload = { error: message };
+  if (process.env.NODE_ENV === "development") payload.stack = err.stack;
+  return res.status(status).json(payload);
+});

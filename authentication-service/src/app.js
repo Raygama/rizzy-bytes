@@ -77,6 +77,23 @@ app.use("/auth", authRoutes);
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 app.get("/metrics", metricsHandler);
 
+// Unified JSON error handler (avoid default HTML responses)
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  console.error("Request error:", {
+    path: req.originalUrl,
+    method: req.method,
+    status,
+    message,
+    stack: err.stack
+  });
+  const payload = { error: message };
+  if (process.env.NODE_ENV === "development") payload.stack = err.stack;
+  return res.status(status).json(payload);
+});
+
 
 mongoose
   .connect(process.env.MONGO_URI, { dbName: "helpdesk" })

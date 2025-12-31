@@ -375,6 +375,16 @@ const upload = multer({
     return cb(null, false);
   }
 });
+const uploadSingleFlex = [
+  upload.any(),
+  (req, _res, next) => {
+    // Accept either "file" or "files" fields; pick the first file
+    if (!req.file && Array.isArray(req.files) && req.files.length) {
+      req.file = req.files[0];
+    }
+    next();
+  }
+];
 
 const pickFirstString = (value) => {
   if (!value && value !== 0) return null;
@@ -2396,16 +2406,16 @@ app.delete("/api/kb/:storeId/loaders/:loaderId/chunks/:chunkId", requireKbRole, 
 app.patch("/api/kb/loaders/:loaderId/meta", requireKbRole, updateKbMetaHandler);
 app.patch("/api/kb/:storeId/loaders/:loaderId/meta", requireKbRole, updateKbMetaHandler);
 
-app.post("/api/kb/loaders", requireKbRole, upload.single("file"), uploadAndUpsertHandler);
-app.post("/api/kb/:storeId/loaders", requireKbRole, upload.single("file"), uploadAndUpsertHandler);
+app.post("/api/kb/loaders", requireKbRole, uploadSingleFlex, uploadAndUpsertHandler);
+app.post("/api/kb/:storeId/loaders", requireKbRole, uploadSingleFlex, uploadAndUpsertHandler);
 
 app.delete("/api/kb/loaders/:loaderId", requireKbRole, deleteLoaderHandler);
 app.delete("/api/kb/:storeId/loaders/:loaderId", requireKbRole, deleteLoaderHandler);
 
-app.put("/api/kb/loaders/:loaderId", requireKbRole, upload.single("file"), reprocessHandler);
-app.put("/api/kb/:storeId/loaders/:loaderId", requireKbRole, upload.single("file"), reprocessHandler);
-app.post("/api/kb/loaders/:loaderId/process", requireKbRole, upload.single("file"), reprocessHandler);
-app.post("/api/kb/:storeId/loaders/:loaderId/process", requireKbRole, upload.single("file"), reprocessHandler);
+app.put("/api/kb/loaders/:loaderId", requireKbRole, uploadSingleFlex, reprocessHandler);
+app.put("/api/kb/:storeId/loaders/:loaderId", requireKbRole, uploadSingleFlex, reprocessHandler);
+app.post("/api/kb/loaders/:loaderId/process", requireKbRole, uploadSingleFlex, reprocessHandler);
+app.post("/api/kb/:storeId/loaders/:loaderId/process", requireKbRole, uploadSingleFlex, reprocessHandler);
 
 app.post("/api/kb/upsert", requireKbRole, jsonUpsertHandler);
 app.post("/api/kb/:storeId/upsert", requireKbRole, jsonUpsertHandler);
@@ -2435,6 +2445,31 @@ app.post("/internal/jobs/status", async (req, res) => {
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/metrics", metricsHandler);
+
+// Unified JSON error handler (avoid default HTML responses)
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const isMulter = err?.name === "MulterError";
+  const status = err.status || err.statusCode || (isMulter ? 400 : 500);
+  const message =
+    (isMulter && `Upload error: ${err.message}`) ||
+    err.message ||
+    "Internal Server Error";
+
+  console.error("Request error:", {
+    path: req.originalUrl,
+    method: req.method,
+    status,
+    message,
+    stack: err.stack
+  });
+
+  const payload = { error: message };
+  if (process.env.NODE_ENV === "development") {
+    payload.stack = err.stack;
+  }
+  return res.status(status).json(payload);
+});
 
 let serverInstance = null;
 

@@ -319,4 +319,18 @@ if (process.env.NODE_ENV !== "test") {
   bootstrap();
 }
 
+// Unified JSON error handler
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  logger.error(
+    { event: "request_error", path: req.originalUrl, method: req.method, status, error: message, stack: err.stack },
+    "Request error"
+  );
+  const payload = { error: message };
+  if (process.env.NODE_ENV === "development") payload.stack = err.stack;
+  return res.status(status).json(payload);
+});
+
 export { app, bootstrap, readLogs };
