@@ -236,7 +236,7 @@ export default function AddNewEntryPage() {
         </div>
 
         {/* RIGHT */}
-        <div className="lg:col-span-7">
+        {/* <div className="lg:col-span-7">
           <div className="space-y-6 rounded-lg bg-white p-6 shadow-sm">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="border-b pb-6 last:border-b-0">
@@ -249,7 +249,7 @@ export default function AddNewEntryPage() {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

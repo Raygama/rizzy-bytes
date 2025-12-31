@@ -25,7 +25,7 @@ export default function UserManagementPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "mahasiswa",
+    role: "student",
   });
 
   const [users, setUsers] = useState([]);
@@ -72,7 +72,7 @@ export default function UserManagementPage() {
           const email = u.email || "-";
           const role = u.role || "User";
           const status =
-            u.status || (u.isActive === false ? "Unactive" : "Active");
+            u.status || (u.isActive === false ? "OFFLINE" : "ONLINE");
 
           // initials
           const initials = name
@@ -121,9 +121,9 @@ export default function UserManagementPage() {
     const matchTab =
       activeTab === "all"
         ? true
-        : activeTab === "active"
-        ? status === "active"
-        : status === "unactive" || status === "inactive";
+        : activeTab === "ONLINE"
+        ? status === "online"
+        : status === "offline";
 
     return matchQuery && matchTab;
   });
@@ -163,13 +163,32 @@ export default function UserManagementPage() {
       cancelButtonText: "Cancel",
     }).then((result) => {
       if (result.isConfirmed) {
-        setUsers(users.filter((user) => user.id !== userId));
-        Swal.fire({
-          title: "Deleted!",
-          text: "User has been deleted.",
-          icon: "success",
-          confirmButtonColor: "#ef4444",
-        });
+        const deleteUser = async () => {
+          const targetId = userId ?? null;
+          if (!targetId) {
+            Swal.fire("Error", "User id not found.", "error");
+            return;
+          }
+          try {
+            const response = await fetch(
+              `http://localhost:3001/auth/users/${targetId}`,
+              {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+              }
+            );
+          } catch (error) {
+            console.error("Error deleting user:", error);
+            Swal.fire("Error", "Failed to delete user.", "error");
+            return;
+          }
+          setUsers(users.filter((u) => u.id !== targetId));
+          Swal.fire("Deleted!", "User has been deleted.", "success");
+        };
+        deleteUser();
       }
     });
   };
@@ -222,24 +241,24 @@ export default function UserManagementPage() {
               All Users
             </button>
             <button
-              onClick={() => setActiveTab("active")}
+              onClick={() => setActiveTab("ONLINE")}
               className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${
-                activeTab === "active"
+                activeTab === "ONLINE"
                   ? "bg-red-500 text-white"
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              Active
+              ONLINE
             </button>
             <button
-              onClick={() => setActiveTab("unactive")}
+              onClick={() => setActiveTab("OFFLINE")}
               className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${
-                activeTab === "unactive"
+                activeTab === "OFFLINE"
                   ? "bg-red-500 text-white"
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
-              Unactive
+              OFFLINE
             </button>
           </div>
 
@@ -282,7 +301,7 @@ export default function UserManagementPage() {
                     <div className="hidden md:flex items-center gap-2 w-24">
                       <div
                         className={`h-2 w-2 rounded-full ${
-                          String(user.status).toLowerCase() === "active"
+                          String(user.status).toLowerCase() === "online"
                             ? "bg-green-500"
                             : "bg-gray-400"
                         }`}
@@ -294,7 +313,9 @@ export default function UserManagementPage() {
                   </div>
 
                   <button
-                    onClick={() => handleDeleteUser(user.id, user.name)}
+                    onClick={() =>
+                      handleDeleteUser(user.id ?? user._raw?._id, user.name)
+                    }
                     className="ml-4 rounded-lg p-2 text-red-500 hover:bg-red-50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
                     aria-label="Delete user"
                   >
