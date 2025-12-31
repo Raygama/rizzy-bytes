@@ -1,24 +1,17 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import {
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-  Trash2,
-  Search,
-  X,
-  Eye,
-  EyeOff,
-} from "lucide-react";
-import Swal from "sweetalert2";
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { Plus, ChevronLeft, ChevronRight, Trash2, Search, X } from "lucide-react"
+import Swal from "sweetalert2"
 
 export default function UserManagementPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
-  const [showModal, setShowModal] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState("all")
+  const [showModal, setShowModal] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const [formData, setFormData] = useState({
     fullname: "",
@@ -26,22 +19,22 @@ export default function UserManagementPage() {
     password: "",
     confirmPassword: "",
     role: "student",
-  });
+  })
 
-  const [users, setUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [usersError, setUsersError] = useState("");
+  const [users, setUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [usersError, setUsersError] = useState("")
 
   // =========================
   // GET ALL USERS
   // =========================
   useEffect(() => {
     const fetchUsers = async () => {
-      setLoadingUsers(true);
-      setUsersError("");
+      setLoadingUsers(true)
+      setUsersError("")
 
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token")
 
         const res = await fetch("http://localhost:3001/auth/users", {
           method: "GET",
@@ -49,30 +42,29 @@ export default function UserManagementPage() {
             // kalau ga butuh auth, hapus 2 baris ini
             Authorization: token ? `Bearer ${token}` : "",
           },
-        });
+        })
 
         // biar enak debug kalau backend balikin non-JSON
-        const raw = await res.text();
-        if (!res.ok) throw new Error(`GET /user failed: ${res.status} ${raw}`);
+        const raw = await res.text()
+        if (!res.ok) throw new Error(`GET /user failed: ${res.status} ${raw}`)
 
-        const json = raw ? JSON.parse(raw) : null;
+        const json = raw ? JSON.parse(raw) : null
 
         // fleksibel: kalau response kamu array langsung atau dibungkus field tertentu
         const arr = Array.isArray(json)
           ? json
           : Array.isArray(json?.data)
-          ? json.data
-          : Array.isArray(json?.users)
-          ? json.users
-          : [];
+            ? json.data
+            : Array.isArray(json?.users)
+              ? json.users
+              : []
 
         // map ke shape UI kamu
         const mapped = arr.map((u, idx) => {
-          const name = u.fullname || u.name || u.usn || "Unknown";
-          const email = u.email || "-";
-          const role = u.role || "User";
-          const status =
-            u.status || (u.isActive === false ? "OFFLINE" : "ONLINE");
+          const name = u.fullname || u.name || u.usn || "Unknown"
+          const email = u.email || "-"
+          const role = u.role || "User"
+          const status = u.status || (u.isActive === false ? "OFFLINE" : "ONLINE")
 
           // initials
           const initials = name
@@ -80,7 +72,7 @@ export default function UserManagementPage() {
             .filter(Boolean)
             .slice(0, 2)
             .map((w) => w[0].toUpperCase())
-            .join("");
+            .join("")
 
           return {
             id: u.id ?? u._id ?? u.userId ?? idx + 1,
@@ -91,65 +83,59 @@ export default function UserManagementPage() {
             status: typeof status === "string" ? status : String(status),
             // simpan raw kalau kamu butuh field lain nanti
             _raw: u,
-          };
-        });
+          }
+        })
 
-        setUsers(mapped);
+        setUsers(mapped)
       } catch (err) {
-        console.error(err);
-        setUsersError("Failed to load users.");
-        setUsers([]);
+        console.error(err)
+        setUsersError("Failed to load users.")
+        setUsers([])
       } finally {
-        setLoadingUsers(false);
+        setLoadingUsers(false)
       }
-    };
+    }
 
-    fetchUsers();
-  }, []);
+    fetchUsers()
+  }, [])
 
   // =========================
   // UI HELPERS (FILTER)
   // =========================
   const filteredUsers = users.filter((u) => {
-    const q = searchQuery.trim().toLowerCase();
-    const matchQuery =
-      !q ||
-      u.name.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q);
+    const q = searchQuery.trim().toLowerCase()
+    const matchQuery = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
 
-    const status = (u.status || "").toLowerCase();
-    const matchTab =
-      activeTab === "all"
-        ? true
-        : activeTab === "ONLINE"
-        ? status === "online"
-        : status === "offline";
+    const status = (u.status || "").toLowerCase()
+    const matchTab = activeTab === "all" ? true : activeTab === "ONLINE" ? status === "online" : status === "offline"
 
-    return matchQuery && matchTab;
-  });
+    return matchQuery && matchTab
+  })
 
-  const handleAddNewEntry = () => setShowModal(true);
+  const handleAddNewEntry = () => {
+    router.push("/user-management/add")
+  }
 
   const handleCloseModal = () => {
-    setShowModal(false);
+    setShowModal(false)
     setFormData({
       fullname: "",
       email: "",
       password: "",
       confirmPassword: "",
       role: "mahasiswa",
-    });
-    setShowPassword(false);
-    setShowConfirmPassword(false);
-  };
+    })
+    setShowPassword(false)
+    setShowConfirmPassword(false)
+  }
 
   const handleCreate = () => {
-    console.log("Creating user:", formData);
+    console.log("Creating user:", formData)
     // TODO: Implement create user logic
-    handleCloseModal();
-  };
+    handleCloseModal()
+  }
 
-  const handleRoleSelect = (role) => setFormData({ ...formData, role });
+  const handleRoleSelect = (role) => setFormData({ ...formData, role })
 
   const handleDeleteUser = (userId, userName) => {
     Swal.fire({
@@ -164,34 +150,31 @@ export default function UserManagementPage() {
     }).then((result) => {
       if (result.isConfirmed) {
         const deleteUser = async () => {
-          const targetId = userId ?? null;
+          const targetId = userId ?? null
           if (!targetId) {
-            Swal.fire("Error", "User id not found.", "error");
-            return;
+            Swal.fire("Error", "User id not found.", "error")
+            return
           }
           try {
-            const response = await fetch(
-              `http://localhost:3001/auth/users/${targetId}`,
-              {
-                method: "DELETE",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-              }
-            );
+            const response = await fetch(`http://localhost:3001/auth/users/${targetId}`, {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            })
           } catch (error) {
-            console.error("Error deleting user:", error);
-            Swal.fire("Error", "Failed to delete user.", "error");
-            return;
+            console.error("Error deleting user:", error)
+            Swal.fire("Error", "Failed to delete user.", "error")
+            return
           }
-          setUsers(users.filter((u) => u.id !== targetId));
-          Swal.fire("Deleted!", "User has been deleted.", "success");
-        };
-        deleteUser();
+          setUsers(users.filter((u) => u.id !== targetId))
+          Swal.fire("Deleted!", "User has been deleted.", "success")
+        }
+        deleteUser()
       }
-    });
-  };
+    })
+  }
 
   return (
     <>
@@ -199,12 +182,8 @@ export default function UserManagementPage() {
         <div className="mx-auto max-w-7xl">
           {/* Header Section */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 lg:text-4xl">
-              User Management
-            </h1>
-            <p className="mt-2 text-sm text-gray-500">
-              monitor registered users on your system
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900 lg:text-4xl">User Management</h1>
+            <p className="mt-2 text-sm text-gray-500">monitor registered users on your system</p>
           </div>
 
           {/* Search Bar and Add Button */}
@@ -233,9 +212,7 @@ export default function UserManagementPage() {
             <button
               onClick={() => setActiveTab("all")}
               className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${
-                activeTab === "all"
-                  ? "bg-red-500 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                activeTab === "all" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
               All Users
@@ -243,9 +220,7 @@ export default function UserManagementPage() {
             <button
               onClick={() => setActiveTab("ONLINE")}
               className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${
-                activeTab === "ONLINE"
-                  ? "bg-red-500 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                activeTab === "ONLINE" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
               ONLINE
@@ -253,9 +228,7 @@ export default function UserManagementPage() {
             <button
               onClick={() => setActiveTab("OFFLINE")}
               className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${
-                activeTab === "OFFLINE"
-                  ? "bg-red-500 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                activeTab === "OFFLINE" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
               OFFLINE
@@ -288,35 +261,25 @@ export default function UserManagementPage() {
                     </div>
 
                     <div className="flex-1">
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        {user.name}
-                      </h3>
+                      <h3 className="text-sm font-semibold text-gray-900">{user.name}</h3>
                       <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
 
-                    <div className="hidden md:block text-sm text-gray-600 w-32">
-                      {user.role}
-                    </div>
+                    <div className="hidden md:block text-sm text-gray-600 w-32">{user.role}</div>
 
                     <div className="hidden md:flex items-center gap-2 w-24">
                       <div
                         className={`h-2 w-2 rounded-full ${
-                          String(user.status).toLowerCase() === "online"
-                            ? "bg-green-500"
-                            : "bg-gray-400"
+                          String(user.status).toLowerCase() === "online" ? "bg-green-500" : "bg-gray-400"
                         }`}
                       />
-                      <span className="text-sm text-gray-700">
-                        {user.status}
-                      </span>
+                      <span className="text-sm text-gray-700">{user.status}</span>
                     </div>
                   </div>
 
                   <button
-                    onClick={() =>
-                      handleDeleteUser(user.id ?? user._raw?._id, user.name)
-                    }
-                    className="ml-4 rounded-lg p-2 text-red-500 hover:bg-red-50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                    onClick={() => handleDeleteUser(user.id ?? user._raw?._id, user.name)}
+                    className="ml-4 rounded-lg p-2 text-red-500 hover:bg-red-50 transition-colors focus:outline-none"
                     aria-label="Delete user"
                   >
                     <Trash2 size={18} />
@@ -328,9 +291,7 @@ export default function UserManagementPage() {
 
           {/* Footer / Pagination (dummy) */}
           <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              Showing {filteredUsers.length} users
-            </div>
+            <div className="text-sm text-gray-500">Showing {filteredUsers.length} users</div>
             <div className="flex items-center gap-2">
               <button
                 className="flex items-center justify-center text-gray-400 transition-colors hover:text-gray-600 focus:outline-none"
@@ -385,9 +346,7 @@ export default function UserManagementPage() {
 
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900">Add New User</h2>
-              <p className="mt-2 text-sm text-gray-600">
-                Fill details to create new user
-              </p>
+              <p className="mt-2 text-sm text-gray-600">Fill details to create new user</p>
             </div>
 
             {/* ... form kamu tetap ... */}
@@ -396,5 +355,5 @@ export default function UserManagementPage() {
         </div>
       )}
     </>
-  );
+  )
 }
