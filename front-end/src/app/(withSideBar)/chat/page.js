@@ -10,6 +10,7 @@ import { jwtDecode } from "jwt-decode";
 
 export default function ChatbotPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState({});
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,9 +30,17 @@ export default function ChatbotPage() {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const decodedToken = jwtDecode(token);
+    setUser(decodedToken);
+  }, []);
+
   // ===================== AMBIL JAWABAN DARI BACKEND (JSON) =====================
   const getBotResponse = async (userMessage) => {
     try {
+      const token = localStorage.getItem("token") || "";
       const PROXY_BASE =
         process.env.NEXT_PUBLIC_FLOWISE_PROXY_URL || "http://localhost:4000";
       // or just use the rewrite:
@@ -41,7 +50,7 @@ export default function ChatbotPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          authorization: "Bearer pTnZk73MAtw2YhSYUw28urAeKa4dSTGHlZKwOVPVoy4",
+          authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ question: userMessage }),
       });
@@ -133,7 +142,7 @@ export default function ChatbotPage() {
               <div className="space-y-3">
                 <p className="text-sm text-gray-500">Informatics AI</p>
                 <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-                  Hello Rifqy, How Can We Help You?
+                  Hello {user?.usn}, How Can We Help You?
                 </h2>
               </div>
 

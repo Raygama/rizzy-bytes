@@ -8,3 +8,8 @@ export function transformRangeToChart(result) {
     value: Number(value),
   }));
 }
+
+export function getLatestValue(data) {
+  if (!data || data.length === 0) return 0;
+  return data[data.length - 1].value;
+}

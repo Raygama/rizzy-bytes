@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react"
-import Swal from "sweetalert2"
-import AddKbModal from "@/components/AddKbModal"
-import EditKb from "@/components/editKB"
+import { useState, useEffect } from "react";
+import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import Swal from "sweetalert2";
+import AddKbModal from "@/components/AddKbModal";
+import EditKb from "@/components/editKB";
 
 export default function KnowledgeBasePage() {
-  const [dataKB, setDataKB] = useState([])
-  const [fetchStatus, setFetchStatus] = useState(true)
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [editingData, setEditingData] = useState(null)
+  const [dataKB, setDataKB] = useState([]);
+  const [fetchStatus, setFetchStatus] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingData, setEditingData] = useState(null);
 
   useEffect(() => {
     if (fetchStatus === true) {
@@ -23,26 +23,26 @@ export default function KnowledgeBasePage() {
               "Content-Type": "application/json",
               authorization: `Bearer ${localStorage.getItem("token")}`,
             },
-          })
-          const result = await response.json()
-          const fetchOnlySyncData = result.filter((item) => item.status === "SYNC")
-          setDataKB(fetchOnlySyncData)
+          });
+          const result = await response.json();
+          const fetchOnlySyncData = result;
+          setDataKB(fetchOnlySyncData);
         } catch (error) {
-          console.error("Error fetching knowledge base data:", error)
+          console.error("Error fetching knowledge base data:", error);
         }
-      }
-      fetchDataKB()
+      };
+      fetchDataKB();
     }
-  }, [fetchStatus, setFetchStatus])
+  }, [fetchStatus, setFetchStatus]);
 
   const handleAddNewEntry = () => {
-    setShowAddModal(true)
-  }
+    setShowAddModal(true);
+  };
 
   const handleEditEntry = (entry) => {
-    setEditingData(entry)
-    setShowEditModal(true)
-  }
+    setEditingData(entry);
+    setShowEditModal(true);
+  };
 
   const handleDelete = async (loaderId) => {
     const confirm = await Swal.fire({
@@ -54,39 +54,42 @@ export default function KnowledgeBasePage() {
       cancelButtonColor: "#9ca3af",
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
-    })
+    });
 
-    if (!confirm.isConfirmed) return
+    if (!confirm.isConfirmed) return;
 
     try {
-      const res = await fetch(`http://localhost:4000/api/kb/loaders/${loaderId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      })
+      const res = await fetch(
+        `http://localhost:4000/api/kb/loaders/${loaderId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
       if (!res.ok) {
-        throw new Error(`Delete failed: ${res.status}`)
+        throw new Error(`Delete failed: ${res.status}`);
       }
 
-      setDataKB((prev) => prev.filter((e) => e.loaderId !== loaderId))
+      setDataKB((prev) => prev.filter((e) => e.loaderId !== loaderId));
 
       await Swal.fire({
         title: "Deleted!",
         text: "Your entry has been deleted.",
         icon: "success",
-      })
+      });
     } catch (error) {
-      console.error("Error deleting knowledge base entry:", error)
+      console.error("Error deleting knowledge base entry:", error);
       Swal.fire({
         title: "Error",
         text: "Failed to delete entry. Please try again.",
         icon: "error",
-      })
+      });
     }
-  }
+  };
 
   return (
     <div className="relative min-h-screen bg-[#F5F5F7] p-4 md:p-6 lg:p-8">
@@ -94,7 +97,9 @@ export default function KnowledgeBasePage() {
         {/* Header Section */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl lg:text-4xl">Knowledge Base Management</h1>
+            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl lg:text-4xl">
+              Knowledge Base Management
+            </h1>
             <p className="mt-2 text-sm text-gray-500">
               View, Add, and Manage interconnected Q&A entries for the chatbot.
             </p>
@@ -127,6 +132,9 @@ export default function KnowledgeBasePage() {
                   <th className="hidden lg:table-cell px-4 md:px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     Type
                   </th>
+                  <th className="hidden lg:table-cell px-4 md:px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    Status
+                  </th>
                   <th className="px-4 md:px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                     Actions
                   </th>
@@ -137,20 +145,38 @@ export default function KnowledgeBasePage() {
                   <tr>
                     <td colSpan={5} className="px-4 md:px-6 py-32">
                       <div className="flex items-center justify-center">
-                        <p className="text-sm text-gray-400">You haven&apos;t input any data</p>
+                        <p className="text-sm text-gray-400">
+                          You haven&apos;t input any data
+                        </p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   dataKB.map((entry) => (
-                    <tr key={entry.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">{entry.kbId}</td>
-                      <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">{entry.name}</td>
+                    <tr
+                      key={entry.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">
+                        {entry.kbId}
+                      </td>
+                      <td className="px-4 md:px-6 py-4 text-xs md:text-sm text-gray-900">
+                        {entry.name}
+                      </td>
                       <td className="hidden sm:table-cell px-4 md:px-6 py-4 text-xs md:text-sm text-gray-500">
                         {entry.description}
                       </td>
                       <td className="hidden lg:table-cell px-4 md:px-6 py-4 text-xs md:text-sm text-gray-500">
-                        {entry.type}
+                        {entry.type === "ta"
+                          ? "Tugas Akhir"
+                          : entry.type === "kp"
+                          ? "Kerja Praktik"
+                          : entry.type === "tak"
+                          ? "TAK"
+                          : "General"}
+                      </td>
+                      <td className="hidden sm:table-cell px-4 md:px-6 py-4 text-xs md:text-sm text-gray-500">
+                        {entry.status}
                       </td>
                       <td className="px-4 md:px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -179,7 +205,9 @@ export default function KnowledgeBasePage() {
 
           {/* Footer / Pagination */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 bg-white px-4 md:px-6 py-4">
-            <div className="text-xs md:text-sm text-gray-500">Show 1 to 10 of 110 results</div>
+            <div className="text-xs md:text-sm text-gray-500">
+              Show 1 to 10 of 110 results
+            </div>
             <div className="flex items-center gap-2">
               <button
                 className="flex items-center justify-center text-gray-400 transition-colors hover:text-gray-600 focus:outline-none"
@@ -218,8 +246,8 @@ export default function KnowledgeBasePage() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onAdded={() => {
-          setShowAddModal(false)
-          setFetchStatus(!fetchStatus)
+          setShowAddModal(false);
+          setFetchStatus(!fetchStatus);
         }}
       />
 
@@ -227,8 +255,8 @@ export default function KnowledgeBasePage() {
         isEditing={showEditModal}
         kbData={editingData}
         onClose={() => {
-          setShowEditModal(false)
-          setEditingData(null)
+          setShowEditModal(false);
+          setEditingData(null);
         }}
         onUpdated={(updated) => {
           setDataKB((prev) =>
@@ -239,13 +267,13 @@ export default function KnowledgeBasePage() {
                     name: updated.name,
                     description: updated.description,
                   }
-                : e,
-            ),
-          )
-          setShowEditModal(false)
-          setEditingData(null)
+                : e
+            )
+          );
+          setShowEditModal(false);
+          setEditingData(null);
         }}
       />
     </div>
-  )
+  );
 }
