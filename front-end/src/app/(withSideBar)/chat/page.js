@@ -36,7 +36,7 @@ export default function ChatbotPage() {
         process.env.NEXT_PUBLIC_FLOWISE_PROXY_URL || "http://localhost:4000";
       // or just use the rewrite:
       const PREDICTION_URL =
-        "/flowise/api/v1/prediction/2d844a72-3dc8-4475-8134-9f034015741f";
+        "http://localhost:4000/api/v1/prediction/2d844a72-3dc8-4475-8134-9f034015741f";
       const response = await fetch(PREDICTION_URL, {
         method: "POST",
         headers: {

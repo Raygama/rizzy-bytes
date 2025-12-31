@@ -66,7 +66,6 @@ export default function VerifyPage() {
         localStorage.setItem("token", token);
       }
 
-      alert("OTP submitted: " + finalOtp);
       router.push("/chat");
     } catch (error) {
       console.log("VERIFY URL =", "http://localhost:3001/auth/login/verify");
