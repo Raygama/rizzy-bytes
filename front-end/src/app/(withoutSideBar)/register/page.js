@@ -154,7 +154,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Terms */}
+          {/* Terms
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -162,7 +162,7 @@ export default function RegisterPage() {
               onChange={(e) => setAcceptTerms(e.target.checked)}
             />
             Accept <span className="text-[#E53935]">Terms and Condition</span>
-          </label>
+          </label> */}
 
           {error && (
             <p className="text-center text-red-600 text-sm">{error}</p>
@@ -170,19 +170,14 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            disabled={isLoading || !acceptTerms}
-            className={`w-full py-3 rounded-full text-white font-semibold ${
-              isLoading || !acceptTerms
-                ? "bg-gray-400"
-                : "bg-[#E53935] hover:bg-[#D32F2F]"
-            }`}
+            className={"w-full py-3 rounded-full text-white bg-[#E53935] hover:bg-[#D32F2F] font-semibold"}
           >
             {isLoading ? "Loading..." : "Register"}
           </button>
 
           {/* Back to Login */}
           <div className="text-center">
-            <Link href="/" className="text-sm text-[#E53935] hover:underline">
+            <Link href="/login" className="text-sm text-[#E53935] hover:underline">
               Already have an account? Login
             </Link>
           </div>

@@ -131,7 +131,7 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          {/* Terms */}
+          {/* Terms
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -139,18 +139,13 @@ export default function LoginPage() {
               onChange={(e) => setAcceptTerms(e.target.checked)}
             />
             Accept <span className="text-[#E53935]">Terms and Condition</span>
-          </label>
+          </label> */}
 
           {error && <p className="text-center text-red-600 text-sm">{error}</p>}
 
           <button
             type="submit"
-            disabled={isLoading || !acceptTerms}
-            className={`w-full py-3 rounded-full text-white font-semibold ${
-              isLoading || !acceptTerms
-                ? "bg-gray-400"
-                : "bg-[#E53935] hover:bg-[#D32F2F]"
-            }`}
+            className={"w-full py-3 rounded-full text-white bg-[#E53935] hover:bg-[#D32F2F] font-semibold"}
           >
             {isLoading ? "Loading..." : "Login"}
           </button>
