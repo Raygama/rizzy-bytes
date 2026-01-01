@@ -241,15 +241,30 @@ services:
       \ m in $${OLLAMA_MODELS}; do\n    # pull only if missing\n    ollama show \"\
       $$m\" >/dev/null 2>&1 || ollama pull \"$$m\"\n  done\n  wait\n'\n"
   nginx:
-    image: nginx:alpine
-    container_name: nginx
+    image: nginx:1.29
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
     depends_on:
       - front-end
       - authentication-service
-      - broker-service
-      - flowise
-      - grafana
+      - flowise-proxy
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: >
+      sh -c "trap exit TERM;
+      while :; do
+        certbot renew;
+        sleep 12h;
+      done"
+
+  
