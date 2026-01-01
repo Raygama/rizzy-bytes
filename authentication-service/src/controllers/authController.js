@@ -1,12 +1,26 @@
 import axios from "axios";
 import User from "../models/userModel.js";
 import OTP from "../models/otpModel.js";
-import { hashPassword, comparePassword } from "../utils/hash.js";
+import { hashPassword, comparePassword, hashOtp } from "../utils/hash.js";
+import {
+  validatePayload,
+  emailRule,
+  passwordRule,
+  otpRule,
+  usnRule,
+} from "../utils/validation.js";
 import jwt from "jsonwebtoken";
 
 const brokerURL = process.env.BROKER_URL || "http://broker-service:3000";
+const OTP_MAX_ATTEMPTS = 5;
+const LOGIN_OTP_TTL_MS = 5 * 60 * 1000;
+const RESET_OTP_TTL_MS = 15 * 60 * 1000;
+const identifierRule = { type: "string", notEmpty: true, minLength: 3, maxLength: 64 };
 
 const genOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+const validationError = (res, errors) =>
+  res.status(400).json({ error: "Invalid input", details: errors });
 
 const sendOtpEmail = async ({ to, otp, purpose, username }) => {
   await axios
@@ -20,9 +34,53 @@ const sendOtpEmail = async ({ to, otp, purpose, username }) => {
     .catch(() => {});
 };
 
+const issueOtp = async ({ email, purpose, ttlMs }) => {
+  const otp = genOTP();
+  const hashedOtp = await hashOtp(otp);
+  await OTP.deleteMany({ email, purpose });
+  await OTP.create({
+    email,
+    otp: hashedOtp,
+    purpose,
+    expiresAt: new Date(Date.now() + ttlMs),
+  });
+  return otp;
+};
+
+const findActiveOtp = async ({ email, purpose }) => {
+  const otpDoc = await OTP.findOne({ email, purpose }).sort({ createdAt: -1 });
+  if (!otpDoc) return null;
+  if (otpDoc.expiresAt <= new Date()) {
+    await OTP.deleteMany({ email, purpose });
+    return null;
+  }
+  return otpDoc;
+};
+
+const handleOtpFailure = async (otpDoc) => {
+  const updated = await OTP.findOneAndUpdate(
+    { _id: otpDoc._id },
+    { $inc: { attempts: 1 } },
+    { new: true }
+  );
+  const attempts = updated?.attempts ?? ((otpDoc.attempts ?? 0) + 1);
+  if (attempts >= OTP_MAX_ATTEMPTS) {
+    await OTP.deleteMany({ email: otpDoc.email, purpose: otpDoc.purpose });
+    return true;
+  }
+  return false;
+};
+
 export const register = async (req, res) => {
   try {
-    const { email, usn, password } = req.body;
+    const { errors, cleaned } = validatePayload(req.body, {
+      email: emailRule,
+      usn: usnRule,
+      password: passwordRule,
+    });
+    if (errors.length) return validationError(res, errors);
+
+    const { email, usn, password } = cleaned;
 
     const exists = await User.findOne({ $or: [{ email }, { usn }] });
     if (exists) return res.status(400).json({ error: "User already exists" });
@@ -53,27 +111,26 @@ export const register = async (req, res) => {
 // =========================
 export const login = async (req, res) => {
   try {
-    const { identifier, email, password } = req.body;
+    const { errors, cleaned } = validatePayload(req.body, {
+      identifier: identifierRule,
+      email: { ...emailRule, required: false },
+      password: passwordRule,
+    });
+    if (!cleaned.identifier && !cleaned.email) {
+      errors.push("identifier or email is required");
+    }
+    if (errors.length) return validationError(res, errors);
+
+    const { identifier, email, password } = cleaned;
     const id = identifier || email;
 
     const user = await User.findOne({ $or: [{ email: id }, { usn: id }] });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
     const match = await comparePassword(password, user.password);
     if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
-    // generate OTP
-    const otp = genOTP();
-
-    // save otp to DB
-    await OTP.create({
-      email: user.email,
-      otp,
-      purpose: "login",
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-    });
-
-    // send OTP using broker
+    const otp = await issueOtp({ email: user.email, purpose: "login", ttlMs: LOGIN_OTP_TTL_MS });
     await sendOtpEmail({ to: user.email, otp, purpose: "login", username: user.usn });
 
     res.json({
@@ -88,22 +145,18 @@ export const login = async (req, res) => {
 
 export const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ message: "Email is required" });
+    const { errors, cleaned } = validatePayload(req.body, { email: emailRule });
+    if (errors.length) return validationError(res, errors);
+
+    const { email } = cleaned;
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (user) {
+      const otp = await issueOtp({ email: user.email, purpose: "reset", ttlMs: RESET_OTP_TTL_MS });
+      await sendOtpEmail({ to: user.email, otp, purpose: "reset", username: user.usn });
+    }
 
-    const otp = genOTP();
-    await OTP.create({
-      email: user.email,
-      otp,
-      purpose: "reset",
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000)
-    });
-
-    await sendOtpEmail({ to: user.email, otp, purpose: "reset", username: user.usn });
-
-    return res.json({ message: "Reset code sent to email" });
+    // Respond uniformly to avoid account enumeration
+    return res.json({ message: "If the account exists, a reset code has been sent" });
   } catch (err) {
     console.error("forgotPassword error:", err);
     return res.status(500).json({ message: "Unable to start password reset" });
@@ -112,17 +165,26 @@ export const forgotPassword = async (req, res) => {
 
 export const resetPassword = async (req, res) => {
   try {
-    const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) {
-      return res.status(400).json({ message: "email, otp, and newPassword are required" });
+    const { errors, cleaned } = validatePayload(req.body, {
+      email: emailRule,
+      otp: otpRule,
+      newPassword: passwordRule,
+    });
+    if (errors.length) return validationError(res, errors);
+
+    const { email, otp, newPassword } = cleaned;
+
+    const otpDoc = await findActiveOtp({ email, purpose: "reset" });
+    if (!otpDoc) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    const otpDoc = await OTP.findOne({ email, otp, purpose: "reset" });
-    if (!otpDoc) {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
-    if (otpDoc.expiresAt <= new Date()) {
-      return res.status(400).json({ message: "OTP expired" });
+    const validOtp = await comparePassword(otp, otpDoc.otp);
+    if (!validOtp) {
+      const blocked = await handleOtpFailure(otpDoc);
+      return res
+        .status(blocked ? 429 : 400)
+        .json({ message: blocked ? "Too many invalid OTP attempts. Request a new code." : "Invalid OTP" });
     }
 
     const user = await User.findOne({ email });
@@ -144,16 +206,25 @@ export const resetPassword = async (req, res) => {
 // =========================
 export const verifyLoginOTP = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { errors, cleaned } = validatePayload(req.body, {
+      email: emailRule,
+      otp: otpRule,
+    });
+    if (errors.length) return validationError(res, errors);
 
-    // cek OTP
-    const otpDoc = await OTP.findOne({ email, otp, purpose: "login" });
+    const { email, otp } = cleaned;
+
+    const otpDoc = await findActiveOtp({ email, purpose: "login" });
     if (!otpDoc) {
-      return res.status(400).json({ message: "Invalid OTP" });
+      return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    if (otpDoc.expiresAt <= new Date()) {
-      return res.status(400).json({ message: "OTP expired" });
+    const validOtp = await comparePassword(otp, otpDoc.otp);
+    if (!validOtp) {
+      const blocked = await handleOtpFailure(otpDoc);
+      return res
+        .status(blocked ? 429 : 400)
+        .json({ message: blocked ? "Too many invalid OTP attempts. Request a new code." : "Invalid OTP" });
     }
 
     // ambil data user berdasarkan email
@@ -171,6 +242,10 @@ export const verifyLoginOTP = async (req, res) => {
       role: user.role,
       sub: user._id?.toString(),
     };
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: "Auth not configured" });
+    }
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || "1d",
@@ -216,13 +291,16 @@ export const logout = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const { email, usn, password, role = "student", photoProfile } = req.body;
-    if (!email || !usn || !password) {
-      return res.status(400).json({ error: "email, usn, and password are required" });
-    }
-    if (!["student", "staff", "admin", "guest"].includes(role)) {
-      return res.status(400).json({ error: "Invalid role" });
-    }
+    const { errors, cleaned } = validatePayload(req.body, {
+      email: emailRule,
+      usn: usnRule,
+      password: passwordRule,
+      role: { type: "string", oneOf: ["student", "staff", "admin", "guest"], required: false },
+      photoProfile: { type: "string", maxLength: 2048, required: false },
+    });
+    if (errors.length) return validationError(res, errors);
+
+    const { email, usn, password, role = "student", photoProfile } = cleaned;
     const exists = await User.findOne({ $or: [{ email }, { usn }] });
     if (exists) return res.status(400).json({ error: "User already exists" });
 
@@ -251,18 +329,20 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const allowed = ["email", "usn", "role", "password"];
-    const patch = {};
-    allowed.forEach((key) => {
-      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
-        patch[key] = req.body[key];
-      }
+    const { errors, cleaned } = validatePayload(req.body, {
+      email: { ...emailRule, required: false },
+      usn: { ...usnRule, required: false },
+      role: { type: "string", oneOf: ["student", "staff", "admin", "guest"], required: false },
+      password: { ...passwordRule, required: false },
     });
+    if (errors.length) return validationError(res, errors);
+
+    const patch = { ...cleaned };
     if (patch.password) {
       patch.password = await hashPassword(patch.password);
     }
-    if (patch.role && !["student", "staff", "admin", "guest"].includes(patch.role)) {
-      return res.status(400).json({ error: "Invalid role" });
+    if (!Object.keys(patch).length) {
+      return validationError(res, ["No valid fields to update"]);
     }
     const user = await User.findByIdAndUpdate(id, { $set: patch }, { new: true });
     if (!user) return res.status(404).json({ error: "User not found" });
@@ -276,6 +356,9 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!id || typeof id !== "string") {
+      return validationError(res, ["id is required"]);
+    }
     const deleted = await User.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: "User not found" });
     return res.json({ message: "User deleted" });
