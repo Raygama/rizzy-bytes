@@ -7,9 +7,9 @@ RUN npm install
 
 # Build-time defaults for frontend env (can be overridden with --build-arg)
 ARG NEXT_PUBLIC_API_MODE=nginx
-ARG NEXT_PUBLIC_NGINX_API_BASE=http://70.153.24.245
-ARG NEXT_PUBLIC_NGINX_FLOWISE_BASE=http://70.153.24.245
-ARG NEXT_PUBLIC_NGINX_PROM_BASE=http://70.153.24.245/prometheus
+ARG NEXT_PUBLIC_NGINX_API_BASE=http://helpdesk-if.space
+ARG NEXT_PUBLIC_NGINX_FLOWISE_BASE=http://helpdesk-if.space
+ARG NEXT_PUBLIC_NGINX_PROM_BASE=http://helpdesk-if.space/prometheus
 ARG NEXT_PUBLIC_FLOWISE_FLOW_ID=2d844a72-3dc8-4475-8134-9f034015741f
 
 ENV NODE_ENV=production

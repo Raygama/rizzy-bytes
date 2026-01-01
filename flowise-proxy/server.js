@@ -119,7 +119,12 @@ const estimateCostUsdFromTokens = (tokens) => {
   return (tokens / 1000) * COST_PER_1K_TOKENS;
 };
 
-const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://helpdesk-if.space",
+  "https://helpdesk-if.space"
+];
 
 const parseOrigins = (value) =>
   value

@@ -9,7 +9,12 @@ import crypto from "crypto";
 dotenv.config();
 const app = express();
 
-const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://helpdesk-if.space",
+  "https://helpdesk-if.space"
+];
 
 const parseOrigins = (value) =>
   value

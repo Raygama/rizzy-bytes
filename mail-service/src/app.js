@@ -8,7 +8,12 @@ import { metricsMiddleware, metricsHandler, recordSend } from "./metrics.js";
 dotenv.config();
 const app = express();
 
-const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://helpdesk-if.space",
+  "https://helpdesk-if.space"
+];
 const parseBoolean = (value, fallback = false) => {
   if (value === undefined || value === null || value === "") return fallback;
   const lowered = String(value).toLowerCase().trim();

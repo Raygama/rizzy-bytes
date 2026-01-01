@@ -22,7 +22,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
-const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://helpdesk-if.space",
+  "https://helpdesk-if.space"
+];
 
 const parseOrigins = (value) =>
   value
