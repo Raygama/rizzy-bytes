@@ -1,70 +1,74 @@
-"use client"
+"use client";
 
-import { useState, useRef } from "react"
-import { Save, X, Upload, FileText } from "lucide-react"
-import Swal from "sweetalert2"
-import { flowiseUrl } from "@/lib/apiConfig"
+import { useState, useRef } from "react";
+import { Save, X, Upload, FileText } from "lucide-react";
+import Swal from "sweetalert2";
+import { flowiseUrl } from "@/lib/apiConfig";
 
 export default function AddKbModal({ isOpen, onClose, onAdded }) {
-  const [fileLoaderName, setFileLoaderName] = useState("")
-  const [description, setDescription] = useState("")
-  const [type, setType] = useState("")
-  const [file, setFile] = useState(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [fileLoaderName, setFileLoaderName] = useState("");
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState("");
+  const [file, setFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const fileInputRef = useRef(null)
+  const fileInputRef = useRef(null);
 
   const handleFileSelect = (selectedFile) => {
-    if (!selectedFile) return
+    if (!selectedFile) return;
 
-    const allowedExtensions = ["pdf", "doc", "docx", "xls", "xlsx", "csv"]
-    const ext = selectedFile.name.split(".").pop().toLowerCase()
+    const allowedExtensions = ["pdf", "doc", "docx", "xls", "xlsx", "csv"];
+    const ext = selectedFile.name.split(".").pop().toLowerCase();
 
     if (!allowedExtensions.includes(ext)) {
-      Swal.fire("Error", "Only PDF, Word, Excel, or CSV files are allowed", "error")
-      return
+      Swal.fire(
+        "Error",
+        "Only PDF, Word, Excel, or CSV files are allowed",
+        "error"
+      );
+      return;
     }
 
-    setFile(selectedFile)
-  }
+    setFile(selectedFile);
+  };
 
   const handleInputChange = (e) => {
-    handleFileSelect(e.target.files[0])
-  }
+    handleFileSelect(e.target.files[0]);
+  };
 
   const handleDrop = (e) => {
-    e.preventDefault()
-    setIsDragging(false)
-    handleFileSelect(e.dataTransfer.files[0])
-  }
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileSelect(e.dataTransfer.files[0]);
+  };
 
   const handleRemoveFile = () => {
-    setFile(null)
+    setFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      fileInputRef.current.value = "";
     }
-  }
+  };
 
   const handleSave = async () => {
     if (!file) {
-      Swal.fire("Error", "Please upload a file", "error")
-      return
+      Swal.fire("Error", "Please upload a file", "error");
+      return;
     }
 
     if (!fileLoaderName.trim()) {
-      Swal.fire("Error", "File Loader Name is required", "error")
-      return
+      Swal.fire("Error", "File Loader Name is required", "error");
+      return;
     }
 
-    setSaving(true)
+    setSaving(true);
 
     try {
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("name", fileLoaderName)
-      formData.append("description", description)
-      formData.append("type", type)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("name", fileLoaderName);
+      formData.append("description", description);
+      formData.append("type", type);
 
       const res = await fetch(flowiseUrl("/api/kb/loaders"), {
         method: "POST",
@@ -72,46 +76,54 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
         headers: {
           authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-      })
+      });
 
-      if (!res.ok) throw new Error("Upload failed")
+      if (!res.ok) throw new Error("Upload failed");
 
-      Swal.fire("Success", "Knowledge base entry created!", "success")
-      resetForm()
-      onAdded?.()
+      Swal.fire("Success", "Knowledge base entry created!", "success");
+      resetForm();
+      onAdded?.();
     } catch (error) {
-      console.error(error)
-      Swal.fire("Error", "Failed to create entry", "error")
+      console.error(error);
+      Swal.fire("Error", "Failed to create entry", "error");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const resetForm = () => {
-    setFileLoaderName("")
-    setDescription("")
-    setType("")
-    setFile(null)
-  }
+    setFileLoaderName("");
+    setDescription("");
+    setType("");
+    setFile(null);
+  };
 
   const handleDiscard = () => {
-    resetForm()
-    onClose?.()
-  }
+    resetForm();
+    onClose?.();
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-40">
-      <div className="absolute inset-0 bg-black/30" aria-hidden onClick={handleDiscard} />
+      <div
+        className="absolute inset-0 bg-black/30"
+        aria-hidden
+        onClick={handleDiscard}
+      />
 
       <div className="relative z-50 flex justify-center items-center min-h-screen p-4 overflow-y-auto">
         <div className="w-full max-w-2xl rounded-2xl bg-white p-6 md:p-8 shadow-xl my-auto">
           {/* Header */}
           <div className="mb-8 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Add New Entry</h2>
-              <p className="mt-1 text-sm text-gray-500">Fill details to create new knowledge base entry</p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Add New Entry
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Fill details to create new knowledge base entry
+              </p>
             </div>
             <button
               onClick={handleDiscard}
@@ -126,8 +138,8 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
             {/* File Upload Dropzone */}
             <div
               onDragOver={(e) => {
-                e.preventDefault()
-                setIsDragging(true)
+                e.preventDefault();
+                setIsDragging(true);
               }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
@@ -141,8 +153,12 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
                     <Upload className="h-8 w-8 text-red-500" />
                   </div>
 
-                  <h3 className="mb-2 text-base md:text-lg font-medium text-gray-900">Drag & drop our files here</h3>
-                  <p className="mb-6 text-sm text-gray-500">or click to browse</p>
+                  <h3 className="mb-2 text-base md:text-lg font-medium text-gray-900">
+                    Drag & drop our files here
+                  </h3>
+                  <p className="mb-6 text-sm text-gray-500">
+                    or click to browse
+                  </p>
 
                   <button
                     onClick={() => fileInputRef.current?.click()}
@@ -157,8 +173,12 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
                   <div className="flex items-center gap-3">
                     <FileText className="h-8 w-8 text-red-500" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                      <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
                     </div>
                   </div>
 
@@ -182,7 +202,9 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
 
             {/* Form Fields */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-900">File Loader Name</label>
+              <label className="mb-2 block text-sm font-medium text-gray-900">
+                File Loader Name
+              </label>
               <input
                 value={fileLoaderName}
                 onChange={(e) => setFileLoaderName(e.target.value)}
@@ -192,7 +214,9 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-900">Description</label>
+              <label className="mb-2 block text-sm font-medium text-gray-900">
+                Description
+              </label>
               <input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -202,7 +226,9 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-900">Type</label>
+              <label className="mb-2 block text-sm font-medium text-gray-900">
+                Type
+              </label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}
@@ -213,6 +239,7 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
                 </option>
                 <option value="ta">Tugas Akhir</option>
                 <option value="kp">Kerja Praktik</option>
+                <option value="tak">TAK</option>
                 <option value="general">Other</option>
               </select>
             </div>
@@ -238,5 +265,5 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
