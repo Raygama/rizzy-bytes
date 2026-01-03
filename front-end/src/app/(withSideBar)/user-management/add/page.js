@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { authUrl } from "@/lib/apiConfig";
 
+import { redirect } from "next/navigation";
+import { jwtDecode } from "jwt-decode";
+
 const roleDescriptions = {
   student: "Limited access to chat.",
   staff: "Can manage knowledge base of the chat.",
@@ -140,6 +143,9 @@ export default function AddNewUserPage() {
       setIsSubmitting(false);
     }
   };
+
+  const token = localStorage.getItem("token");
+  if (jwtDecode(token)?.role !== "admin") redirect("/chat");
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] p-6 md:p-8 lg:p-12">

@@ -32,10 +32,10 @@ export default function ChatbotPage() {
   }, [messages]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    if (typeof window === "undefined") return;
+    const token = window.localStorage.getItem("token");
     if (!token) return;
-    const decodedToken = jwtDecode(token);
-    setUser(decodedToken);
+    setUser(jwtDecode(token));
   }, []);
 
   // ===================== AMBIL JAWABAN DARI BACKEND (JSON) =====================

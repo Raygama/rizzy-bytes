@@ -58,22 +58,26 @@ export default function VerifyPage() {
         }),
       });
 
-      const data = await res.json();
-      console.log("Response:", data);
-      const token = data.token;
+      if (res.status !== 200) {
+        throw new Error("Invalid OTP");
+      } else {
+        const data = await res.json();
+        console.log("Response:", data);
+        const token = data.token;
 
-      if (token) {
-        Cookies.set("token", token);
-        localStorage.setItem("token", token);
+        if (token) {
+          Cookies.set("token", token);
+          localStorage.setItem("token", token);
+        }
+
+        router.push("/chat");
       }
-
-      router.push("/chat");
     } catch (error) {
       console.log("VERIFY URL =", authUrl("/login/verify"));
       console.trace("TRACE verify call");
 
       console.error(error);
-      alert("Error submitting OTP");
+      alert("Invalid OTP, please try again.");
     }
   };
 

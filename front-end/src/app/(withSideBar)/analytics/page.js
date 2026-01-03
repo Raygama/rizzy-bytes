@@ -7,6 +7,9 @@ import { getLatestValue } from "@/lib/transform";
 import { MetricChart } from "@/components/chart";
 import { MemoryBarChart } from "@/components/MemoryBarChart";
 
+import { redirect } from "next/navigation";
+import { jwtDecode } from "jwt-decode";
+
 export default function MonitoringPage() {
   const [cpuData, setCpuData] = useState([]);
   const [ramData, setRamData] = useState([]);
@@ -103,6 +106,9 @@ export default function MonitoringPage() {
       {value > 80 ? "Warning" : "Normal"}
     </span>
   );
+
+  const token = localStorage.getItem("token");
+  if (jwtDecode(token)?.role !== "admin") redirect("/chat");
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] p-6">

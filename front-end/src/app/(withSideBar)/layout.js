@@ -1,6 +1,10 @@
 import Sidebar from "@/components/Sidebar";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 export default function DashboardLayout({ children }) {
+  const token = cookies().get("token")?.value;
+  if (!token) redirect("/login");
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar fixed height */}

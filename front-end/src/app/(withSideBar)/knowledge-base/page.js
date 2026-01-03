@@ -7,6 +7,9 @@ import AddKbModal from "@/components/AddKbModal";
 import EditKb from "@/components/editKB";
 import { flowiseUrl } from "@/lib/apiConfig";
 
+import { redirect } from "next/navigation";
+import { jwtDecode } from "jwt-decode";
+
 export default function KnowledgeBasePage() {
   const [dataKB, setDataKB] = useState([]);
   const [fetchStatus, setFetchStatus] = useState(true);
@@ -60,16 +63,13 @@ export default function KnowledgeBasePage() {
     if (!confirm.isConfirmed) return;
 
     try {
-      const res = await fetch(
-        flowiseUrl(`/api/kb/loaders/${loaderId}`),
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      const res = await fetch(flowiseUrl(`/api/kb/loaders/${loaderId}`), {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
       if (!res.ok) {
         throw new Error(`Delete failed: ${res.status}`);
@@ -91,6 +91,10 @@ export default function KnowledgeBasePage() {
       });
     }
   };
+
+  const token = localStorage.getItem("token");
+  if (jwtDecode(token)?.role !== "admin" || jwtDecode(token)?.role !== "staff")
+    redirect("/chat");
 
   return (
     <div className="relative min-h-screen bg-[#F5F5F7] p-4 md:p-6 lg:p-8">

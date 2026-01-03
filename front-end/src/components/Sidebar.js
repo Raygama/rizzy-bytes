@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
+import Cookies from "js-cookie";
 import {
   MessageCircle,
   BarChart2,
@@ -60,6 +61,7 @@ export default function Sidebar() {
       }
 
       localStorage.removeItem("token");
+      Cookies.set("token", "");
       window.location.href = "/login";
     } catch (error) {
       console.error("Error logout:", error);
@@ -97,7 +99,6 @@ export default function Sidebar() {
         path: "/knowledge-base",
         icon: Database,
       },
-      { key: "setting", name: "Setting", path: "/setting", icon: Settings },
     ],
     []
   );
