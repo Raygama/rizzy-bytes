@@ -22,6 +22,7 @@ import {
   estimateTokens,
   sampleGpuUtilization
 } from "./metrics.js";
+import { computeOpenAiCosts } from "./openaiCost.js";
 
 dotenv.config();
 
@@ -773,8 +774,8 @@ const deriveEntryStatus = (entry) => {
     entry?.uploadedAt;
 
   if (loaderStatus === "SYNC") return "SYNC";
-  // Any non-SYNC upstream status should be treated as pending, even if core fields exist
   if (loaderStatus && loaderStatus !== "SYNC") return "PENDING";
+  // Any non-SYNC upstream status should be treated as pending, even if core fields exist
   if (hasCoreFields) return "SYNC";
   return "PENDING";
 };
@@ -1361,7 +1362,11 @@ const listLoaderEntriesHandler = async (req, res) => {
       }
 
       (documents || []).forEach((doc) => {
-        const loaderStatus = statusMap.get(doc.loaderId || doc.docId || doc.id) || doc.status || null;
+        const loaderStatus =
+          statusMap.get(doc.loaderId || doc.docId || doc.id) ||
+          doc.flowiseLoader?.status ||
+          doc.status ||
+          null;
         const enriched = {
           storeId: doc.storeId || typeCfg.storeId,
           loaderId: doc.loaderId || doc.docId || null,
@@ -2435,6 +2440,32 @@ app.get("/api/jobs/:jobId", async (req, res) => {
   const status = await readJobStatus(req.params.jobId);
   if (!status) return res.status(404).json({ error: "Job not found" });
   return res.json(status);
+});
+
+app.get("/api/admin/openai/costs", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY || null;
+    if (!apiKey) {
+      return res.status(500).json({ error: "OPENAI_API_KEY is not configured" });
+    }
+    const now = new Date();
+    const totalStart = new Date(Date.UTC(now.getUTCFullYear(), 10, 1, 0, 0, 0)); // Nov 1 current year
+    if (totalStart > now) {
+      totalStart.setUTCFullYear(totalStart.getUTCFullYear() - 1);
+    }
+    const data = await computeOpenAiCosts({
+      apiKey,
+      totalWindow: { start: totalStart, end: now }
+    });
+    return res.json({
+      total: data.total,
+      last30Days: data.last30Days,
+      timeseries: data.timeseries
+    });
+  } catch (err) {
+    console.error("openai cost error:", err?.message || err);
+    return res.status(err.status || 500).json(err.body || { error: "Unable to load OpenAI costs" });
+  }
 });
 
 app.post("/internal/jobs/kb/ingest", internalKbIngestHandler);
