@@ -45,4 +45,5 @@ jobs:
             cd ${{ secrets.PROJECT_PATH }}
             git pull origin main
             docker compose -f docker-compose.light.yml up -d --build
+            docker compose -f docker-compose.light.yml restart nginx
           EOF
