@@ -197,7 +197,7 @@ export default function UserManagementPage() {
   };
 
   const token = localStorage.getItem("token");
-  if (jwtDecode(token)?.role !== "admin") redirect("/chat");
+  if (jwtDecode(token)?.role.toLowerCase() !== "admin") redirect("/chat");
 
   return (
     <>

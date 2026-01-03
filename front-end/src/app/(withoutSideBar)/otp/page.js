@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { authUrl } from "@/lib/apiConfig";
+import { redirect } from "next/navigation";
 
 export default function VerifyPage() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -15,6 +16,10 @@ export default function VerifyPage() {
 
   useEffect(() => {
     const storedEmail = sessionStorage.getItem("email");
+    const isLogin = sessionStorage.getItem("isLogin");
+    if (isLogin !== "true") {
+      redirect("/login");
+    }
     if (storedEmail) {
       setEmail(storedEmail);
     }
@@ -31,6 +36,18 @@ export default function VerifyPage() {
     if (value && index < 5) {
       inputsRef.current[index + 1].focus();
     }
+  };
+
+  const handlePaste = (e) => {
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    if (!pasted) return;
+    const next = pasted.split("");
+    setOtp((prev) => prev.map((_, i) => next[i] ?? ""));
+    const focusIndex = Math.min(pasted.length, 5);
+    inputsRef.current[focusIndex]?.focus();
   };
 
   const handleKeyDown = (e, index) => {
@@ -104,6 +121,7 @@ export default function VerifyPage() {
                 maxLength="1"
                 value={digit}
                 onChange={(e) => handleChange(e.target.value, index)}
+                onPaste={handlePaste}
                 onKeyDown={(e) => handleKeyDown(e, index)}
                 className="w-12 h-12 rounded-md border border-gray-300 text-center text-xl outline-none focus:border-red-600"
               />

@@ -93,7 +93,10 @@ export default function KnowledgeBasePage() {
   };
 
   const token = localStorage.getItem("token");
-  if (jwtDecode(token)?.role !== "admin" || jwtDecode(token)?.role !== "staff")
+  if (
+    jwtDecode(token)?.role.toLowerCase() !== "admin" &&
+    jwtDecode(token)?.role.toLowerCase() !== "staff"
+  )
     redirect("/chat");
 
   return (

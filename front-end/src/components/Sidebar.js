@@ -62,6 +62,7 @@ export default function Sidebar() {
 
       localStorage.removeItem("token");
       Cookies.set("token", "");
+      sessionStorage.setItem("isLogin", "false");
       window.location.href = "/login";
     } catch (error) {
       console.error("Error logout:", error);

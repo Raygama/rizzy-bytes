@@ -108,7 +108,7 @@ export default function MonitoringPage() {
   );
 
   const token = localStorage.getItem("token");
-  if (jwtDecode(token)?.role !== "admin") redirect("/chat");
+  if (jwtDecode(token)?.role.toLowerCase() !== "admin") redirect("/chat");
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] p-6">
