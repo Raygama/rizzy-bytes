@@ -16,10 +16,12 @@ import { startLogConsumer } from "./amqp.js";
 import { requireAuth, requireRole } from "./auth.js";
 import { fetchLogs as fetchLogsFromDb } from "./mongo.js";
 import { metricsMiddleware, metricsHandler } from "./metrics.js";
+import { rateLimiter } from "./rateLimiter.js";
 
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", true);
 const PORT = process.env.PORT || 3000;
 const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672";
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -73,6 +75,7 @@ const corsOptionsDelegate = (req, callback) => {
 
 app.use(cors(corsOptionsDelegate));
 app.options(/.*/, cors(corsOptionsDelegate));
+app.use(rateLimiter);
 app.use(express.json({ limit: "256kb" }));
 app.use(metricsMiddleware);
 

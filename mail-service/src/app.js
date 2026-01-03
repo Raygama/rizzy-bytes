@@ -4,9 +4,11 @@ import cors from "cors";
 import nodemailer from "nodemailer";
 import { logEvent, maskEmail, requestContext, requestLogger } from "./logger.js";
 import { metricsMiddleware, metricsHandler, recordSend } from "./metrics.js";
+import { rateLimiter } from "./rateLimiter.js";
 
 dotenv.config();
 const app = express();
+app.set("trust proxy", true);
 
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
@@ -68,6 +70,7 @@ const corsOptionsDelegate = (req, callback) => {
 
 app.use(cors(corsOptionsDelegate));
 app.options(/.*/, cors(corsOptionsDelegate));
+app.use(rateLimiter);
 app.use(express.json());
 app.use(requestContext);
 app.use(requestLogger);

@@ -5,9 +5,11 @@ import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
 import { logEvent, requestContext, requestLogger } from "./utils/logger.js";
 import { metricsMiddleware, metricsHandler } from "./metrics.js";
+import { rateLimiter } from "./utils/rateLimiter.js";
 
 dotenv.config();
 const app = express();
+app.set("trust proxy", true);
 
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
@@ -71,6 +73,7 @@ app.use(cors(corsOptionsDelegate));
 app.options(/.*/, cors(corsOptionsDelegate));
 
 app.use(express.json());
+app.use(rateLimiter);
 app.use(requestContext);
 app.use(requestLogger);
 app.use(metricsMiddleware);

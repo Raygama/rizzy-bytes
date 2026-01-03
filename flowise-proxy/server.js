@@ -14,6 +14,7 @@ import { connectToMongo } from "./history/mongoClient.js";
 import { knowledgeBaseStore, nextKbId } from "./knowledgeBaseStore.js";
 import { logEvent, requestContext, requestLogger } from "./logger.js";
 import { requireAuth, requireRole } from "./auth.js";
+import { rateLimiter } from "./rateLimiter.js";
 import {
   metricsMiddleware,
   metricsHandler,
@@ -345,9 +346,11 @@ if (!FLOWISE_API_KEY && process.env.FLOWISE_API_KEY_FILE) {
 const chatHistoryStore = new ChatHistoryStore();
 
 const app = express();
+app.set("trust proxy", true);
 const corsOptions = createCorsOptions();
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
+app.use(rateLimiter);
 app.use(express.json());
 app.use(requestContext);
 app.use(requestLogger);

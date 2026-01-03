@@ -4,10 +4,12 @@ import cors from "cors";
 import { initAMQP, publish } from "./amqp.js";
 import { logEvent, requestContext, requestLogger } from "./logger.js";
 import { metricsMiddleware, metricsHandler, recordPublish } from "./metrics.js";
+import { rateLimiter } from "./rateLimiter.js";
 import crypto from "crypto";
 
 dotenv.config();
 const app = express();
+app.set("trust proxy", true);
 
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
@@ -64,6 +66,7 @@ const corsOptionsDelegate = (req, callback) => {
 
 app.use(cors(corsOptionsDelegate));
 app.options(/.*/, cors(corsOptionsDelegate));
+app.use(rateLimiter);
 app.use(express.json());
 app.use(requestContext);
 app.use(requestLogger);
