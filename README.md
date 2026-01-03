@@ -1,4 +1,4 @@
-# 🧩 AI Helpdesk Chatbot IF
+# 🧩 AI Helpdesk Chatbot IF 
 
 This repository contains the implementation for the **AI Helpdesk Chatbot** project.  
 It follows a **microservices architecture** where each core responsibility is separated into its own service.  
