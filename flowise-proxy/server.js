@@ -819,6 +819,37 @@ const vectorStoreInsert = async ({ storeId, docId, typeCfg }) => {
   return callFlowise("post", "/api/v1/document-store/vectorstore/insert", payload);
 };
 
+const runVectorUpdate = async ({ storeId, loaderId, typeCfg }) => {
+  // Remove old vectors then insert remaining chunks
+  try {
+    await callFlowise("delete", `/api/v1/document-store/vectorstore/${storeId}?docId=${loaderId}`);
+  } catch (err) {
+    console.warn("vectorstore delete failed:", err?.message || err);
+  }
+  await vectorStoreInsert({ storeId, docId: loaderId, typeCfg });
+};
+
+const scheduleVectorUpdate = async ({ storeId, loaderId, typeCfg, jobType = "kb.vectorUpdate" }) => {
+  const jobId = randomUUID();
+  await setJobStatus(jobId, { status: "queued", type: jobType, storeId, loaderId });
+  setImmediate(async () => {
+    try {
+      await setJobStatus(jobId, { status: "processing", type: jobType, storeId, loaderId });
+      await runVectorUpdate({ storeId, loaderId, typeCfg });
+      await setJobStatus(jobId, { status: "succeeded", type: jobType, storeId, loaderId });
+    } catch (err) {
+      await setJobStatus(jobId, {
+        status: "failed",
+        type: jobType,
+        storeId,
+        loaderId,
+        error: err?.message || err?.body?.error || "vector update failed"
+      });
+    }
+  });
+  return jobId;
+};
+
 const hydrateKbEntryForLoader = async (loader, storeId) => {
   if (!loader?.id) return null;
   const existing = await knowledgeBaseStore.findByLoader({ loaderId: loader.id, storeId });
@@ -1423,10 +1454,22 @@ const updateChunkHandler = async (req, res) => {
 
     const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${chunkId}`;
     const result = await callFlowise("put", pathUrl, body);
+    const effectiveType = typeCfg || resolveTypeConfigByStoreId(storeId);
+
+    if (ASYNC_KB) {
+      const jobId = await scheduleVectorUpdate({
+        storeId,
+        loaderId,
+        typeCfg: effectiveType,
+        jobType: "kb.vectorUpdate"
+      });
+      return res.status(202).json({ ...result, storeId, loaderId, jobId, status: "PENDING" });
+    }
+
     try {
-      await vectorStoreInsert({ storeId, docId: loaderId, typeCfg: typeCfg || resolveTypeConfigByStoreId(storeId) });
+      await runVectorUpdate({ storeId, loaderId, typeCfg: effectiveType });
     } catch (insertErr) {
-      console.warn("vectorstore insert after chunk update failed:", insertErr?.message || insertErr);
+      console.warn("vectorstore update after chunk update failed:", insertErr?.message || insertErr);
     }
     return res.json({ ...result, storeId, loaderId, status: "PENDING" });
   } catch (err) {
@@ -1451,19 +1494,22 @@ const deleteChunkHandler = async (req, res) => {
     const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${chunkId}`;
     const result = await callFlowise("delete", pathUrl);
 
-    // Remove vectors for this loaderId to keep retrieval in sync.
-    // This leverages record manager aware delete (preferred).
-    try {
-      await callFlowise("delete", `/api/v1/document-store/vectorstore/${storeId}?docId=${loaderId}`);
-    } catch (vsErr) {
-      console.warn("vectorstore delete after chunk delete failed:", vsErr?.message || vsErr);
+    const effectiveType = typeCfg || resolveTypeConfigByStoreId(storeId);
+
+    if (ASYNC_KB) {
+      const jobId = await scheduleVectorUpdate({
+        storeId,
+        loaderId,
+        typeCfg: effectiveType,
+        jobType: "kb.vectorUpdate"
+      });
+      return res.status(202).json({ ...result, storeId, loaderId, jobId, status: "PENDING" });
     }
 
-    // As a fallback, trigger a fresh insert of remaining chunks (non-blocking)
     try {
-      await vectorStoreInsert({ storeId, docId: loaderId, typeCfg: typeCfg || resolveTypeConfigByStoreId(storeId) });
+      await runVectorUpdate({ storeId, loaderId, typeCfg: effectiveType });
     } catch (insertErr) {
-      console.warn("vectorstore insert after chunk delete failed:", insertErr?.message || insertErr);
+      console.warn("vectorstore update after chunk delete failed:", insertErr?.message || insertErr);
     }
 
     return res.json({ ...result, storeId, loaderId, status: "PENDING" });
