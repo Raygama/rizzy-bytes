@@ -2453,7 +2453,7 @@ app.get("/api/jobs/:jobId", async (req, res) => {
   return res.json(status);
 });
 
-app.get("/api/admin/openai/costs", requireAuth, requireRole("admin"), async (req, res) => {
+const openAiCostsHandler = async (req, res) => {
   try {
     const apiKey = process.env.OPENAI_API_KEY || null;
     if (!apiKey) {
@@ -2477,7 +2477,11 @@ app.get("/api/admin/openai/costs", requireAuth, requireRole("admin"), async (req
     console.error("openai cost error:", err?.message || err);
     return res.status(err.status || 500).json(err.body || { error: "Unable to load OpenAI costs" });
   }
-});
+};
+
+// Admin cost metrics (both legacy and KB-namespaced for consistency)
+app.get("/api/admin/openai/costs", requireAuth, requireRole("admin"), openAiCostsHandler);
+app.get("/api/kb/admin/openai/costs", requireAuth, requireRole("admin"), openAiCostsHandler);
 
 app.post("/internal/jobs/kb/ingest", internalKbIngestHandler);
 app.post("/internal/jobs/kb/reprocess", internalKbReprocessHandler);
