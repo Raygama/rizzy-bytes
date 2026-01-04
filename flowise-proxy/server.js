@@ -1450,11 +1450,22 @@ const deleteChunkHandler = async (req, res) => {
     const storeId = typeCfg?.storeId || (await resolveStoreIdForLoader(req, loaderId));
     const pathUrl = `/api/v1/document-store/chunks/${storeId}/${loaderId}/${chunkId}`;
     const result = await callFlowise("delete", pathUrl);
+
+    // Remove vectors for this loaderId to keep retrieval in sync.
+    // This leverages record manager aware delete (preferred).
+    try {
+      await callFlowise("delete", `/api/v1/document-store/vectorstore/${storeId}?docId=${loaderId}`);
+    } catch (vsErr) {
+      console.warn("vectorstore delete after chunk delete failed:", vsErr?.message || vsErr);
+    }
+
+    // As a fallback, trigger a fresh insert of remaining chunks (non-blocking)
     try {
       await vectorStoreInsert({ storeId, docId: loaderId, typeCfg: typeCfg || resolveTypeConfigByStoreId(storeId) });
     } catch (insertErr) {
       console.warn("vectorstore insert after chunk delete failed:", insertErr?.message || insertErr);
     }
+
     return res.json({ ...result, storeId, loaderId, status: "PENDING" });
   } catch (err) {
     console.error("delete chunk error:", err);
