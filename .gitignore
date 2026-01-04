@@ -36,3 +36,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+/flowise-uploads
+/flowise-uploads
+/flowise-uploads
+*.pdf
+/project/flowise-data
