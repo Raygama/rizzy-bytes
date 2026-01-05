@@ -7,38 +7,16 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup SSH
+      - name: Deploy locally on VM
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Validate SSH secrets
-        run: |
-          if [ -z "${{ secrets.SSH_HOST }}" ]; then
-            echo "SSH_HOST is empty"
-            exit 1
-          fi
-          if [ -z "${{ secrets.SSH_USER }}" ]; then
-            echo "SSH_USER is empty"
-            exit 1
-          fi
-          echo "Secrets validated"
-
-
-      - name: Deploy on VM
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            set -e
-            cd ${{ secrets.PROJECT_PATH }}
-            git pull origin main
-            docker compose -f docker-compose.light.yml up -d --build
-            docker compose -f docker-compose.light.yml restart nginx
-          EOF
+          set -e
+          cd /home/raygama/rizzy-bytes/project
+          git pull origin main
+          docker compose -f docker-compose.light.yml up -d --build
+          docker compose -f docker-compose.light.yml restart nginx
