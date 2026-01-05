@@ -19,4 +19,4 @@ jobs:
           cd /home/raygama/rizzy-bytes/project
           git pull origin main
           docker compose -f docker-compose.light.yml up -d --build
-          docker compose -f docker-compose.light.yml restart nginx
+          docker compose -f docker-compose.light.yml restart nginx 
