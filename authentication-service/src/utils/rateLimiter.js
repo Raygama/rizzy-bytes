@@ -1,5 +1,5 @@
 const WINDOW_MS = 60_000;
-const MAX_REQUESTS = 50;
+const MAX_REQUESTS = 20;
 
 const clientKey = (req) =>
   req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() ||

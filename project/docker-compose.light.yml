@@ -32,6 +32,8 @@ services:
     environment:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - MAIL_SERVICE_URL=http://mail-service:3000
+      - FLOWISE_PROXY_URL=http://flowise-proxy:4000
+      - BROKER_URL=http://broker-service:3000
     depends_on:
       - rabbitmq
       - mail-service
@@ -49,6 +51,7 @@ services:
       - SMTP_TLS_REJECT_UNAUTHORIZED=${SMTP_TLS_REJECT_UNAUTHORIZED:-true}
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
+      - BROKER_URL=http://broker-service:3000
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
     ports:
       - "3004:3000"
@@ -59,7 +62,7 @@ services:
       context: ../logger-service
       dockerfile: logger-service.dockerfile
     environment:
-      - AUTH_JWT_SECRET=49fbc70a9ea76cff525c75784a406962
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:?AUTH_JWT_SECRET not set}
       - MONGO_URI=mongodb://mongo:27017
       - MONGO_DB=logger
       - MONGO_COLLECTION=logs
@@ -75,6 +78,10 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      - NEXT_PUBLIC_API_MODE=direct
+      - NEXT_PUBLIC_DIRECT_API_BASE=http://authentication-service:3000
+      - NEXT_PUBLIC_DIRECT_FLOWISE_BASE=http://flowise-proxy:4000
+      - NEXT_PUBLIC_DIRECT_PROM_BASE=http://prometheus:9090
       - NEXT_PUBLIC_FLOWISE_PROXY_URL=http://flowise-proxy:4000
   mongo:
     image: mongo:6
@@ -112,8 +119,8 @@ services:
     container_name: grafana
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?GF_SECURITY_ADMIN_PASSWORD not set}
       - GF_SECURITY_ALLOW_EMBEDDING=true
 
     volumes:
@@ -146,17 +153,17 @@ services:
       - 3006:3000
     environment:
       - PORT=3000
-      - FLOWISE_USERNAME=admin
-      - FLOWISE_PASSWORD=secret
+      - FLOWISE_USERNAME=${FLOWISE_USERNAME:-admin}
+      - FLOWISE_PASSWORD=${FLOWISE_PASSWORD:?FLOWISE_PASSWORD not set}
       - DATABASE_PATH=/root/.flowise
       - VECTOR_STORE=chroma
       - CHROMA_URL=http://chroma:8000
       - DATABASE=postgres
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_USER=flowise
-      - DATABASE_PASSWORD=flowisepass
-      - DATABASE_NAME=flowise_db
+      - DATABASE_USER=${DATABASE_USER:-flowise}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD not set}
+      - DATABASE_NAME=${DATABASE_NAME:-flowise_db}
     volumes:
       - ./flowise-data:/root/.flowise
       - ./flowise-uploads:/uploads
@@ -172,6 +179,7 @@ services:
       - ../flowise-proxy/.env
     environment:
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - BROKER_URL=http://broker-service:3000
     volumes:
       - ../flowise-uploads:/uploads
     ports:
@@ -219,9 +227,9 @@ services:
     container_name: postgres
     restart: always
     environment:
-      POSTGRES_USER: flowise
-      POSTGRES_PASSWORD: flowisepass
-      POSTGRES_DB: flowise_db
+      POSTGRES_USER: ${POSTGRES_USER:-flowise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD not set}
+      POSTGRES_DB: ${POSTGRES_DB:-flowise_db}
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
   ollama:

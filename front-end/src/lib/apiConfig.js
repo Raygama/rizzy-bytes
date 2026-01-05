@@ -10,7 +10,8 @@ const configs = {
   direct: {
     apiBase:
       sanitizeBase(process.env.NEXT_PUBLIC_DIRECT_API_BASE) ||
-      "http://localhost:3001",
+      // default to docker-compose service DNS when env not provided
+      "http://authentication-service:3000",
     flowiseBase:
       sanitizeBase(process.env.NEXT_PUBLIC_DIRECT_FLOWISE_BASE) ||
       "http://localhost:4000",
