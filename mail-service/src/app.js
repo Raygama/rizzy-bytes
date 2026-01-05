@@ -5,6 +5,7 @@ import nodemailer from "nodemailer";
 import { logEvent, maskEmail, requestContext, requestLogger } from "./logger.js";
 import { metricsMiddleware, metricsHandler, recordSend } from "./metrics.js";
 import { rateLimiter } from "./rateLimiter.js";
+import { inputGuard } from "./inputGuard.js";
 
 dotenv.config();
 const app = express();
@@ -72,6 +73,7 @@ app.use(cors(corsOptionsDelegate));
 app.options(/.*/, cors(corsOptionsDelegate));
 app.use(rateLimiter);
 app.use(express.json());
+app.use(inputGuard);
 app.use(requestContext);
 app.use(requestLogger);
 app.use(metricsMiddleware);

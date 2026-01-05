@@ -14,6 +14,7 @@ import { connectToMongo } from "./history/mongoClient.js";
 import { knowledgeBaseStore, nextKbId } from "./knowledgeBaseStore.js";
 import { logEvent, requestContext, requestLogger } from "./logger.js";
 import { requireAuth, requireRole } from "./auth.js";
+import { inputGuard } from "./inputGuard.js";
 import { rateLimiter } from "./rateLimiter.js";
 import {
   metricsMiddleware,
@@ -353,6 +354,7 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(rateLimiter);
 app.use(express.json());
+app.use(inputGuard);
 app.use(requestContext);
 app.use(requestLogger);
 app.use(metricsMiddleware);

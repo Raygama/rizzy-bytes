@@ -5,6 +5,7 @@ import { initAMQP, publish } from "./amqp.js";
 import { logEvent, requestContext, requestLogger } from "./logger.js";
 import { metricsMiddleware, metricsHandler, recordPublish } from "./metrics.js";
 import { rateLimiter } from "./rateLimiter.js";
+import { inputGuard } from "./inputGuard.js";
 import crypto from "crypto";
 
 dotenv.config();
@@ -68,6 +69,7 @@ app.use(cors(corsOptionsDelegate));
 app.options(/.*/, cors(corsOptionsDelegate));
 app.use(rateLimiter);
 app.use(express.json());
+app.use(inputGuard);
 app.use(requestContext);
 app.use(requestLogger);
 app.use(metricsMiddleware);

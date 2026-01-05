@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import { logEvent, requestContext, requestLogger } from "./utils/logger.js";
 import { metricsMiddleware, metricsHandler } from "./metrics.js";
 import { rateLimiter } from "./utils/rateLimiter.js";
+import { inputGuard } from "./utils/inputGuard.js";
 
 dotenv.config();
 const app = express();
@@ -74,6 +75,7 @@ app.options(/.*/, cors(corsOptionsDelegate));
 
 app.use(express.json());
 app.use(rateLimiter);
+app.use(inputGuard);
 app.use(requestContext);
 app.use(requestLogger);
 app.use(metricsMiddleware);

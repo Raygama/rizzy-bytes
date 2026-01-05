@@ -16,6 +16,7 @@ import { startLogConsumer } from "./amqp.js";
 import { requireAuth, requireRole } from "./auth.js";
 import { fetchLogs as fetchLogsFromDb } from "./mongo.js";
 import { metricsMiddleware, metricsHandler } from "./metrics.js";
+import { inputGuard } from "./inputGuard.js";
 import { rateLimiter } from "./rateLimiter.js";
 
 dotenv.config();
@@ -77,6 +78,7 @@ app.use(cors(corsOptionsDelegate));
 app.options(/.*/, cors(corsOptionsDelegate));
 app.use(rateLimiter);
 app.use(express.json({ limit: "256kb" }));
+app.use(inputGuard);
 app.use(metricsMiddleware);
 
 app.use((req, res, next) => {
