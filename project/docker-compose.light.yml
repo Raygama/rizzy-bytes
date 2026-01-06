@@ -34,6 +34,7 @@ services:
       - MAIL_SERVICE_URL=http://mail-service:3000
       - FLOWISE_PROXY_URL=http://flowise-proxy:4000
       - BROKER_URL=http://broker-service:3000
+      - WORKER_TOKEN=${WORKER_TOKEN:-change-me}
     depends_on:
       - rabbitmq
       - mail-service
@@ -52,6 +53,7 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
       - BROKER_URL=http://broker-service:3000
+      - WORKER_TOKEN=${WORKER_TOKEN:-change-me}
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
     ports:
       - "3004:3000"
@@ -110,7 +112,7 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
-      - 9090:9090
+      - 127.0.0.1:9090:9090
     depends_on:
       - node-exporter
 
@@ -136,7 +138,7 @@ services:
     restart: unless-stopped
     privileged: true
     ports:
-      - 9100:9100
+      - 127.0.0.1:9100:9100
     command:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
@@ -241,7 +243,7 @@ services:
     volumes:
       - ./ollama-data:/root/.ollama
     environment:
-      - OLLAMA_MODELS=mistral nomic-embed-text
+      - OLLAMA_MODELS=nomic-embed-text
     entrypoint:
       "sh -c '\n  set -e\n  ollama serve &\n  # wait for API\n  for i in\
       \ 1 2 3 4 5; do\n    if curl -sSf http://127.0.0.1:11434/api/tags >/dev/null;\
