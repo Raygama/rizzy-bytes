@@ -34,7 +34,10 @@ router.get("/users/:id", requireAuth, requireRole("admin"), getUserById);
 
 // Simple admin check for upstream auth_request (nginx)
 router.get("/admin/check", requireAuth, requireRole("admin"), (_req, res) => {
-  res.json({ ok: true });
+  if (!req.user || !req.user.isAdmin) {
+    return res.sendStatus(403);
+  }
+  return res.sendStatus(204);
 });
 
 export default router;
