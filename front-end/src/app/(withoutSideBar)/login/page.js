@@ -47,12 +47,25 @@ export default function LoginPage() {
         throw new Error(data.message || "Email atau password salah");
       }
 
-      await response.json();
+      const body = await response.json();
 
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", email);
       } else {
         localStorage.removeItem("rememberedEmail");
+      }
+
+      // Persist token to cookie for subdomain access (Flowise/Grafana)
+      try {
+        const token = body?.token;
+        if (token) {
+          const isProdDomain = window.location.hostname.endsWith("helpdesk-if.space");
+          const domainAttr = isProdDomain ? "; Domain=.helpdesk-if.space" : "";
+          const secureAttr = window.location.protocol === "https:" ? "; Secure" : "";
+          document.cookie = `token=${token}; Path=/; SameSite=Lax${domainAttr}${secureAttr}`;
+        }
+      } catch {
+        // ignore cookie set failures
       }
 
       sessionStorage.setItem("email", email);
