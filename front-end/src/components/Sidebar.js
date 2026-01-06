@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
+import Image from "next/image";
+import logo from "../../public/logo-telu.png";
 import {
   MessageCircle,
   BarChart2,
@@ -144,7 +146,8 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-white border-r h-screen border-gray-200 flex flex-col">
       {/* App title */}
-      <div className="px-6 pt-6 pb-4">
+      <div className="flex px-6 pt-6 pb-4">
+        <Image src={logo} alt="Telkom University" width={32} height={32} />
         <h1 className="text-lg font-semibold tracking-tight">Informatics AI</h1>
       </div>
 

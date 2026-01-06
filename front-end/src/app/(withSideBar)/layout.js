@@ -1,6 +1,7 @@
 import Sidebar from "@/components/Sidebar";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import Cookies from "js-cookie";
 
 export default function DashboardLayout({ children }) {
   const token = cookies().get("token")?.value;

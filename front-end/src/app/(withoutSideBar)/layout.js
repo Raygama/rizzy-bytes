@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import Cookies from "js-cookie";
 
 export default function withoutSideBarLayout({ children }) {
   const token = cookies().get("token")?.value;

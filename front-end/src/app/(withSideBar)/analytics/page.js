@@ -6,6 +6,8 @@ import { transformRangeToChart } from "@/lib/transform";
 import { getLatestValue } from "@/lib/transform";
 import { MetricChart } from "@/components/chart";
 import { MemoryBarChart } from "@/components/MemoryBarChart";
+import { CostChart } from "@/components/CostChart";
+import { transformCostTimeseries } from "@/lib/transform";
 
 import { redirect } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
@@ -16,10 +18,17 @@ export default function MonitoringPage() {
   const [gpuData, setGpuData] = useState([]);
   const [ramCachedData, setRamCachedData] = useState([]);
   const [ramBufferData, setRamBufferData] = useState([]);
+  const [costData, setCostData] = useState([]);
+  const [costSummary, setCostSummary] = useState({
+    total: 0,
+    last30Days: 0,
+  });
 
   const [loading, setLoading] = useState(false);
 
   const fetchAllMetrics = async () => {
+    const COST_API = "https://localhost:4000/api/admin/openai/costs";
+
     try {
       setLoading(true);
 
@@ -77,6 +86,16 @@ export default function MonitoringPage() {
           value: d.value / 1024 / 1024 / 1024,
         }))
       );
+
+      const costRes = await fetch(COST_API);
+      const costJson = await costRes.json();
+
+      setCostSummary({
+        total: costJson.total.costUsd,
+        last30Days: costJson.last30Days.costUsd,
+      });
+
+      setCostData(transformCostTimeseries(costJson.timeseries));
     } finally {
       setLoading(false);
     }
@@ -131,7 +150,7 @@ export default function MonitoringPage() {
       </div>
 
       {/* Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* CPU */}
         <div className="rounded-xl bg-white p-4">
           <div className="mb-1 flex items-center justify-between">
@@ -175,6 +194,27 @@ export default function MonitoringPage() {
             cached={ramCached}
             buffer={ramBuffer}
           />
+        </div>
+
+        {/* cost metric */}
+        {/* COST METRIC */}
+        <div className="rounded-xl bg-white p-4">
+          <div className="mb-1 flex items-center justify-between">
+            <p className="text-xs text-gray-500">COST</p>
+            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-600">
+              USD
+            </span>
+          </div>
+
+          <p className="text-2xl font-semibold">
+            ${costSummary.last30Days.toFixed(2)}
+          </p>
+
+          <p className="mb-2 text-xs text-gray-500">
+            Last 30 days • Total ${costSummary.total.toFixed(2)}
+          </p>
+
+          <CostChart data={costData} />
         </div>
       </div>
     </div>

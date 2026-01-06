@@ -253,9 +253,21 @@ export default function KnowledgeBasePage() {
       <AddKbModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onAdded={() => {
+        onAdded={(newEntry) => {
           setShowAddModal(false);
-          setFetchStatus(!fetchStatus);
+
+          // realtime: langsung masuk ke tabel (di paling atas)
+          setDataKB((prev) => {
+            // cegah duplicate kalau entry sudah ada
+            const exists = prev.some(
+              (e) =>
+                (newEntry?.loaderId && e.loaderId === newEntry.loaderId) ||
+                (newEntry?.kbId && e.kbId === newEntry.kbId)
+            );
+            if (exists) return prev;
+
+            return [newEntry, ...prev];
+          });
         }}
       />
 

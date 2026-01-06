@@ -13,3 +13,10 @@ export function getLatestValue(data) {
   if (!data || data.length === 0) return 0;
   return data[data.length - 1].value;
 }
+
+export function transformCostTimeseries(timeseries = []) {
+  return timeseries.map((item) => ({
+    time: new Date(item.timestamp).toLocaleDateString(),
+    value: Number(item.costUsd),
+  }));
+}

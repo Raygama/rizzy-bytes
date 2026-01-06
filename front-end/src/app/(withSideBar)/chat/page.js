@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Menu, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import Cookies from "js-cookie";
@@ -16,6 +16,61 @@ export default function ChatbotPage() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false); // NEW
+  const flowId =
+    process.env.NEXT_PUBLIC_FLOWISE_FLOW_ID ||
+    "2d844a72-3dc8-4475-8134-9f034015741f";
+
+  // ===== Chat Cache (sessionStorage) =====
+  const CHAT_TTL_MS = 1000 * 60 * 60 * 6; // 6 jam (ubah sesuai kebutuhan)
+  const MAX_MESSAGES = 60; // batasi biar storage nggak bengkak
+
+  const userKey = useMemo(() => String(user?.usn || "guest"), [user?.usn]);
+
+  const CHAT_KEY = useMemo(
+    () => `chat_cache_${flowId}_${userKey}`,
+    [flowId, userKey]
+  );
+
+  const HADCHAT_KEY = useMemo(
+    () => `hadChat_${flowId}_${userKey}`,
+    [flowId, userKey]
+  );
+
+  const loadChatFromStorage = () => {
+    if (typeof window === "undefined") return [];
+
+    const raw = sessionStorage.getItem(CHAT_KEY);
+    if (!raw) return [];
+
+    try {
+      const parsed = JSON.parse(raw);
+      const savedAt = parsed?.savedAt ?? 0;
+      const msgs = parsed?.messages ?? [];
+
+      // TTL check
+      if (!savedAt || Date.now() - savedAt > CHAT_TTL_MS) {
+        sessionStorage.removeItem(CHAT_KEY);
+        sessionStorage.removeItem(HADCHAT_KEY);
+        return [];
+      }
+
+      return Array.isArray(msgs) ? msgs : [];
+    } catch {
+      sessionStorage.removeItem(CHAT_KEY);
+      sessionStorage.removeItem(HADCHAT_KEY);
+      return [];
+    }
+  };
+
+  const saveChatToStorage = (msgs) => {
+    if (typeof window === "undefined") return;
+
+    const trimmed = Array.isArray(msgs) ? msgs.slice(-MAX_MESSAGES) : [];
+    const payload = { savedAt: Date.now(), messages: trimmed };
+
+    sessionStorage.setItem(CHAT_KEY, JSON.stringify(payload));
+    sessionStorage.setItem(HADCHAT_KEY, trimmed.length > 0 ? "true" : "false");
+  };
 
   const quickActions = [
     "Cara menginput TAK terbaru",
@@ -31,12 +86,48 @@ export default function ChatbotPage() {
     scrollToBottom();
   }, [messages]);
 
+  // 1) Ambil user dari token
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const token = window.localStorage.getItem("token");
     if (!token) return;
-    setUser(jwtDecode(token));
+
+    try {
+      setUser(jwtDecode(token));
+    } catch (e) {
+      console.error("Invalid token:", e);
+    }
   }, []);
+
+  // 2) Restore chat setelah userKey siap (dan kalau messages masih kosong)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!userKey) return;
+
+    // hanya restore kalau state messages masih kosong
+    if (messages.length > 0) return;
+
+    const hadChat = sessionStorage.getItem(HADCHAT_KEY);
+    if (hadChat !== "true") return;
+
+    const cached = loadChatFromStorage();
+    if (cached.length > 0) {
+      setMessages(cached);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userKey, HADCHAT_KEY]); // sengaja tidak dep ke messages agar tidak loop
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!userKey) return;
+
+    const t = setTimeout(() => {
+      saveChatToStorage(messages);
+    }, 250); // debounce 250ms
+
+    return () => clearTimeout(t);
+  }, [messages, userKey, CHAT_KEY]);
 
   // ===================== AMBIL JAWABAN DARI BACKEND (JSON) =====================
   const getBotResponse = async (userMessage) => {
@@ -59,6 +150,7 @@ export default function ChatbotPage() {
       console.log("backend response:", data);
 
       // dari screenshot: field jawabannya ada di `text`
+      sessionStorage.setItem("hadChat", "true");
       return data.text || "";
     } catch (error) {
       console.error("Error fetching bot response:", error);
@@ -87,46 +179,44 @@ export default function ChatbotPage() {
 
   // ===================== HANDLE SEND =====================
   const handleSend = async (e) => {
-    if (e && e.preventDefault) {
-      e.preventDefault();
-    }
+    if (e && e.preventDefault) e.preventDefault();
 
     const userMessageText = typeof e === "string" ? e : input;
-
     if (!userMessageText.trim() || isLoading) return;
-
-    // 1. Tambah pesan user
-    const userMessage = {
-      id: Date.now(),
-      text: userMessageText,
-      sender: "user",
-    };
-    setMessages((prev) => [...prev, userMessage]);
 
     setInput("");
     setIsLoading(true);
 
-    // 2. Tambah bubble bot kosong
-    const botId = Date.now() + 1;
-    const emptyBotMessage = {
-      id: botId,
-      text: "",
-      sender: "bot",
-    };
-    setMessages((prev) => [...prev, emptyBotMessage]);
+    const userMsgId = Date.now();
+    const botMsgId = userMsgId + 1;
 
-    // 3. Ambil full jawaban dari backend
+    // Tambah user + placeholder bot sekaligus
+    setMessages((prev) => [
+      ...prev,
+      { id: userMsgId, text: userMessageText, sender: "user" },
+      { id: botMsgId, text: "", sender: "bot" },
+    ]);
+
+    // tandai hadChat true (biar restore jalan saat reload)
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(HADCHAT_KEY, "true");
+    }
+
     const fullText = await getBotResponse(userMessageText);
-
-    // 4. Stream jawaban ke bubble bot
-    await streamTextToMessage(botId, fullText);
+    await streamTextToMessage(botMsgId, fullText);
 
     setIsLoading(false);
   };
 
   const handleClearChat = () => {
     setMessages([]);
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(CHAT_KEY);
+      sessionStorage.removeItem(HADCHAT_KEY);
+    }
   };
+
+  // Mengembalikan chat sebelumnya jika user pindah halaman
 
   return (
     <div className="flex h-screen bg-[#F5F5F7] text-gray-900">

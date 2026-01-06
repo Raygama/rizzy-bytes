@@ -80,9 +80,33 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
 
       if (!res.ok) throw new Error("Upload failed");
 
+      // Ambil response entry terbaru (kalau API ngasih)
+      let createdEntry = null;
+      try {
+        createdEntry = await res.json();
+      } catch (_) {
+        // kalau response bukan json, gapapa
+      }
+
+      // fallback minimal kalau backend ga return data lengkap
+      const fallbackEntry = {
+        kbId: createdEntry?.kbId ?? createdEntry?.id ?? crypto.randomUUID(),
+        loaderId: createdEntry?.loaderId ?? createdEntry?.loader_id ?? null,
+        name: createdEntry?.name ?? fileLoaderName,
+        description: createdEntry?.description ?? description,
+        type: createdEntry?.type ?? type,
+        status: createdEntry?.status ?? "sync", // optional
+      };
+
+      // pilih createdEntry kalau ada, kalau tidak pakai fallback
+      const entryForParent =
+        createdEntry && typeof createdEntry === "object"
+          ? { ...fallbackEntry, ...createdEntry }
+          : fallbackEntry;
+
       Swal.fire("Success", "Knowledge base entry created!", "success");
       resetForm();
-      onAdded?.();
+      onAdded?.(entryForParent);
     } catch (error) {
       console.error(error);
       Swal.fire("Error", "Failed to create entry", "error");
