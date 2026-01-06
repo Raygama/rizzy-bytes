@@ -1,5 +1,6 @@
-const WINDOW_MS = 60_000;
-const MAX_REQUESTS = 50;
+const WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10);
+const MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "50", 10);
+const WORKER_TOKEN = process.env.WORKER_TOKEN || process.env.INTERNAL_JOB_TOKEN;
 
 const clientKey = (req) =>
   req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() ||
@@ -11,6 +12,11 @@ const buckets = new Map();
 
 export const rateLimiter = (req, res, next) => {
   if (req.method === "OPTIONS") return next();
+
+  const tokenHeader = req.get?.("x-worker-token");
+  if (WORKER_TOKEN && tokenHeader && tokenHeader === WORKER_TOKEN) {
+    return next();
+  }
 
   const now = Date.now();
   const key = clientKey(req);

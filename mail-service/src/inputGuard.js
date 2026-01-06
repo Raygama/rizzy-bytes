@@ -1,4 +1,5 @@
-const UNSAFE_PATTERN = /<\s*\/?\s*script\b|<\s*\/?[a-z][^>]*>/i;
+// Only block script tags; allow normal HTML (needed for email templates)
+const UNSAFE_PATTERN = /<\s*\/?\s*script\b/i;
 
 const isSkippable = (value) => {
   if (!value) return true;

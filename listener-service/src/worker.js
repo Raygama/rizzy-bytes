@@ -114,12 +114,20 @@ async function connectRabbitMQ() {
           // [CHANGED] sebelumnya html hardcoded, sekarang pakai template HTML
           const html = renderOtpHtml(payload);
 
-          await axios.post(`${MAIL_SERVICE_URL}/send`, {
-            to: payload.to,
-            subject: "Kode Verifikasi 2-Langkah", // [OPTIONAL] bisa kamu ganti
-            text: `Your OTP is ${payload.otp}`, // fallback text-only
-            html,
-          });
+          await axios.post(
+            `${MAIL_SERVICE_URL}/send`,
+            {
+              to: payload.to,
+              subject: "Kode Verifikasi 2-Langkah", // [OPTIONAL] bisa kamu ganti
+              text: `Your OTP is ${payload.otp}`, // fallback text-only
+              html,
+            },
+            {
+              headers: {
+                "x-worker-token": WORKER_TOKEN,
+              },
+            }
+          );
         }
 
         ch.ack(msg);
