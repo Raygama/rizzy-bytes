@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, Save, X } from "lucide-react";
+import { ChevronLeft, Save, X, Trash2 } from "lucide-react";
 import { flowiseUrl } from "@/lib/apiConfig";
+
+import Swal from "sweetalert2";
 
 export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
   const loaderId = kbData?.loaderId;
@@ -15,6 +17,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
   const [chunks, setChunks] = useState([]);
   const [chunksLoading, setChunksLoading] = useState(false);
   const [chunksError, setChunksError] = useState("");
+  const [deletingChunkIds, setDeletingChunkIds] = useState({});
 
   // chunk editor state
   const [chunkEditState, setChunkEditState] = useState({
@@ -225,6 +228,68 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
     }
   };
 
+  // delete chunk
+  const markDeleting = (chunkId, isDeleting) => {
+    setDeletingChunkIds((prev) => {
+      const next = { ...prev };
+      if (isDeleting) next[chunkId] = true;
+      else delete next[chunkId];
+      return next;
+    });
+  };
+
+  const handleDeleteChunk = async (chunk, index) => {
+    if (!loaderId) {
+      alert("loaderId not found");
+      return;
+    }
+
+    const chunkId = getChunkId(chunk);
+    if (!chunkId) {
+      alert("chunkId not found");
+      return;
+    }
+
+    const ok = window.confirm(`Delete Chunk ${index + 1}?`);
+    if (!ok) return;
+
+    markDeleting(chunkId, true);
+
+    try {
+      const qpType = encodeURIComponent(type || "general"); // default sesuai request kamu
+      const res = await fetch(
+        flowiseUrl(
+          `/api/kb/loaders/${loaderId}/chunks/${chunkId}?type=${qpType}`
+        ),
+        {
+          method: "DELETE",
+          headers: {
+            authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error(`Delete chunk failed: ${res.status}`);
+
+      // realtime update UI: remove chunk dari list
+      setChunks((prev) => prev.filter((_, i) => i !== index));
+
+      // kalau chunk yang sedang dibuka di editor ternyata dihapus, tutup editornya
+      if (
+        chunkEditState.open &&
+        chunkEditState.chunk &&
+        getChunkId(chunkEditState.chunk) === chunkId
+      ) {
+        handleCloseChunkEditor();
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete chunk");
+    } finally {
+      markDeleting(chunkId, false);
+    }
+  };
+
   if (!isEditing) return null;
 
   return (
@@ -292,25 +357,6 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
                     placeholder="Placeholder"
                   />
                 </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-900">
-                    Type
-                  </label>
-                  <select
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="" disabled>
-                      Select type...
-                    </option>
-                    <option value="ta">Tugas Akhir</option>
-                    <option value="kp">Kerja Praktik</option>
-                    <option value="tak">TAK</option>
-                    <option value="general">Other</option>
-                  </select>
-                </div>
               </div>
             </div>
 
@@ -339,24 +385,45 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
                         ? text.slice(0, 220)
                         : JSON.stringify(text).slice(0, 220);
 
+                    const chunkId =
+                      getChunkId(chunk) ?? chunk?.id ?? chunk?._id ?? idx;
+                    const isDeleting = !!deletingChunkIds[getChunkId(chunk)];
+
                     return (
-                      <button
-                        type="button"
-                        key={chunk?.id ?? chunk?._id ?? idx}
-                        onClick={() => handleOpenChunkEditor(chunk, idx)}
-                        className="w-full text-left pb-6 last:border-b-0 rounded-lg hover:bg-gray-50 transition-colors p-2 -m-2 focus:outline-none focus:ring-2 focus:ring-red-500"
-                        aria-label={`Edit chunk ${idx + 1}`}
+                      <div
+                        key={chunkId}
+                        className="relative border-b pb-6 last:border-b-0 rounded-lg hover:bg-gray-50 transition-colors p-2 -m-2"
                       >
-                        <h3 className="mb-2 text-sm font-semibold text-red-500">
-                          Chunk {idx + 1}
-                        </h3>
-                        <p className="text-sm text-gray-700">
-                          {preview}
-                          {typeof text === "string" && text.length > 220
-                            ? "…"
-                            : ""}
-                        </p>
-                      </button>
+                        {/* tombol edit (seluruh card bisa diklik) */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenChunkEditor(chunk, idx)}
+                          className="w-full text-left pr-12 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-lg"
+                          aria-label={`Edit chunk ${idx + 1}`}
+                        >
+                          <h3 className="mb-2 text-sm font-semibold text-red-500">
+                            Chunk {idx + 1}
+                          </h3>
+                          <p className="text-sm text-gray-700">
+                            {preview}
+                            {typeof text === "string" && text.length > 220
+                              ? "…"
+                              : ""}
+                          </p>
+                        </button>
+
+                        {/* tombol delete (pojok kanan atas) */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteChunk(chunk, idx)}
+                          disabled={isDeleting}
+                          className="absolute top-2 right-2 rounded-md p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-60"
+                          aria-label={`Delete chunk ${idx + 1}`}
+                          title="Delete chunk"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     );
                   })
                 )}

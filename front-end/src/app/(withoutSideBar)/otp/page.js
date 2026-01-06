@@ -83,7 +83,7 @@ export default function VerifyPage() {
         const token = data.token;
 
         if (token) {
-          Cookies.set("token", token);
+          Cookies.set("token", token, { expires: 1 }); // simpan token di cookie selama 1 hari
           localStorage.setItem("token", token);
         }
 
