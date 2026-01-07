@@ -15,6 +15,14 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
 
   const fileInputRef = useRef(null);
 
+  const normalizeStatus = (status) => {
+    if (!status) return status;
+    const upper = `${status}`.toUpperCase();
+    if (upper === "QUEUED" || upper === "PROCESSING") return "PENDING";
+    if (upper === "UPSERTED") return "SYNC";
+    return upper;
+  };
+
   const handleFileSelect = (selectedFile) => {
     if (!selectedFile) return;
 
@@ -88,21 +96,27 @@ export default function AddKbModal({ isOpen, onClose, onAdded }) {
         // kalau response bukan json, gapapa
       }
 
-      // fallback minimal kalau backend ga return data lengkap
+      const payloadEntry =
+        createdEntry?.entry ||
+        createdEntry?.kb ||
+        (createdEntry && typeof createdEntry === "object" ? createdEntry : null);
+
       const fallbackEntry = {
-        kbId: createdEntry?.kbId ?? createdEntry?.id ?? crypto.randomUUID(),
-        loaderId: createdEntry?.loaderId ?? createdEntry?.loader_id ?? null,
-        name: createdEntry?.name ?? fileLoaderName,
-        description: createdEntry?.description ?? description,
-        type: createdEntry?.type ?? type,
-        status: createdEntry?.status ?? "sync", // optional
+        kbId: payloadEntry?.kbId ?? crypto.randomUUID(),
+        loaderId: payloadEntry?.loaderId ?? null,
+        name: payloadEntry?.name ?? fileLoaderName,
+        description: payloadEntry?.description ?? description,
+        type: payloadEntry?.type ?? type,
+        status: normalizeStatus(payloadEntry?.status ?? "PENDING")
       };
 
-      // pilih createdEntry kalau ada, kalau tidak pakai fallback
-      const entryForParent =
-        createdEntry && typeof createdEntry === "object"
-          ? { ...fallbackEntry, ...createdEntry }
-          : fallbackEntry;
+      const entryForParent = payloadEntry
+        ? {
+            ...fallbackEntry,
+            ...payloadEntry,
+            status: normalizeStatus(payloadEntry?.status ?? fallbackEntry.status)
+          }
+        : fallbackEntry;
 
       Swal.fire("Success", "Knowledge base entry created!", "success");
       resetForm();

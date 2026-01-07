@@ -18,6 +18,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
   const [chunksLoading, setChunksLoading] = useState(false);
   const [chunksError, setChunksError] = useState("");
   const [deletingChunkIds, setDeletingChunkIds] = useState({});
+  const [chunksDirty, setChunksDirty] = useState(false);
 
   // chunk editor state
   const [chunkEditState, setChunkEditState] = useState({
@@ -106,11 +107,31 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
 
       if (!res.ok) throw new Error(`Update failed: ${res.status}`);
 
+      let didSaveChunks = false;
+      if (chunksDirty) {
+        const qpType = encodeURIComponent(resolveType());
+        const saveRes = await fetch(
+          flowiseUrl(
+            `/api/kb/loaders/${loaderId}/chunks/save?type=${qpType}`
+          ),
+          {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        if (!saveRes.ok) throw new Error(`Save chunks failed: ${saveRes.status}`);
+        setChunksDirty(false);
+        didSaveChunks = true;
+      }
+
       if (typeof onUpdated === "function") {
         onUpdated({
           loaderId,
           name: fileLoaderName,
           description,
+          refresh: didSaveChunks,
         });
       }
 
@@ -222,6 +243,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
         }
         return next;
       });
+      setChunksDirty(true);
 
       handleCloseChunkEditor();
     } catch (err) {
@@ -275,6 +297,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
       if (!res.ok) throw new Error(`Delete chunk failed: ${res.status}`);
 
       setChunks((prev) => prev.filter((_, i) => i !== index));
+      setChunksDirty(true);
 
       if (
         chunkEditState.open &&

@@ -88,8 +88,8 @@ export default function KnowledgeBasePage() {
     return out.filter((item, idx) => !(item === "…" && out[idx - 1] === "…"));
   };
 
-  useEffect(() => {
-    if (fetchStatus === true) {
+    useEffect(() => {
+      if (!fetchStatus) return;
       const fetchDataKB = async () => {
         try {
           const response = await fetch(flowiseUrl("/api/kb/entries"), {
@@ -104,11 +104,12 @@ export default function KnowledgeBasePage() {
           setDataKB(fetchOnlySyncData);
         } catch (error) {
           console.error("Error fetching knowledge base data:", error);
+        } finally {
+          setFetchStatus(false);
         }
       };
       fetchDataKB();
-    }
-  }, [fetchStatus, setFetchStatus]);
+    }, [fetchStatus, setFetchStatus]);
 
   const handleAddNewEntry = () => {
     setShowAddModal(true);
@@ -371,32 +372,36 @@ export default function KnowledgeBasePage() {
 
             return [newEntry, ...prev];
           });
+          setFetchStatus(true);
         }}
       />
 
-      <EditKb
-        isEditing={showEditModal}
-        kbData={editingData}
-        onClose={() => {
-          setShowEditModal(false);
-          setEditingData(null);
-        }}
-        onUpdated={(updated) => {
-          setDataKB((prev) =>
-            prev.map((e) =>
-              e.loaderId === updated.loaderId
-                ? {
-                    ...e,
-                    name: updated.name,
-                    description: updated.description,
-                  }
-                : e
-            )
-          );
-          setShowEditModal(false);
-          setEditingData(null);
-        }}
-      />
+        <EditKb
+          isEditing={showEditModal}
+          kbData={editingData}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingData(null);
+          }}
+          onUpdated={(updated) => {
+            setDataKB((prev) =>
+              prev.map((e) =>
+                e.loaderId === updated.loaderId
+                  ? {
+                      ...e,
+                      name: updated.name,
+                      description: updated.description,
+                    }
+                  : e
+              )
+            );
+            if (updated?.refresh) {
+              setFetchStatus(true);
+            }
+            setShowEditModal(false);
+            setEditingData(null);
+          }}
+        />
     </div>
   );
 }

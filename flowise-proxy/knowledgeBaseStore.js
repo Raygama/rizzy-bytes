@@ -21,6 +21,7 @@ const knowledgeBaseSchema = new mongoose.Schema(
     description: { type: String, default: "" },
     filename: { type: String, default: null },
     size: { type: Number, default: null },
+    status: { type: String, default: null },
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
     uploadedAt: { type: Date, default: () => new Date() }
   },
