@@ -73,9 +73,9 @@ export default function ChatbotPage() {
   };
 
   const quickActions = [
-    "Cara menginput TAK terbaru",
-    "Daftar nomor admin Theta",
-    "Tata cara tanda tangan Kaprodi",
+    "Bagaimana cara mengajukan TAK?",
+    "Bagaimana proses Kerja Praktik?",
+    "Bagaimana jika saya ingin membuat surat permohonan pergantian judul TA?",
   ];
 
   const messagesEndRef = useRef(null);

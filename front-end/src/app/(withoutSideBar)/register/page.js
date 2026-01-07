@@ -28,6 +28,11 @@ export default function RegisterPage() {
       return
     }
 
+    if (password.length < 8) {
+      setError("Password harus terdiri dari minimal 8 karakter.")
+      return
+    }
+
     setIsLoading(true)
 
     const credentials = {

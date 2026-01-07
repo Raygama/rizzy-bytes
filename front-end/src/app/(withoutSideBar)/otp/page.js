@@ -135,14 +135,6 @@ export default function VerifyPage() {
             Verifikasi Akun
           </button>
         </form>
-
-        <p className="text-sm text-gray-600 mt-4">
-          Tidak menerima kode?{" "}
-          <span className="text-red-600 font-medium cursor-pointer">
-            Kirim Ulang
-          </span>{" "}
-          (0:50)
-        </p>
       </div>
     </div>
   );

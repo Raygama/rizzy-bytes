@@ -200,9 +200,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
       let updatedChunk = null;
       try {
         updatedChunk = await res.json();
-      } catch (_) {
-        // response kosong, aman diabaikan
-      }
+      } catch (_) {}
 
       setChunks((prev) => {
         const next = [...prev];
@@ -256,7 +254,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
     markDeleting(chunkId, true);
 
     try {
-      const qpType = encodeURIComponent(type || "general"); // default sesuai request kamu
+      const qpType = encodeURIComponent(type || "general");
       const res = await fetch(
         flowiseUrl(
           `/api/kb/loaders/${loaderId}/chunks/${chunkId}?type=${qpType}`
@@ -271,10 +269,8 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
 
       if (!res.ok) throw new Error(`Delete chunk failed: ${res.status}`);
 
-      // realtime update UI: remove chunk dari list
       setChunks((prev) => prev.filter((_, i) => i !== index));
 
-      // kalau chunk yang sedang dibuka di editor ternyata dihapus, tutup editornya
       if (
         chunkEditState.open &&
         chunkEditState.chunk &&
@@ -293,14 +289,14 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
   if (!isEditing) return null;
 
   return (
-    <div className="absolute inset-0 z-40">
+    <div className="fixed inset-0 z-40 overflow-y-auto">
       <div
-        className="absolute inset-0 bg-black/30"
+        className="fixed inset-0 bg-black/30"
         aria-hidden
         onClick={onClose}
       />
 
-      <div className="relative z-50 flex justify-center overflow-y-auto py-10 px-4">
+      <div className="relative z-50 min-h-screen flex items-start justify-center py-10 px-4">
         <div className="w-full max-w-6xl rounded-2xl bg-[#F5F5F7] p-6 md:p-8 lg:p-12 shadow-xl">
           {/* Top Bar */}
           <div className="mb-8 flex items-center justify-between">
@@ -394,7 +390,6 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
                         key={chunkId}
                         className="relative border-b pb-6 last:border-b-0 rounded-lg hover:bg-gray-50 transition-colors p-2 -m-2"
                       >
-                        {/* tombol edit (seluruh card bisa diklik) */}
                         <button
                           type="button"
                           onClick={() => handleOpenChunkEditor(chunk, idx)}
@@ -412,7 +407,6 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
                           </p>
                         </button>
 
-                        {/* tombol delete (pojok kanan atas) */}
                         <button
                           type="button"
                           onClick={() => handleDeleteChunk(chunk, idx)}
@@ -435,9 +429,9 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
 
       {/* Chunk Editor Modal */}
       {chunkEditState.open && (
-        <div className="absolute inset-0 z-[60]">
+        <div className="fixed inset-0 z-[60]">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="fixed inset-0 bg-black/40"
             onClick={handleCloseChunkEditor}
             aria-hidden
           />
