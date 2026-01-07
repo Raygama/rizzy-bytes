@@ -27,7 +27,7 @@ export default function MonitoringPage() {
   const [loading, setLoading] = useState(false);
 
   const fetchAllMetrics = async () => {
-    const COST_API = "https://localhost:4000/api/admin/openai/costs";
+    const COST_API = "https://flowise-proxy:4000/api/admin/openai/costs";
 
     try {
       setLoading(true);
