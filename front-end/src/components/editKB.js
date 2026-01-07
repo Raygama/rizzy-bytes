@@ -28,9 +28,12 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
     saving: false,
   });
 
+  const resolveType = () => kbData?.type || type || "general";
+
   useEffect(() => {
     setFileLoaderName(kbData?.name ?? "");
     setDescription(kbData?.description ?? "");
+    setType(kbData?.type ?? "");
   }, [kbData]);
 
   useEffect(() => {
@@ -42,8 +45,9 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
       setChunksError("");
 
       try {
+        const qpType = encodeURIComponent(resolveType());
         const res = await fetch(
-          flowiseUrl(`/api/kb/loaders/${loaderId}/chunks`),
+          flowiseUrl(`/api/kb/loaders/${loaderId}/chunks?type=${qpType}`),
           {
             method: "GET",
             headers: {
@@ -68,7 +72,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
     };
 
     fetchChunks();
-  }, [isEditing, loaderId]);
+  }, [isEditing, loaderId, kbData?.type, type]);
 
   /* =======================
      EDIT META (PATCH)
@@ -176,8 +180,9 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
     setChunkEditState((prev) => ({ ...prev, saving: true }));
 
     try {
+      const qpType = encodeURIComponent(resolveType());
       const res = await fetch(
-        flowiseUrl(`/api/kb/loaders/${loaderId}/chunks/${chunkId}`),
+        flowiseUrl(`/api/kb/loaders/${loaderId}/chunks/${chunkId}?type=${qpType}`),
         {
           method: "PUT",
           headers: {
@@ -254,7 +259,7 @@ export default function EditKb({ isEditing, kbData, onClose, onUpdated }) {
     markDeleting(chunkId, true);
 
     try {
-      const qpType = encodeURIComponent(type || "general");
+      const qpType = encodeURIComponent(resolveType());
       const res = await fetch(
         flowiseUrl(
           `/api/kb/loaders/${loaderId}/chunks/${chunkId}?type=${qpType}`
