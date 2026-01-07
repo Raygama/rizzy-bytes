@@ -14,10 +14,10 @@ const configs = {
       "http://authentication-service:3000",
     flowiseBase:
       sanitizeBase(process.env.NEXT_PUBLIC_DIRECT_FLOWISE_BASE) ||
-      "http://localhost:4000",
+      "http://flowise-proxy:4000",
     prometheusBase:
       sanitizeBase(process.env.NEXT_PUBLIC_DIRECT_PROM_BASE) ||
-      "http://localhost:9090",
+      "http://prometheus:9090",
     authPrefix: "/auth",
     brokerPrefix: "/broker",
     mailPrefix: "/mail",
