@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
 import Image from "next/image";
-import logo from "../../public/logo-telu.png";
+import logo from "../../public/logo_telkom.png";
 import {
   MessageCircle,
   BarChart2,
@@ -190,8 +190,8 @@ export default function Sidebar({ mode = "mobile" }) {
         ].join(" ")}
       >
         {/* App title */}
-        <div className="flex items-center gap-2 px-6 pt-6 pb-4">
-          <Image src={logo} alt="Telkom University" width={32} height={32} />
+        <div className="flex flex-col items-center gap-2 px-6 pt-6 pb-4 text-center">
+          <Image src={logo} alt="Telkom University" width={64} height={64} />
           <h1 className="text-lg font-semibold tracking-tight">
             Informatics AI
           </h1>

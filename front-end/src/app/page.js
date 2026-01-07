@@ -8,7 +8,7 @@ export default function HomePage() {
       <nav className="bg-white border border-gray-200 shadow-sm rounded-2xl m-4 px-6 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Image src="/logo_telkom.png" alt="Telkom Logo" width={32} height={32} className="h-8 w-auto" />
+            <Image src="/logo_telkom.png" alt="Telkom Logo" width={64} height={64} className="h-8 w-auto" />
             <span className="font-bold text-lg text-black">Informatics AI</span>
           </div>
           <Link
