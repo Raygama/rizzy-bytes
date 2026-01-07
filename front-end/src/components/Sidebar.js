@@ -12,15 +12,18 @@ import {
   BarChart2,
   Users,
   Database,
-  Settings,
+  Menu,
+  X,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { authUrl } from "@/lib/apiConfig";
 
-export default function Sidebar() {
+export default function Sidebar({ mode = "mobile" }) {
   const pathname = usePathname();
   const [user, setUser] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
 
+  // ambil token dari localStorage (client-side)
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -32,10 +35,22 @@ export default function Sidebar() {
     }
   }, []);
 
-  // const handleLogout = () => {
-  //   localStorage.removeItem("token");
-  //   window.location.href = "/login";
-  // };
+  // kalau pindah halaman, auto close (khusus mobile)
+  useEffect(() => {
+    if (mode === "mobile") setIsOpen(false);
+  }, [pathname, mode]);
+
+  // lock body scroll saat sidebar mobile terbuka
+  useEffect(() => {
+    if (mode !== "mobile") return;
+
+    if (isOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen, mode]);
 
   const handleLogout = async () => {
     const confirm = await Swal.fire({
@@ -58,9 +73,7 @@ export default function Sidebar() {
         },
       });
 
-      if (!res.ok) {
-        throw new Error(`logout failed: ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`logout failed: ${res.status}`);
 
       localStorage.removeItem("token");
       Cookies.set("token", "");
@@ -78,9 +91,8 @@ export default function Sidebar() {
 
   const username = user?.usn || "User";
   const roleRaw = user?.role || "guest";
-  const role = String(roleRaw).toLowerCase(); // normalize
+  const role = String(roleRaw).toLowerCase();
 
-  // Define all menu items once
   const allMenu = useMemo(
     () => [
       { key: "chat", name: "Chat", path: "/chat", icon: MessageCircle },
@@ -106,23 +118,17 @@ export default function Sidebar() {
     []
   );
 
-  // RBAC rules
   const allowedKeysByRole = useMemo(
     () => ({
-      // student & guest: chat + setting only
-      student: ["chat", "setting"],
-      guest: ["chat", "setting"],
-
-      // staff: chat + setting + knowledge base
-      staff: ["chat", "kb", "setting"],
-
-      // admin: all
-      admin: ["chat", "analytics", "user_mgmt", "kb", "setting"],
+      student: ["chat"],
+      guest: ["chat"],
+      staff: ["chat", "kb"],
+      admin: ["chat", "analytics", "user_mgmt", "kb"],
     }),
     []
   );
 
-  const allowedKeys = allowedKeysByRole[role] || allowedKeysByRole["guest"];
+  const allowedKeys = allowedKeysByRole[role] || allowedKeysByRole.guest;
   const menu = allMenu.filter((m) => allowedKeys.includes(m.key));
 
   const getInitials = (text) => {
@@ -143,70 +149,110 @@ export default function Sidebar() {
       ? "Admin"
       : role.charAt(0).toUpperCase() + role.slice(1);
 
+  const isDesktop = mode === "desktop";
+
   return (
-    <aside className="w-64 bg-white border-r h-screen border-gray-200 flex flex-col">
-      {/* App title */}
-      <div className="flex px-6 pt-6 pb-4">
-        <Image src={logo} alt="Telkom University" width={32} height={32} />
-        <h1 className="text-lg font-semibold tracking-tight">Informatics AI</h1>
-      </div>
-
-      {/* Nav */}
-      <nav className="px-3 space-y-1">
-        {menu.map((item) => {
-          const Icon = item.icon;
-          const isActive =
-            pathname === item.path || pathname?.startsWith(item.path + "/");
-
-          return (
-            <Link
-              key={item.key}
-              href={item.path}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-red-50 text-red-600"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <span
-                className={`inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
-                  isActive
-                    ? "bg-red-100 text-red-600"
-                    : "bg-gray-200 text-gray-700"
-                }`}
-              >
-                <Icon size={18} />
-              </span>
-              <span>{item.name}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Logout */}
-      <div className="mt-auto px-3 pb-4 pt-6 space-y-3">
+    <>
+      {/* MOBILE: Toggle Button */}
+      {!isDesktop && (
         <button
           type="button"
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-medium"
+          onClick={() => setIsOpen((v) => !v)}
+          aria-label="Toggle sidebar"
+          aria-expanded={isOpen}
+          className="fixed left-4 top-4 z-50 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-gray-700 shadow"
         >
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-200 text-gray-700">
-            ⏻
-          </span>
-          <span>Logout</span>
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
+      )}
 
-        {/* User card */}
-        <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-50 border border-gray-200">
-          <div className="h-9 w-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-semibold">
-            {getInitials(username)}
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold">{username}</span>
-            <span className="text-[11px] text-gray-500">{displayRole}</span>
+      {/* MOBILE: Overlay */}
+      {!isDesktop && isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* SIDEBAR CONTAINER */}
+      <aside
+        className={[
+          // base
+          "bg-white border-gray-200 flex flex-col",
+          // desktop: static full height
+          isDesktop
+            ? "h-screen w-64 border-r"
+            : // mobile: fixed + slide
+              `fixed inset-y-0 left-0 z-40 h-screen w-64 border-r transition-transform duration-200 ${
+                isOpen ? "translate-x-0" : "-translate-x-full"
+              }`,
+        ].join(" ")}
+      >
+        {/* App title */}
+        <div className="flex items-center gap-2 px-6 pt-6 pb-4">
+          <Image src={logo} alt="Telkom University" width={32} height={32} />
+          <h1 className="text-lg font-semibold tracking-tight">
+            Informatics AI
+          </h1>
+        </div>
+
+        {/* Nav (scrollable) */}
+        <nav className="px-3 space-y-1 flex-1 overflow-y-auto">
+          {menu.map((item) => {
+            const Icon = item.icon;
+            const isActive =
+              pathname === item.path || pathname?.startsWith(item.path + "/");
+
+            return (
+              <Link
+                key={item.key}
+                href={item.path}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-red-50 text-red-600"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                <span
+                  className={`inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
+                    isActive
+                      ? "bg-red-100 text-red-600"
+                      : "bg-gray-200 text-gray-700"
+                  }`}
+                >
+                  <Icon size={18} />
+                </span>
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Bottom section */}
+        <div className="px-3 pb-4 pt-4 space-y-3 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-medium"
+          >
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-200 text-gray-700">
+              ⏻
+            </span>
+            <span>Logout</span>
+          </button>
+
+          <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-50 border border-gray-200">
+            <div className="h-9 w-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-semibold">
+              {getInitials(username)}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold">{username}</span>
+              <span className="text-[11px] text-gray-500">{displayRole}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

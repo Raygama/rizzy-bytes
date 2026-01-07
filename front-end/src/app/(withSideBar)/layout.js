@@ -1,21 +1,25 @@
 import Sidebar from "@/components/Sidebar";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import Cookies from "js-cookie";
 
 export default function DashboardLayout({ children }) {
   const token = cookies().get("token")?.value;
   if (!token) redirect("/login");
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar fixed height */}
-      <aside className="w-64 shrink-0">
-        {/* Sidebar component kamu */}
-        <Sidebar />
+    <div className="h-screen bg-[#F5F5F7] md:flex md:overflow-hidden">
+      {/* Desktop sidebar (static column) */}
+      <aside className="hidden md:block md:w-64 md:shrink-0 md:border-r md:border-gray-200 bg-white">
+        <Sidebar mode="desktop" />
       </aside>
 
-      {/* Main content scroll */}
-      <main className="flex-1 overflow-y-auto bg-[#F5F5F7]">{children}</main>
+      {/* Mobile sidebar (off-canvas overlay) */}
+      <div className="md:hidden">
+        <Sidebar mode="mobile" />
+      </div>
+
+      {/* Main content */}
+      <main className="h-screen overflow-y-auto flex-1">{children}</main>
     </div>
   );
 }
