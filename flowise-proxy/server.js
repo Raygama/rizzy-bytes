@@ -37,25 +37,25 @@ const KB_TYPES = {
   ta: {
     key: "ta",
     storeId: "09fadd22-0448-4e31-854d-6080ac8f9864",
-    collectionName: "helpdesk_kb_ta",
+    collectionName: "helpdesk_kb_ta_new",
     topK: 10
   },
   kp: {
     key: "kp",
     storeId: "c9b03bfa-f4ac-430d-a20d-81dade61a626",
-    collectionName: "helpdesk_kb_kp",
+    collectionName: "helpdesk_kb_kp_new",
     topK: 10
   },
   tak: {
     key: "tak",
     storeId: "0b77caad-ec5d-4be0-81b4-63ce72af9a5e",
-    collectionName: "helpdesk_kb_tak",
+    collectionName: "helpdesk_kb_tak_new",
     topK: 10
   },
   general: {
     key: "general",
     storeId: "9baa9873-0bbf-4ba4-a201-1452decf45a1",
-    collectionName: "helpdesk_kb_general",
+    collectionName: "helpdesk_kb_general_new",
     topK: 10
   }
 };
