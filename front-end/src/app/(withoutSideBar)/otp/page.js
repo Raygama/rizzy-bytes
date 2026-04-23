@@ -83,9 +83,19 @@ export default function VerifyPage() {
         const token = data.token;
 
         if (token) {
-          Cookies.set("token", token, { expires: 1 }); // simpan token di cookie selama 1 hari
+          // Set token in cookie for subdomain access (Flowise/Grafana)
+          const isProdDomain = window.location.hostname.endsWith("helpdesk-if.space");
+          const domainAttr = isProdDomain ? "; Domain=.helpdesk-if.space" : "";
+          const secureAttr = window.location.protocol === "https:" ? "; Secure" : "";
+          document.cookie = `token=${token}; Path=/; SameSite=Lax${domainAttr}${secureAttr}`;
+
+          // Also set in localStorage for client-side access
           localStorage.setItem("token", token);
         }
+
+        // Clean up session storage
+        sessionStorage.removeItem("tempToken");
+        sessionStorage.removeItem("isLogin");
 
         router.push("/chat");
       }

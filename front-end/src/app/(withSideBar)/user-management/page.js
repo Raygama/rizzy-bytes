@@ -65,10 +65,10 @@ export default function UserManagementPage() {
         const arr = Array.isArray(json)
           ? json
           : Array.isArray(json?.data)
-          ? json.data
-          : Array.isArray(json?.users)
-          ? json.users
-          : [];
+            ? json.data
+            : Array.isArray(json?.users)
+              ? json.users
+              : [];
 
         // map ke shape UI kamu
         const mapped = arr.map((u, idx) => {
@@ -126,8 +126,8 @@ export default function UserManagementPage() {
       activeTab === "all"
         ? true
         : activeTab === "ONLINE"
-        ? status === "online"
-        : status === "offline";
+          ? status === "online"
+          : status === "offline";
 
     return matchQuery && matchTab;
   });
@@ -150,12 +150,42 @@ export default function UserManagementPage() {
   };
 
   const handleCreate = () => {
-    console.log("Creating user:", formData);
     // TODO: Implement create user logic
     handleCloseModal();
   };
 
   const handleRoleSelect = (role) => setFormData({ ...formData, role });
+
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      const response = await fetch(authUrl(`/users/${userId}`), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update role");
+      }
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+      );
+      Swal.fire({
+        title: "Updated!",
+        text: "User role has been updated.",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error updating role:", error);
+      Swal.fire("Error", "Failed to update user role.", "error");
+    }
+  };
 
   const handleDeleteUser = (userId, userName) => {
     Swal.fire({
@@ -238,31 +268,28 @@ export default function UserManagementPage() {
           <div className="mb-6 flex items-center gap-3">
             <button
               onClick={() => setActiveTab("all")}
-              className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${
-                activeTab === "all"
-                  ? "bg-red-500 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
+              className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${activeTab === "all"
+                ? "bg-red-500 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
             >
               All Users
             </button>
             <button
               onClick={() => setActiveTab("ONLINE")}
-              className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${
-                activeTab === "ONLINE"
-                  ? "bg-red-500 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
+              className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${activeTab === "ONLINE"
+                ? "bg-red-500 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
             >
               ONLINE
             </button>
             <button
               onClick={() => setActiveTab("OFFLINE")}
-              className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${
-                activeTab === "OFFLINE"
-                  ? "bg-red-500 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
+              className={`rounded-full px-6 py-2 text-sm font-medium transition-colors ${activeTab === "OFFLINE"
+                ? "bg-red-500 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
             >
               OFFLINE
             </button>
@@ -300,17 +327,25 @@ export default function UserManagementPage() {
                       <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
 
-                    <div className="hidden md:block text-sm text-gray-600 w-32">
-                      {user.role}
+                    <div className="hidden md:block w-32">
+                      <select
+                        value={user.role}
+                        onChange={(e) => handleRoleChange(user.id ?? user._raw?._id, e.target.value)}
+                        className="bg-transparent text-sm text-gray-600 border-none focus:ring-0 cursor-pointer hover:text-gray-900"
+                      >
+                        <option value="student">student</option>
+                        <option value="staff">staff</option>
+                        <option value="admin">admin</option>
+                        <option value="guest">guest</option>
+                      </select>
                     </div>
 
                     <div className="hidden md:flex items-center gap-2 w-24">
                       <div
-                        className={`h-2 w-2 rounded-full ${
-                          String(user.status).toLowerCase() === "online"
-                            ? "bg-green-500"
-                            : "bg-gray-400"
-                        }`}
+                        className={`h-2 w-2 rounded-full ${String(user.status).toLowerCase() === "online"
+                          ? "bg-green-500"
+                          : "bg-gray-400"
+                          }`}
                       />
                       <span className="text-sm text-gray-700">
                         {user.status}

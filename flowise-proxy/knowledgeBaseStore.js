@@ -87,6 +87,15 @@ class KnowledgeBaseStore {
     return KnowledgeBaseModel.findOne(query).lean();
   }
 
+  async findByName({ name, type, storeId = null }) {
+    if (!name || !type) return null;
+    const query = { name, "metadata.type": type };
+    if (storeId) {
+      query.storeId = storeId;
+    }
+    return KnowledgeBaseModel.findOne(query).sort({ createdAt: -1 }).lean();
+  }
+
   async list(storeId = null) {
     const query = storeId ? { storeId } : {};
     return KnowledgeBaseModel.find(query).sort({ createdAt: -1 }).lean();
@@ -112,11 +121,19 @@ class KnowledgeBaseStore {
     );
   }
 
+  async findByKbId(kbId) {
+    if (!kbId) return null;
+    return KnowledgeBaseModel.findOne({ kbId }).lean();
+  }
+
   async upsert({ loaderId, storeId, ...rest }) {
-    const existing = await this.findByLoader({ loaderId, storeId });
+    const existing =
+      (await this.findByLoader({ loaderId, storeId })) ||
+      (rest.kbId ? await this.findByKbId(rest.kbId) : null);
+
     if (existing) {
       return this.updateByLoader({
-        loaderId,
+        loaderId: loaderId || existing.loaderId,
         storeId: storeId || existing.storeId,
         patch: rest
       });

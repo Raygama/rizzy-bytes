@@ -23,7 +23,7 @@ prometheus-data/
 grafana-data/
 
 mailhog-data/
-
+.env
 *.log
 logs/
 tmp/
@@ -41,3 +41,5 @@ Thumbs.db
 /flowise-uploads
 *.pdf
 /project/flowise-data
+certbot/
+

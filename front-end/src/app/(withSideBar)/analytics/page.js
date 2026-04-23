@@ -12,6 +12,8 @@ import { transformCostTimeseries } from "@/lib/transform";
 import { redirect } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 
+import { flowiseUrl } from "@/lib/apiConfig";
+
 export default function MonitoringPage() {
   const [cpuData, setCpuData] = useState([]);
   const [ramData, setRamData] = useState([]);
@@ -27,7 +29,7 @@ export default function MonitoringPage() {
   const [loading, setLoading] = useState(false);
 
   const fetchAllMetrics = async () => {
-    const COST_API = "https://flowise-proxy:4000/api/admin/openai/costs";
+    const COST_API = flowiseUrl("/api/admin/openai/costs");
 
     try {
       setLoading(true);

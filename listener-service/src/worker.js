@@ -212,6 +212,9 @@ async function connectRabbitMQ() {
         });
       } catch (e) {
         console.error("kb job failed:", e.message);
+        if (e.response?.data) {
+          console.error("Error response data:", JSON.stringify(e.response.data, null, 2));
+        }
         routingKey = routingKey || "kb.unknown";
         trackJob(kbQ.queue, routingKey, "failure", (Date.now() - started) / 1000);
         logEvent({

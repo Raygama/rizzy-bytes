@@ -36,6 +36,21 @@ export default function ChatbotPage() {
     [flowId, userKey]
   );
 
+  const CHATID_KEY = useMemo(
+    () => `chat_id_${flowId}_${userKey}`,
+    [flowId, userKey]
+  );
+
+  const getChatId = () => {
+    if (typeof window === "undefined") return null;
+    let cid = sessionStorage.getItem(CHATID_KEY);
+    if (!cid) {
+      cid = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      sessionStorage.setItem(CHATID_KEY, cid);
+    }
+    return cid;
+  };
+
   const loadChatFromStorage = () => {
     if (typeof window === "undefined") return [];
 
@@ -96,7 +111,6 @@ export default function ChatbotPage() {
     try {
       setUser(jwtDecode(token));
     } catch (e) {
-      console.error("Invalid token:", e);
     }
   }, []);
 
@@ -137,17 +151,17 @@ export default function ChatbotPage() {
         process.env.NEXT_PUBLIC_FLOWISE_FLOW_ID ||
         "2d844a72-3dc8-4475-8134-9f034015741f";
       const PREDICTION_URL = flowiseUrl(`/api/v1/prediction/${flowId}`);
+      const chatId = getChatId();
       const response = await fetch(PREDICTION_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ question: userMessage }),
+        body: JSON.stringify({ question: userMessage, chatId }),
       });
 
       const data = await response.json();
-      console.log("backend response:", data);
 
       // dari screenshot: field jawabannya ada di `text`
       sessionStorage.setItem("hadChat", "true");
@@ -287,16 +301,14 @@ export default function ChatbotPage() {
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex ${
-                      msg.sender === "user" ? "justify-end" : "justify-start"
-                    }`}
+                    className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"
+                      }`}
                   >
                     <div
-                      className={`px-4 py-3 rounded-2xl shadow-sm max-w-[80%] text-sm ${
-                        msg.sender === "user"
-                          ? "bg-red-500 text-white rounded-br-none"
-                          : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
-                      }`}
+                      className={`px-4 py-3 rounded-2xl shadow-sm max-w-[80%] text-sm ${msg.sender === "user"
+                        ? "bg-red-500 text-white rounded-br-none"
+                        : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
+                        }`}
                     >
                       {msg.sender === "bot" ? (
                         <ReactMarkdown className="prose prose-slate prose-sm max-w-none">

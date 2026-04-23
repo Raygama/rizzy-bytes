@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   ChevronLeft,
@@ -88,28 +88,29 @@ export default function KnowledgeBasePage() {
     return out.filter((item, idx) => !(item === "…" && out[idx - 1] === "…"));
   };
 
-    useEffect(() => {
-      if (!fetchStatus) return;
-      const fetchDataKB = async () => {
-        try {
-          const response = await fetch(flowiseUrl("/api/kb/entries"), {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          });
-          const result = await response.json();
-          const fetchOnlySyncData = result;
-          setDataKB(fetchOnlySyncData);
-        } catch (error) {
-          console.error("Error fetching knowledge base data:", error);
-        } finally {
-          setFetchStatus(false);
-        }
-      };
-      fetchDataKB();
-    }, [fetchStatus, setFetchStatus]);
+  useEffect(() => {
+    if (!fetchStatus) return;
+    const fetchDataKB = async () => {
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
+        const response = await fetch(flowiseUrl("/api/kb/entries"), {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+        });
+        const result = await response.json();
+        const fetchOnlySyncData = result;
+        setDataKB(fetchOnlySyncData);
+      } catch (error) {
+        console.error("Error fetching knowledge base data:", error);
+      } finally {
+        setFetchStatus(false);
+      }
+    };
+    fetchDataKB();
+  }, [fetchStatus, setFetchStatus]);
 
   const handleAddNewEntry = () => {
     setShowAddModal(true);
@@ -135,11 +136,12 @@ export default function KnowledgeBasePage() {
     if (!confirm.isConfirmed) return;
 
     try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
       const res = await fetch(flowiseUrl(`/api/kb/loaders/${loaderId}`), {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          authorization: `Bearer ${localStorage.getItem("token")}`,
+          authorization: `Bearer ${token}`,
         },
       });
 
@@ -164,12 +166,22 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  const token = localStorage.getItem("token");
-  if (
-    jwtDecode(token)?.role.toLowerCase() !== "admin" &&
-    jwtDecode(token)?.role.toLowerCase() !== "staff"
-  )
-    redirect("/chat");
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
+  const decoded = useMemo(() => {
+    try {
+      return token ? jwtDecode(token) : null;
+    } catch {
+      return null;
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (decoded && decoded.role.toLowerCase() !== "admin" && decoded.role.toLowerCase() !== "staff") {
+      redirect("/chat");
+    } else if (!token && typeof window !== "undefined") {
+      redirect("/login");
+    }
+  }, [decoded, token]);
 
   const paginationItems = getPaginationItems();
 
@@ -268,10 +280,10 @@ export default function KnowledgeBasePage() {
                         {entry.type === "ta"
                           ? "Tugas Akhir"
                           : entry.type === "kp"
-                          ? "Kerja Praktik"
-                          : entry.type === "tak"
-                          ? "TAK"
-                          : "General"}
+                            ? "Kerja Praktik"
+                            : entry.type === "tak"
+                              ? "TAK"
+                              : "General"}
                       </td>
                       <td className="hidden sm:table-cell px-4 md:px-6 py-4 text-xs md:text-sm text-gray-500">
                         {entry.status}
@@ -376,32 +388,32 @@ export default function KnowledgeBasePage() {
         }}
       />
 
-        <EditKb
-          isEditing={showEditModal}
-          kbData={editingData}
-          onClose={() => {
-            setShowEditModal(false);
-            setEditingData(null);
-          }}
-          onUpdated={(updated) => {
-            setDataKB((prev) =>
-              prev.map((e) =>
-                e.loaderId === updated.loaderId
-                  ? {
-                      ...e,
-                      name: updated.name,
-                      description: updated.description,
-                    }
-                  : e
-              )
-            );
-            if (updated?.refresh) {
-              setFetchStatus(true);
-            }
-            setShowEditModal(false);
-            setEditingData(null);
-          }}
-        />
+      <EditKb
+        isEditing={showEditModal}
+        kbData={editingData}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingData(null);
+        }}
+        onUpdated={(updated) => {
+          setDataKB((prev) =>
+            prev.map((e) =>
+              e.loaderId === updated.loaderId
+                ? {
+                  ...e,
+                  name: updated.name,
+                  description: updated.description,
+                }
+                : e
+            )
+          );
+          if (updated?.refresh) {
+            setFetchStatus(true);
+          }
+          setShowEditModal(false);
+          setEditingData(null);
+        }}
+      />
     </div>
   );
 }
