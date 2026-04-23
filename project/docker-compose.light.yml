@@ -3,13 +3,11 @@ services:
     build:
       context: ../authentication-service
       dockerfile: authentication-service.dockerfile
-    ports:
-      - 3001:3000
     environment:
       - PORT=3000
       - MONGO_URI=mongodb://mongo:27017
       - BROKER_URL=http://broker-service:3000
-      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://100.104.42.24:3000,http://100.104.42.24,http://chatbotaitelu.com,https://chatbotaitelu.com
       - JWT_SECRET=${AUTH_JWT_SECRET:?AUTH_JWT_SECRET not set}
     depends_on:
       - mongo
@@ -18,12 +16,10 @@ services:
     build:
       context: ../broker-service
       dockerfile: broker-service.dockerfile
-    ports:
-      - 3002:3000
     environment:
       - PORT=3000
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
-      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://100.104.42.24:3000,http://100.104.42.24,http://chatbotaitelu.com,https://chatbotaitelu.com
     depends_on:
       - rabbitmq
   listener-service:
@@ -36,6 +32,8 @@ services:
       - FLOWISE_PROXY_URL=http://flowise-proxy:4000
       - BROKER_URL=http://broker-service:3000
       - WORKER_TOKEN=${WORKER_TOKEN:-change-me}
+    volumes:
+      - ../flowise-uploads:/uploads
     depends_on:
       - rabbitmq
       - mail-service
@@ -45,47 +43,41 @@ services:
       dockerfile: mail-service.dockerfile
     environment:
       - PORT=3000
-      - SMTP_HOST=${SMTP_HOST:-mailhog}
-      - SMTP_PORT=${SMTP_PORT:-1025}
-      - SMTP_FROM=${SMTP_FROM:-no-reply@helpdesk.local}
-      - SMTP_SECURE=${SMTP_SECURE:-false}
-      - SMTP_REQUIRE_TLS=${SMTP_REQUIRE_TLS:-false}
-      - SMTP_TLS_REJECT_UNAUTHORIZED=${SMTP_TLS_REJECT_UNAUTHORIZED:-true}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASS=${SMTP_PASS:-}
-      - BROKER_URL=http://broker-service:3000
-      - WORKER_TOKEN=${WORKER_TOKEN:-change-me}
-      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_SECURE=${SMTP_SECURE}
+      - SMTP_REQUIRE_TLS=${SMTP_REQUIRE_TLS}
+      - SMTP_TLS_REJECT_UNAUTHORIZED=${SMTP_TLS_REJECT_UNAUTHORIZED}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://100.104.42.24:3000,http://100.104.42.24,http://chatbotaitelu.com,https://chatbotaitelu.com
     ports:
       - "3004:3000"
-    depends_on: 
+    depends_on:
       - mailhog
   logger-service:
     build:
       context: ../logger-service
       dockerfile: logger-service.dockerfile
-    environment:
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:?AUTH_JWT_SECRET not set}
-      - MONGO_URI=mongodb://mongo:27017
-      - MONGO_DB=logger
-      - MONGO_COLLECTION=logs
-    ports:
-      - 3005:3000
     depends_on:
       - mongo
   front-end:
     build:
       context: ../front-end
       dockerfile: front-end.dockerfile
+      args:
+        - NEXT_PUBLIC_API_MODE=nginx
+        - NEXT_PUBLIC_NGINX_API_BASE=
+        - NEXT_PUBLIC_NGINX_FLOWISE_BASE=
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_MODE=direct
-      - NEXT_PUBLIC_DIRECT_API_BASE=http://authentication-service:3000
-      - NEXT_PUBLIC_DIRECT_FLOWISE_BASE=http://flowise-proxy:4000
-      - NEXT_PUBLIC_DIRECT_PROM_BASE=http://prometheus:9090
-      - NEXT_PUBLIC_FLOWISE_PROXY_URL=http://flowise-proxy:4000
+      - NEXT_PUBLIC_API_MODE=nginx
+      - NEXT_PUBLIC_NGINX_API_BASE=
+      - NEXT_PUBLIC_NGINX_FLOWISE_BASE=
+      - NEXT_PUBLIC_FLOWISE_FLOW_ID=2d844a72-3dc8-4475-8134-9f034015741f
   mongo:
     image: mongo:6
     ports:
@@ -96,14 +88,8 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management
-    ports:
-      - 5672:5672
-      - 15672:15672
   mailhog:
     image: mailhog/mailhog
-    ports:
-      - 1025:1025
-      - 8025:8025
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -112,8 +98,6 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - 127.0.0.1:9090:9090
     depends_on:
       - node-exporter
 
@@ -121,6 +105,8 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
+    ports:
+      - 3009:3000
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?GF_SECURITY_ADMIN_PASSWORD not set}
@@ -129,8 +115,6 @@ services:
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-    ports:
-      - 3009:3000
     depends_on:
       - prometheus
   node-exporter:
@@ -138,8 +122,6 @@ services:
     container_name: node-exporter
     restart: unless-stopped
     privileged: true
-    ports:
-      - 127.0.0.1:9100:9100
     command:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
@@ -178,23 +160,21 @@ services:
       context: ../flowise-proxy
       dockerfile: Dockerfile
     container_name: flowise-proxy
+    ports:
+      - 4003:4000
     env_file:
       - ../flowise-proxy/.env
     environment:
-      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://100.104.42.24:3000,http://100.104.42.24,http://chatbotaitelu.com,https://chatbotaitelu.com
       - BROKER_URL=http://broker-service:3000
     volumes:
       - ../flowise-uploads:/uploads
-    ports:
-      - 4000:4000
     depends_on:
       - flowise
   chroma:
     image: ghcr.io/chroma-core/chroma:0.6.1
     container_name: chroma
     restart: always
-    ports:
-      - 8000:8000
     volumes:
       - ./chroma-data:/data
   chroma-init:
@@ -239,8 +219,6 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     restart: always
-    ports:
-      - 11434:11434
     volumes:
       - ./ollama-data:/root/.ollama
     environment:
